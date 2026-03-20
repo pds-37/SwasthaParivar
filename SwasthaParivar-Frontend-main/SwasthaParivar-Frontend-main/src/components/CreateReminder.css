@@ -1,0 +1,115 @@
+.create-reminder {
+  padding: 24px;
+}
+
+.create-reminder__head {
+  margin-bottom: 20px;
+}
+
+.create-reminder__eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1e9a93;
+}
+
+.create-reminder__head h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: #152331;
+}
+
+.create-reminder__head p {
+  margin: 8px 0 0;
+}
+
+.create-reminder__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.create-reminder__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-reminder__field--wide {
+  grid-column: 1 / -1;
+}
+
+.create-reminder__field span {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #364552;
+}
+
+.create-reminder__field input,
+.create-reminder__field select,
+.create-reminder__field textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(18, 41, 56, 0.1);
+  background: #fbfdfe;
+  color: #152331;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.create-reminder__field textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.create-reminder__field input:focus,
+.create-reminder__field select:focus,
+.create-reminder__field textarea:focus {
+  border-color: rgba(30, 154, 147, 0.32);
+  box-shadow: 0 0 0 4px rgba(30, 154, 147, 0.08);
+}
+
+.create-reminder__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.create-reminder__btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  font-weight: 800;
+  border: 1px solid transparent;
+}
+
+.create-reminder__btn--primary {
+  background: #1e9a93;
+  color: #ffffff;
+}
+
+.create-reminder__btn--ghost {
+  background: #ffffff;
+  color: #223846;
+  border-color: rgba(18, 41, 56, 0.12);
+}
+
+@media (max-width: 720px) {
+  .create-reminder {
+    padding: 20px;
+  }
+
+  .create-reminder__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .create-reminder__actions {
+    flex-direction: column;
+  }
+}

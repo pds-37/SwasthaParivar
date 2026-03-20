@@ -1,0 +1,200 @@
+.reminders-page {
+  min-height: 100%;
+}
+
+.reminders-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.reminders-hero {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 22px;
+  align-items: stretch;
+}
+
+.reminders-hero h1 {
+  margin: 16px 0 12px;
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  color: #152331;
+}
+
+.reminders-hero p {
+  max-width: 680px;
+  margin: 0;
+  color: #667480;
+  line-height: 1.75;
+}
+
+.reminders-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px;
+}
+
+.reminders-hero__stats div {
+  padding: 16px;
+  border-radius: 18px;
+  background: #f7fafb;
+}
+
+.reminders-hero__stats strong,
+.reminders-hero__stats span {
+  display: block;
+}
+
+.reminders-hero__stats strong {
+  font-size: 1.8rem;
+  line-height: 1;
+  color: #152331;
+}
+
+.reminders-hero__stats span {
+  margin-top: 8px;
+  color: #687783;
+  font-size: 0.92rem;
+}
+
+.reminders-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+}
+
+.reminders-toolbar__left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.reminders-tab-group,
+.reminders-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reminders-category {
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(18, 41, 56, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  color: #1b3544;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.reminders-category.active {
+  background: rgba(30, 154, 147, 0.12);
+  border-color: rgba(30, 154, 147, 0.18);
+  color: #13635d;
+}
+
+.reminders-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  border: none;
+  background: #1e9a93;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.reminders-groups {
+  display: grid;
+  gap: 22px;
+}
+
+.reminders-group {
+  display: grid;
+  gap: 14px;
+}
+
+.reminders-group__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reminders-group__head h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #152331;
+}
+
+.reminders-group__head span {
+  color: #6a7884;
+  font-weight: 700;
+}
+
+.reminders-group__list {
+  display: grid;
+  gap: 14px;
+}
+
+.reminders-empty {
+  padding: 34px;
+  text-align: center;
+}
+
+.reminders-empty svg {
+  margin: 0 auto 14px;
+  color: #1e9a93;
+}
+
+.reminders-empty h3 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+}
+
+.reminders-empty p {
+  margin: 0;
+  color: #6b7882;
+}
+
+.reminders-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reminders-toast__undo {
+  border: none;
+  border-radius: 10px;
+  background: #1e9a93;
+  color: white;
+  padding: 6px 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .reminders-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .reminders-toolbar {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .reminders-hero__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .reminders-create-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
