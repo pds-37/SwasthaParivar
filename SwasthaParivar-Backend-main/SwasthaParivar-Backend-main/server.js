@@ -24,13 +24,11 @@ import auth from "./middleware/auth.js";
 import "./utils/reminderCron.js";
 
 const PORT = process.env.PORT || 5000;
-const allowedOrigins = (
-  process.env.CLIENT_URLS ||
-  "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
-)
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://swastha-parivar-my1wz7t9-mrpds-projects-b9122a12.vercel.app"
+];
 
 const app = express();
 
