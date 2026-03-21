@@ -12,6 +12,16 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export async function subscribePush() {
+  if (!VAPID_PUBLIC_KEY) {
+    alert("Push notifications are not configured for this deployment yet.");
+    return;
+  }
+
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    alert("Push notifications are not supported in this browser.");
+    return;
+  }
+
   // Permission
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {

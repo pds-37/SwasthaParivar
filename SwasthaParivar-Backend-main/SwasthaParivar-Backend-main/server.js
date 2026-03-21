@@ -24,11 +24,13 @@ import auth from "./middleware/auth.js";
 import "./utils/reminderCron.js";
 
 const PORT = process.env.PORT || 5000;
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "https://swastha-parivar-my1wz7t9-mrpds-projects-b9122a12.vercel.app"
-];
+const allowedOrigins = (
+  process.env.CLIENT_URLS ||
+  "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 const app = express();
 
@@ -39,15 +41,11 @@ app.use(helmet());
 app.use(morgan("dev"));
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (like Postman, mobile apps)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      console.log("❌ Blocked by CORS:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,

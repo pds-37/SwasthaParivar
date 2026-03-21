@@ -65,13 +65,14 @@ const Auth = () => {
           <span className="auth-eyebrow">Ayurvedic AI Wellness</span>
 
           <h1>
-            Launch-ready family care,
-            <span> without the chaos.</span>
+            Your family's health,
+            <span> guided in one place.</span>
           </h1>
 
           <p>
-            SwasthaParivar brings health records, reminders, AI guidance, and
-            remedy intelligence into one polished family wellness workspace.
+            SwasthaParivar brings records, reminders, remedies, and
+            personalized AI care together so every family member gets smarter,
+            more organized health support.
           </p>
 
           <div className="auth-trust-grid">

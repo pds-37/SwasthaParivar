@@ -20,7 +20,7 @@
   font-size: 1.5rem;
   line-height: 1.1;
   letter-spacing: -0.03em;
-  color: #152331;
+  color: var(--text);
 }
 
 .create-reminder__head p {
@@ -46,7 +46,7 @@
 .create-reminder__field span {
   font-size: 0.88rem;
   font-weight: 700;
-  color: #364552;
+  color: var(--text-soft);
 }
 
 .create-reminder__field input,
@@ -55,9 +55,9 @@
   width: 100%;
   padding: 14px 16px;
   border-radius: 16px;
-  border: 1px solid rgba(18, 41, 56, 0.1);
-  background: #fbfdfe;
-  color: #152331;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -70,8 +70,122 @@
 .create-reminder__field input:focus,
 .create-reminder__field select:focus,
 .create-reminder__field textarea:focus {
-  border-color: rgba(30, 154, 147, 0.32);
-  box-shadow: 0 0 0 4px rgba(30, 154, 147, 0.08);
+  border-color: var(--brand-soft-strong);
+  box-shadow: 0 0 0 4px var(--brand-soft);
+}
+
+.create-reminder__upload {
+  position: relative;
+  display: block;
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--surface-muted), var(--surface));
+  border: 1px dashed var(--brand-soft-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.create-reminder__upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.create-reminder__upload-copy {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.create-reminder__upload-copy strong {
+  display: block;
+  color: var(--text);
+}
+
+.create-reminder__upload-copy p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.create-reminder__upload-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+}
+
+.create-reminder__report-panel {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 22px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+}
+
+.create-reminder__report-preview {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 18px;
+}
+
+.create-reminder__report-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.create-reminder__report-copy p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.create-reminder__report-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-weight: 700;
+}
+
+.create-reminder__calendar-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.create-reminder__calendar-toggle input {
+  margin-top: 4px;
+  accent-color: var(--brand);
+}
+
+.create-reminder__calendar-toggle strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+.create-reminder__calendar-toggle span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.6;
 }
 
 .create-reminder__actions {
@@ -95,9 +209,19 @@
 }
 
 .create-reminder__btn--ghost {
-  background: #ffffff;
-  color: #223846;
-  border-color: rgba(18, 41, 56, 0.12);
+  background: var(--surface-glass);
+  color: var(--text-soft);
+  border-color: var(--border-strong);
+}
+
+.spin {
+  animation: create-reminder-spin 1s linear infinite;
+}
+
+@keyframes create-reminder-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 720px) {
@@ -106,6 +230,10 @@
   }
 
   .create-reminder__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .create-reminder__report-panel {
     grid-template-columns: 1fr;
   }
 

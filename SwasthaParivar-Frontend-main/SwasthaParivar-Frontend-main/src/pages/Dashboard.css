@@ -1,8 +1,6 @@
 .dashboard-page {
   min-height: 100%;
-  background:
-    radial-gradient(circle at top left, rgba(31, 156, 144, 0.08), transparent 24%),
-    linear-gradient(180deg, #fbfcfd 0%, #f2f5f8 100%);
+  background: var(--app-bg);
 }
 
 .dashboard-shell {
@@ -15,8 +13,8 @@
   position: relative;
   overflow: hidden;
   border-radius: 28px;
-  background: linear-gradient(180deg, #0e6964 0%, #0b5f5a 100%);
-  box-shadow: 0 24px 54px rgba(12, 44, 52, 0.16);
+  background: linear-gradient(145deg, var(--hero-from) 0%, var(--hero-to) 100%);
+  box-shadow: var(--shadow-md);
 }
 
 .dashboard-hero-pattern {
@@ -124,10 +122,10 @@
 .dashboard-card {
   padding: 26px 24px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.92) !important;
-  border: 1px solid rgba(18, 41, 56, 0.08);
-  box-shadow: 0 12px 30px rgba(20, 34, 48, 0.05);
-  backdrop-filter: none !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(18px) !important;
 }
 
 .dashboard-card--assistant {
@@ -150,7 +148,8 @@
   margin: 0;
   font-size: 1.4rem !important;
   font-weight: 800 !important;
-  color: #141d28;
+  color: var(--text);
+  font-family: var(--font-display);
 }
 
 .section-title svg {
@@ -159,7 +158,7 @@
 
 .section-subtitle {
   margin-top: 8px !important;
-  color: #667480;
+  color: var(--muted);
   font-size: 0.96rem !important;
   line-height: 1.6 !important;
 }
@@ -325,8 +324,8 @@
   z-index: 1201;
   overflow: hidden;
   border-radius: 22px;
-  background: #ffffff;
-  border: 1px solid rgba(18, 41, 56, 0.08);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
   box-shadow: 0 30px 70px rgba(16, 26, 38, 0.2);
 }
 

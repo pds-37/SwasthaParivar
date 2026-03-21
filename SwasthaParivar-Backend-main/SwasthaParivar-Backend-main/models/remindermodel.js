@@ -18,7 +18,7 @@ const reminderSchema = new mongoose.Schema({
 
   category: {
     type: String,
-    enum: ["medicine", "vaccination", "checkup", "custom"],
+    enum: ["medicine", "vaccination", "checkup", "custom", "followup", "adverse_check", "doctor_handoff"],
     default: "custom",
   },
 

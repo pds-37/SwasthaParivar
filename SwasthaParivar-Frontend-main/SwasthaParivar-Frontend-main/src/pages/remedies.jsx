@@ -392,13 +392,13 @@ export default function Remedies() {
           <div className="hero-kicker">
             <Leaf size={18} />
             Remedies
-            <span className="hero-badge">PRO</span>
+            <span className="hero-badge">Care Edition</span>
           </div>
-          <h1>Personalized remedies with family-aware safety checks.</h1>
+          <h1>Remedies ranked by safety, memory, and family context.</h1>
           <p>
-            Search symptoms, explore recommended remedies based on your family&apos;s
+            Search symptoms, explore recommendations shaped by your family&apos;s
             latest health patterns, and generate a custom Ayurvedic option with
-            Gemini when you need something more specific.
+            built-in care context when you need something more specific.
           </p>
         </div>
 
@@ -444,7 +444,7 @@ export default function Remedies() {
           </div>
           <div>
             <strong>{focusMembersLabel}</strong>
-            <p>Recommendations are ranked using the latest saved family health data.</p>
+            <p>Recommendations are ranked using safety signals, history, and saved family health data.</p>
           </div>
         </div>
 

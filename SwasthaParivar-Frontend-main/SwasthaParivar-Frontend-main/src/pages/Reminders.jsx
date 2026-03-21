@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Bell, CalendarClock, Plus } from "lucide-react";
 import CreateReminder from "../components/CreateReminder";
@@ -57,7 +57,7 @@ const Reminders = () => {
     setReminders(nextReminders);
   };
 
-  const fetchReminders = async () => {
+  const fetchReminders = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get("/reminders");
@@ -66,7 +66,7 @@ const Reminders = () => {
       console.error("fetchReminders error:", error);
     }
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     const loadTimer = setTimeout(() => {
@@ -79,7 +79,7 @@ const Reminders = () => {
       clearTimeout(loadTimer);
       clearInterval(timer);
     };
-  }, []);
+  }, [fetchReminders]);
 
   const handleDelete = async (id) => {
     const previous = remindersRef.current;
@@ -158,7 +158,7 @@ const Reminders = () => {
             </span>
             <h1>Medical reminders that feel organized, not overwhelming.</h1>
             <p>
-              Schedule medicine, vaccination, and checkup tasks in a timeline that keeps the whole family on track.
+              Schedule medicine, vaccination, and checkup tasks in a timeline that keeps the whole family on track. Attach reports from camera or gallery so reminders carry useful AI context too.
             </p>
           </div>
 

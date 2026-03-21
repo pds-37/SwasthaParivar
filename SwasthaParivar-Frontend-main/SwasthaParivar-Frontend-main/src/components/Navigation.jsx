@@ -64,9 +64,9 @@ const Navigation = ({ variant = "app" }) => {
       position="sticky"
       elevation={0}
       sx={{
-        background: isDark ? "rgba(18, 31, 39, 0.9)" : "rgba(255, 255, 255, 0.86)",
-        borderBottom: `1px solid ${theme.palette.divider}`,
-        boxShadow: isPublic ? "0 10px 28px rgba(18, 41, 56, 0.06)" : "none",
+        background: "var(--nav-bg)",
+        borderBottom: `1px solid var(--nav-border)`,
+        boxShadow: isPublic ? "var(--shadow-sm)" : "none",
       }}
     >
       <Toolbar
@@ -90,13 +90,13 @@ const Navigation = ({ variant = "app" }) => {
             elevation={0}
             sx={{
               p: 1.15,
-              bgcolor: "#1e9a93",
+              bgcolor: "primary.main",
               borderRadius: "16px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               textDecoration: "none",
-              boxShadow: "0 14px 26px rgba(30, 154, 147, 0.22)",
+              boxShadow: "0 14px 30px rgba(22, 163, 148, 0.22)",
             }}
           >
             <Heart size={19} color="white" />
@@ -107,15 +107,16 @@ const Navigation = ({ variant = "app" }) => {
               variant="h6"
               sx={{
                 fontWeight: 800,
-                color: isDark ? "#eef7f8" : "#16343a",
+                color: theme.palette.text.primary,
                 lineHeight: 1.1,
                 letterSpacing: "-0.02em",
+                fontFamily: '"Sora", "Manrope", sans-serif',
               }}
             >
               SwasthaParivar
             </Typography>
-            <Typography variant="caption" sx={{ color: isDark ? "#a8bcc5" : "#73808a" }}>
-              Ayurvedic Wellness
+            <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+              AI Household Care
             </Typography>
           </Box>
         </Box>
@@ -135,9 +136,9 @@ const Navigation = ({ variant = "app" }) => {
                   minHeight: 42,
                   px: 2.1,
                   borderRadius: 999,
-                  color: active ? "#116862" : theme.palette.text.secondary,
-                  backgroundColor: active ? "rgba(30, 154, 147, 0.1)" : "transparent",
-                  border: active ? "1px solid rgba(30, 154, 147, 0.16)" : "1px solid transparent",
+                  color: active ? "var(--brand-dark)" : theme.palette.text.secondary,
+                  backgroundColor: active ? "var(--brand-soft)" : "transparent",
+                  border: active ? "1px solid var(--brand-soft-strong)" : "1px solid transparent",
                   fontWeight: active ? 800 : 600,
                 }}
               >
@@ -148,24 +149,22 @@ const Navigation = ({ variant = "app" }) => {
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {!isPublic && (
-            <IconButton
-              onClick={toggleTheme}
-              sx={{
-                width: 42,
-                height: 42,
-                bgcolor: isDark ? "rgba(255,255,255,0.08)" : "rgba(18,41,56,0.06)",
-                borderRadius: "14px",
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(18,41,56,0.08)"}`,
-              }}
-            >
-              {isDark ? (
-                <LightModeIcon sx={{ color: "#f8fbfd", fontSize: 20 }} />
-              ) : (
-                <DarkModeIcon sx={{ color: "#20303a", fontSize: 20 }} />
-              )}
-            </IconButton>
-          )}
+          <IconButton
+            onClick={toggleTheme}
+            sx={{
+              width: 44,
+              height: 44,
+              bgcolor: "var(--surface-glass)",
+              borderRadius: "16px",
+              border: "1px solid var(--border)",
+            }}
+          >
+            {isDark ? (
+              <LightModeIcon sx={{ color: "#f8fbfd", fontSize: 20 }} />
+            ) : (
+              <DarkModeIcon sx={{ color: "#20303a", fontSize: 20 }} />
+            )}
+          </IconButton>
 
           {isPublic ? (
             <Button
@@ -175,11 +174,11 @@ const Navigation = ({ variant = "app" }) => {
               sx={{
                 borderRadius: 999,
                 px: 2.7,
-                bgcolor: "#1e9a93",
-                minWidth: 108,
+                bgcolor: "primary.main",
+                minWidth: 124,
               }}
             >
-              Login
+              Launch App
             </Button>
           ) : (
             <>
@@ -192,7 +191,7 @@ const Navigation = ({ variant = "app" }) => {
                   display: { xs: "none", sm: "inline-flex" },
                   borderRadius: 999,
                   px: 2.2,
-                  bgcolor: "#1e9a93",
+                  bgcolor: "primary.main",
                 }}
               >
                 Enable Notifications

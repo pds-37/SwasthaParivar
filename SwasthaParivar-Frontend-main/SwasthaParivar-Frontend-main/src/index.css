@@ -1,33 +1,85 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap");
+
 :root {
   color-scheme: light;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  --font-body: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Sora", "Manrope", sans-serif;
   --app-bg:
-    radial-gradient(circle at top left, rgba(31, 156, 144, 0.08), transparent 24%),
-    linear-gradient(180deg, #fbfcfd 0%, #f2f5f8 100%);
-  --surface: rgba(255, 255, 255, 0.94);
-  --surface-muted: #f7fafb;
-  --border: rgba(18, 41, 56, 0.09);
+    radial-gradient(circle at top left, rgba(22, 163, 148, 0.1), transparent 26%),
+    radial-gradient(circle at top right, rgba(243, 166, 56, 0.08), transparent 28%),
+    linear-gradient(180deg, #f8fbfd 0%, #eef3f7 100%);
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-elevated: rgba(255, 255, 255, 0.98);
+  --surface-muted: #f4f8fa;
+  --surface-strong: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --border: rgba(18, 41, 56, 0.1);
   --border-strong: rgba(18, 41, 56, 0.14);
-  --text: #152331;
-  --muted: #667480;
-  --brand: #1e9a93;
-  --brand-dark: #0e6964;
-  --brand-soft: rgba(30, 154, 147, 0.08);
-  --brand-soft-strong: rgba(30, 154, 147, 0.14);
+  --text: #122433;
+  --text-soft: #253846;
+  --muted: #617484;
+  --brand: #16a394;
+  --brand-dark: #0d6b63;
+  --brand-soft: rgba(22, 163, 148, 0.1);
+  --brand-soft-strong: rgba(22, 163, 148, 0.16);
+  --accent: #f3a638;
+  --accent-soft: rgba(243, 166, 56, 0.12);
+  --hero-from: #106f69;
+  --hero-to: #0b4548;
+  --hero-pattern: rgba(255, 255, 255, 0.16);
   --danger-soft: rgba(255, 245, 230, 0.95);
   --danger-text: #9a4b00;
-  --shadow-sm: 0 10px 24px rgba(15, 28, 42, 0.05);
-  --shadow-md: 0 18px 44px rgba(15, 34, 49, 0.08);
-  --shadow-lg: 0 28px 70px rgba(10, 24, 35, 0.14);
+  --shadow-sm: 0 14px 34px rgba(15, 28, 42, 0.06);
+  --shadow-md: 0 22px 56px rgba(15, 34, 49, 0.1);
+  --shadow-lg: 0 30px 80px rgba(10, 24, 35, 0.16);
   --radius-sm: 14px;
   --radius-md: 18px;
   --radius-lg: 24px;
   --radius-xl: 30px;
+  --nav-bg: rgba(255, 255, 255, 0.72);
+  --nav-border: rgba(18, 41, 56, 0.08);
+  --grid-line: rgba(255, 255, 255, 0.14);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-bg:
+    radial-gradient(circle at top left, rgba(20, 145, 132, 0.18), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(243, 166, 56, 0.1), transparent 22%),
+    linear-gradient(180deg, #061018 0%, #08151e 45%, #0b1821 100%);
+  --surface: rgba(14, 24, 33, 0.86);
+  --surface-elevated: rgba(16, 27, 36, 0.96);
+  --surface-muted: rgba(18, 33, 44, 0.94);
+  --surface-strong: #14212b;
+  --surface-glass: rgba(9, 18, 27, 0.72);
+  --border: rgba(157, 195, 208, 0.12);
+  --border-strong: rgba(157, 195, 208, 0.18);
+  --text: #eef8f8;
+  --text-soft: #d7e6ea;
+  --muted: #99adba;
+  --brand: #4ed2c0;
+  --brand-dark: #9de7dd;
+  --brand-soft: rgba(78, 210, 192, 0.14);
+  --brand-soft-strong: rgba(78, 210, 192, 0.2);
+  --accent: #f6bf64;
+  --accent-soft: rgba(246, 191, 100, 0.14);
+  --hero-from: #0c3a40;
+  --hero-to: #081922;
+  --hero-pattern: rgba(255, 255, 255, 0.12);
+  --danger-soft: rgba(69, 40, 12, 0.78);
+  --danger-text: #ffd9a0;
+  --shadow-sm: 0 18px 36px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 24px 56px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 34px 84px rgba(0, 0, 0, 0.44);
+  --nav-bg: rgba(9, 18, 27, 0.72);
+  --nav-border: rgba(157, 195, 208, 0.12);
+  --grid-line: rgba(255, 255, 255, 0.08);
 }
 
 *,
@@ -51,6 +103,7 @@ body {
   background: var(--app-bg);
   color: var(--text);
   line-height: 1.6;
+  font-family: var(--font-body);
 }
 
 a {
@@ -112,6 +165,7 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(20px);
 }
 
 .section-header {
@@ -135,7 +189,7 @@ textarea {
   padding: 8px 14px;
   border-radius: 999px;
   background: var(--brand-soft);
-  border: 1px solid rgba(30, 154, 147, 0.14);
+  border: 1px solid var(--brand-soft-strong);
   color: var(--brand-dark);
   font-size: 0.82rem;
   font-weight: 700;
@@ -149,18 +203,24 @@ textarea {
 
 .pill-button {
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--surface-glass);
   color: var(--text);
   border-radius: 999px;
   padding: 10px 16px;
   font-weight: 600;
+  backdrop-filter: blur(10px);
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .pill-button.active {
   background: var(--brand-soft);
-  border-color: rgba(30, 154, 147, 0.18);
+  border-color: var(--brand-soft-strong);
   color: var(--brand-dark);
+}
+
+.page-title {
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
 }
 
 .app-grid-two {

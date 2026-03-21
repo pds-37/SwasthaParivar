@@ -1,5 +1,6 @@
 import React from "react";
-import { Calendar, Clock, Repeat, Trash2, User } from "lucide-react";
+import { Calendar, CalendarPlus, Clock, Repeat, Trash2, User } from "lucide-react";
+import { buildGoogleCalendarUrl } from "../lib/googleCalendar";
 import "./ReminderCard.css";
 
 const categoryColors = {
@@ -96,6 +97,26 @@ const ReminderCard = ({ reminder, onDelete, onEdit }) => {
             <button type="button" className="reminder-card__icon reminder-card__icon--edit" onClick={() => onEdit?.(reminder)}>
               Edit
             </button>
+            <button
+              type="button"
+              className="reminder-card__icon reminder-card__icon--calendar"
+              onClick={() =>
+                window.open(
+                  buildGoogleCalendarUrl({
+                    title: reminder.title,
+                    description: [
+                      reminder.description,
+                      reminder.meta?.reportSummary,
+                    ].filter(Boolean).join("\n\n"),
+                    start: reminder.nextRunAt,
+                  }),
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }
+            >
+              <CalendarPlus size={14} />
+            </button>
             <button type="button" className="reminder-card__icon reminder-card__icon--delete" onClick={() => onDelete?.(reminder._id)}>
               <Trash2 size={14} />
             </button>
@@ -122,6 +143,13 @@ const ReminderCard = ({ reminder, onDelete, onEdit }) => {
 
         {reminder.description && (
           <div className="reminder-card__note">{reminder.description}</div>
+        )}
+
+        {reminder.meta?.reportSummary && (
+          <div className="reminder-card__report">
+            <strong>AI report context</strong>
+            <p>{reminder.meta.reportSummary}</p>
+          </div>
         )}
       </div>
     </article>

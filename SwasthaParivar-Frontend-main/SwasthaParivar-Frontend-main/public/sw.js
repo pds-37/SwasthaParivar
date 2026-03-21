@@ -3,8 +3,8 @@ self.addEventListener("push", (event) => {
 
   self.registration.showNotification(data.title, {
     body: data.body,
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-96.png",
+    icon: "/icon-health.svg",
+    badge: "/icon-health.svg",
     vibrate: [200, 100, 200],
   });
 });

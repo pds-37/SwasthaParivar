@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import { ThemeModeContext } from "./theme-context";
 
@@ -12,65 +12,77 @@ export const AppThemeProvider = ({ children }) => {
     localStorage.setItem("themeMode", nextMode);
   };
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = mode;
+    document.documentElement.style.colorScheme = mode;
+  }, [mode]);
+
   const theme = useMemo(
     () =>
       createTheme({
         palette: {
           mode,
           primary: {
-            main: "#1e9a93",
-            dark: "#0f6b66",
-            light: "#7ad7d0",
+            main: "#16a394",
+            dark: "#0d6b63",
+            light: "#8ce0d3",
           },
           secondary: {
+            main: "#f3a638",
+          },
+          success: {
+            main: "#35c78b",
+          },
+          warning: {
             main: "#f59e0b",
+          },
+          error: {
+            main: "#f26d62",
           },
           background:
             mode === "light"
               ? {
-                  default: "#f4f7fa",
+                  default: "#eef3f7",
                   paper: "#ffffff",
                 }
               : {
-                  default: "#0f171d",
-                  paper: "#17232d",
+                  default: "#081118",
+                  paper: "#101b24",
                 },
           text:
             mode === "light"
               ? {
-                  primary: "#152331",
-                  secondary: "#667480",
+                  primary: "#122433",
+                  secondary: "#617484",
                 }
               : {
-                  primary: "#edf7f8",
-                  secondary: "#b3c2cb",
+                  primary: "#eef8f8",
+                  secondary: "#99adba",
                 },
           divider:
             mode === "light"
-              ? "rgba(18, 41, 56, 0.09)"
-              : "rgba(255, 255, 255, 0.08)",
+              ? "rgba(18, 41, 56, 0.1)"
+              : "rgba(163, 201, 212, 0.12)",
         },
         shape: {
-          borderRadius: 18,
+          borderRadius: 20,
         },
         typography: {
-          fontFamily: '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-          h1: { fontWeight: 800, letterSpacing: "-0.04em" },
-          h2: { fontWeight: 800, letterSpacing: "-0.03em" },
-          h3: { fontWeight: 800, letterSpacing: "-0.02em" },
+          fontFamily: '"Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          h1: { fontFamily: '"Sora", "Manrope", sans-serif', fontWeight: 800, letterSpacing: "-0.05em" },
+          h2: { fontFamily: '"Sora", "Manrope", sans-serif', fontWeight: 800, letterSpacing: "-0.04em" },
+          h3: { fontFamily: '"Sora", "Manrope", sans-serif', fontWeight: 800, letterSpacing: "-0.03em" },
           h4: { fontWeight: 700 },
           h5: { fontWeight: 700 },
           h6: { fontWeight: 700 },
-          button: { fontWeight: 700 },
+          button: { fontWeight: 800 },
         },
         components: {
           MuiCssBaseline: {
             styleOverrides: {
               body: {
-                background:
-                  mode === "light"
-                    ? "radial-gradient(circle at top left, rgba(31, 156, 144, 0.08), transparent 24%), linear-gradient(180deg, #fbfcfd 0%, #f2f5f8 100%)"
-                    : "linear-gradient(180deg, #0d151b 0%, #101b23 100%)",
+                background: "var(--app-bg)",
+                color: "var(--text)",
               },
             },
           },
@@ -84,12 +96,12 @@ export const AppThemeProvider = ({ children }) => {
           MuiPaper: {
             styleOverrides: {
               root: {
-                borderRadius: 20,
+                borderRadius: 24,
                 backgroundImage: "none",
                 boxShadow:
                   mode === "light"
-                    ? "0 12px 30px rgba(20, 34, 48, 0.05)"
-                    : "0 18px 44px rgba(0, 0, 0, 0.28)",
+                    ? "0 16px 44px rgba(19, 35, 50, 0.08)"
+                    : "0 22px 54px rgba(0, 0, 0, 0.36)",
               },
             },
           },
@@ -97,9 +109,9 @@ export const AppThemeProvider = ({ children }) => {
             styleOverrides: {
               root: {
                 textTransform: "none",
-                borderRadius: 14,
+                borderRadius: 16,
                 paddingInline: 18,
-                minHeight: 42,
+                minHeight: 46,
                 boxShadow: "none",
               },
               containedPrimary: {
@@ -120,15 +132,15 @@ export const AppThemeProvider = ({ children }) => {
           MuiOutlinedInput: {
             styleOverrides: {
               root: {
-                borderRadius: 16,
-                backgroundColor: mode === "light" ? "#ffffff" : "#101c24",
+                borderRadius: 18,
+                backgroundColor: mode === "light" ? "#ffffff" : "#0f1a22",
               },
             },
           },
           MuiDialog: {
             styleOverrides: {
               paper: {
-                borderRadius: 24,
+                borderRadius: 28,
               },
             },
           },
