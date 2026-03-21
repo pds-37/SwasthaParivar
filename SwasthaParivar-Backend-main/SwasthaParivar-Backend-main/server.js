@@ -42,7 +42,11 @@ app.use(morgan("dev"));
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        (origin && origin.endsWith(".vercel.app"))
+      ) {
         return callback(null, true);
       }
 
