@@ -70,9 +70,6 @@ class AppConfig {
       throw new Error("CORS_ORIGINS or CLIENT_URLS is required");
     }
 
-    if (this.isProduction && !this.redisUrl) {
-      throw new Error("REDIS_URL is required in production");
-    }
   }
 }
 

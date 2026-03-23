@@ -118,6 +118,12 @@ const Auth = () => {
   );
 
   useEffect(() => {
+    const modeParam = searchParams.get("mode");
+    if (!modeParam) return;
+    setIsLogin(modeParam !== "signup");
+  }, [searchParams]);
+
+  useEffect(() => {
     const authError = searchParams.get("authError");
     if (!authError) return;
     setError(GOOGLE_AUTH_ERRORS[authError] || "Google sign-in failed. Please try again.");

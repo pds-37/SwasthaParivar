@@ -38,9 +38,15 @@ const RouteScreen = ({ page, componentProps }) => {
 
 const ProtectedLayout = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) return <PageSkeleton />;
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) {
+    const redirectTo = `/auth?mode=signin&from=${encodeURIComponent(
+      `${location.pathname}${location.search}${location.hash}`
+    )}`;
+    return <Navigate to={redirectTo} replace />;
+  }
 
   return (
     <FamilyStoreProvider>
@@ -60,6 +66,20 @@ const GuestOnlyRoute = ({ children }) => {
   return children;
 };
 
+const AuthEntryRoute = ({ children }) => {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const hasExplicitIntent = Boolean(
+    params.get("mode") || params.get("from") || params.get("authError")
+  );
+
+  if (!hasExplicitIntent) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -68,7 +88,9 @@ const AppRoutes = () => {
         path="/auth"
         element={
           <GuestOnlyRoute>
-            <RouteScreen page={Auth} />
+            <AuthEntryRoute>
+              <RouteScreen page={Auth} />
+            </AuthEntryRoute>
           </GuestOnlyRoute>
         }
       />

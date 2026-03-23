@@ -105,7 +105,7 @@ const Navigation = ({ variant = "app" }) => {
             <button type="button" className="icon-btn" onClick={toggleTheme} aria-label="Toggle theme">
               {mode === "dark" ? <SunMedium size={18} /> : <Moon size={18} />}
             </button>
-            <Button as={Link} to="/auth" size="sm">
+            <Button as={Link} to="/auth?mode=signin" size="sm">
               Launch App
             </Button>
           </div>

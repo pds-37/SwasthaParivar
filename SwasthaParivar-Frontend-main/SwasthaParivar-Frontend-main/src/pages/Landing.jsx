@@ -58,7 +58,7 @@ const Landing = () => {
             </p>
 
             <div className="landing-hero__actions">
-              <Button as={Link} to="/auth" size="lg" rightIcon={<ArrowRight size={18} />}>
+              <Button as={Link} to="/auth?mode=signup" size="lg" rightIcon={<ArrowRight size={18} />}>
                 Get started
               </Button>
               <Button as="a" href="#features" variant="secondary" size="lg">
@@ -144,7 +144,7 @@ const Landing = () => {
               intelligence layer as your family uses the app.
             </p>
           </div>
-          <Button as={Link} to="/auth" size="lg" variant="secondary">
+          <Button as={Link} to="/auth?mode=signin" size="lg" variant="secondary">
             Launch SwasthaParivar
           </Button>
         </section>
@@ -158,7 +158,7 @@ const Landing = () => {
         <nav className="landing-footer__nav" aria-label="Footer navigation">
           <Link to="/">Home</Link>
           <a href="#features">Features</a>
-          <Link to="/auth">Login</Link>
+          <Link to="/auth?mode=signin">Login</Link>
         </nav>
         <div className="landing-footer__meta">
           <a href="https://x.com" target="_blank" rel="noreferrer">
