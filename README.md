@@ -2,18 +2,6 @@
 
 <img src="https://img.shields.io/badge/SwasthaParivar-Family%20Health%20Platform-4CAF50?style=for-the-badge&logo=heart&logoColor=white" alt="SwasthaParivar" />
 
-<br/>
-<br/>
-
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://swastha-parivar.vercel.app)
-[![Backend](https://img.shields.io/badge/Backend-Render-46E3B7?style=flat-square&logo=render&logoColor=white)](https://swasthaparivar-v1.onrender.com/health)
-[![License](https://img.shields.io/badge/License-Unlicensed-red?style=flat-square)](./LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
-[![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
-[![MongoDB](https://img.shields.io/badge/Database-MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://mongodb.com)
-[![AI](https://img.shields.io/badge/AI-Google%20Gemini-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev)
-
-<br/>
 
 **A full-stack family health management platform.**  
 Organize reminders, reports, member records, health snapshots, and AI-guided care — all in one connected workspace.
