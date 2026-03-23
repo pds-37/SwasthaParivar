@@ -2,76 +2,130 @@ import React, { useEffect, useMemo, useState } from "react";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import { ThemeModeContext } from "./theme-context";
 
+const resolvePaletteTokens = (mode) => {
+  if (typeof document === "undefined" || !document.body) {
+    return {};
+  }
+
+  const probe = document.createElement("div");
+  probe.dataset.theme = mode;
+  probe.setAttribute("aria-hidden", "true");
+  probe.style.position = "absolute";
+  probe.style.opacity = "0";
+  probe.style.pointerEvents = "none";
+  probe.style.inset = "0";
+  document.body.appendChild(probe);
+
+  const styles = getComputedStyle(probe);
+  const read = (name) => styles.getPropertyValue(name).trim();
+  const tokens = {
+    primary: read("--color-primary"),
+    primaryDark: read("--color-primary-strong"),
+    primaryLight: read("--color-primary-soft-strong"),
+    secondary: read("--color-accent"),
+    success: read("--color-success"),
+    warning: read("--color-warning"),
+    danger: read("--color-danger"),
+    page: read("--color-page"),
+    surface: read("--color-surface"),
+    textPrimary: read("--color-text-primary"),
+    textSecondary: read("--color-text-secondary"),
+    divider: read("--color-border-subtle"),
+  };
+
+  probe.remove();
+  return tokens;
+};
+
 export const AppThemeProvider = ({ children }) => {
-  const storedMode = localStorage.getItem("themeMode") || "light";
-  const [mode, setMode] = useState(storedMode);
+  const getSystemPreference = () =>
+    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+  const storedMode = localStorage.getItem("themeMode") || "system";
+  const [preference, setPreference] = useState(storedMode);
+  const [systemMode, setSystemMode] = useState(getSystemPreference);
+  const mode = preference === "system" ? systemMode : preference;
 
   const toggleTheme = () => {
     const nextMode = mode === "light" ? "dark" : "light";
-    setMode(nextMode);
+    setPreference(nextMode);
     localStorage.setItem("themeMode", nextMode);
   };
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const syncSystemMode = (event) => {
+      setSystemMode(event.matches ? "dark" : "light");
+    };
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncSystemMode);
+    } else {
+      mediaQuery.addListener(syncSystemMode);
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === "function") {
+        mediaQuery.removeEventListener("change", syncSystemMode);
+      } else {
+        mediaQuery.removeListener(syncSystemMode);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = mode;
     document.documentElement.style.colorScheme = mode;
   }, [mode]);
 
+  const setThemePreference = (nextPreference) => {
+    setPreference(nextPreference);
+    localStorage.setItem("themeMode", nextPreference);
+  };
+
   const theme = useMemo(
-    () =>
-      createTheme({
+    () => {
+      const paletteTokens = resolvePaletteTokens(mode);
+
+      return createTheme({
         palette: {
           mode,
           primary: {
-            main: "#16a394",
-            dark: "#0d6b63",
-            light: "#8ce0d3",
+            main: paletteTokens.primary,
+            dark: paletteTokens.primaryDark,
+            light: paletteTokens.primaryLight,
           },
           secondary: {
-            main: "#f3a638",
+            main: paletteTokens.secondary,
           },
           success: {
-            main: "#35c78b",
+            main: paletteTokens.success,
           },
           warning: {
-            main: "#f59e0b",
+            main: paletteTokens.warning,
           },
           error: {
-            main: "#f26d62",
+            main: paletteTokens.danger,
           },
-          background:
-            mode === "light"
-              ? {
-                  default: "#eef3f7",
-                  paper: "#ffffff",
-                }
-              : {
-                  default: "#081118",
-                  paper: "#101b24",
-                },
-          text:
-            mode === "light"
-              ? {
-                  primary: "#122433",
-                  secondary: "#617484",
-                }
-              : {
-                  primary: "#eef8f8",
-                  secondary: "#99adba",
-                },
-          divider:
-            mode === "light"
-              ? "rgba(18, 41, 56, 0.1)"
-              : "rgba(163, 201, 212, 0.12)",
+          background: {
+            default: paletteTokens.page,
+            paper: paletteTokens.surface,
+          },
+          text: {
+            primary: paletteTokens.textPrimary,
+            secondary: paletteTokens.textSecondary,
+          },
+          divider: paletteTokens.divider,
         },
         shape: {
           borderRadius: 20,
         },
         typography: {
-          fontFamily: '"Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-          h1: { fontFamily: '"Sora", "Manrope", sans-serif', fontWeight: 800, letterSpacing: "-0.05em" },
-          h2: { fontFamily: '"Sora", "Manrope", sans-serif', fontWeight: 800, letterSpacing: "-0.04em" },
-          h3: { fontFamily: '"Sora", "Manrope", sans-serif', fontWeight: 800, letterSpacing: "-0.03em" },
+          fontFamily: 'var(--font-sans)',
+          h1: { fontFamily: 'var(--font-display)', fontWeight: 800, letterSpacing: "-0.05em" },
+          h2: { fontFamily: 'var(--font-display)', fontWeight: 800, letterSpacing: "-0.04em" },
+          h3: { fontFamily: 'var(--font-display)', fontWeight: 800, letterSpacing: "-0.03em" },
           h4: { fontWeight: 700 },
           h5: { fontWeight: 700 },
           h6: { fontWeight: 700 },
@@ -81,8 +135,8 @@ export const AppThemeProvider = ({ children }) => {
           MuiCssBaseline: {
             styleOverrides: {
               body: {
-                background: "var(--app-bg)",
-                color: "var(--text)",
+                background: "var(--color-page)",
+                color: "var(--color-text-primary)",
               },
             },
           },
@@ -98,10 +152,7 @@ export const AppThemeProvider = ({ children }) => {
               root: {
                 borderRadius: 24,
                 backgroundImage: "none",
-                boxShadow:
-                  mode === "light"
-                    ? "0 16px 44px rgba(19, 35, 50, 0.08)"
-                    : "0 22px 54px rgba(0, 0, 0, 0.36)",
+                boxShadow: "var(--shadow-md)",
               },
             },
           },
@@ -133,7 +184,39 @@ export const AppThemeProvider = ({ children }) => {
             styleOverrides: {
               root: {
                 borderRadius: 18,
-                backgroundColor: mode === "light" ? "#ffffff" : "#0f1a22",
+                backgroundColor: "var(--color-surface)",
+                color: "var(--color-text-primary)",
+                "& .MuiOutlinedInput-input": {
+                  color: "var(--color-text-primary)",
+                  WebkitTextFillColor: "var(--color-text-primary)",
+                },
+                "& .MuiOutlinedInput-input::placeholder": {
+                  color: "var(--color-text-disabled)",
+                  opacity: 1,
+                },
+                "& .MuiOutlinedInput-input:-webkit-autofill": {
+                  WebkitBoxShadow: "0 0 0px 1000px var(--color-surface) inset",
+                  WebkitTextFillColor: "var(--color-text-primary)",
+                },
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "var(--color-border)",
+                },
+                "&:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "var(--color-primary-soft-strong)",
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "var(--color-primary)",
+                },
+              },
+            },
+          },
+          MuiInputLabel: {
+            styleOverrides: {
+              root: {
+                color: "var(--color-text-secondary)",
+                "&.Mui-focused": {
+                  color: "var(--color-primary)",
+                },
               },
             },
           },
@@ -141,6 +224,8 @@ export const AppThemeProvider = ({ children }) => {
             styleOverrides: {
               paper: {
                 borderRadius: 28,
+                background: "var(--color-surface-overlay)",
+                border: "1px solid var(--color-border-subtle)",
               },
             },
           },
@@ -153,12 +238,20 @@ export const AppThemeProvider = ({ children }) => {
             },
           },
         },
-      }),
+      });
+    },
     [mode]
   );
 
   return (
-    <ThemeModeContext.Provider value={{ mode, toggleTheme }}>
+    <ThemeModeContext.Provider
+      value={{
+        mode,
+        preference,
+        setThemePreference,
+        toggleTheme,
+      }}
+    >
       <ThemeProvider theme={theme}>
         <CssBaseline />
         {children}

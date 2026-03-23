@@ -1,55 +1,42 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Activity, ArrowRight, Bell, BrainCircuit, FileHeart, HeartPulse, Play, Shield, Sparkles, Stethoscope } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  Bell,
+  BrainCircuit,
+  HeartPulse,
+  Shield,
+  Sparkles,
+  Stethoscope,
+} from "lucide-react";
 import Navigation from "../components/Navigation";
+import { Button } from "../components/ui";
 import "./Landing.css";
 
-const featureCards = [
+const features = [
   {
-    icon: HeartPulse,
-    title: "Health Tracking",
-    text: "Monitor vitals, sleep, and physical activity with easy-to-read charts and daily logs.",
-    accent: "teal",
-  },
-  {
-    icon: Shield,
-    title: "Smart Reminders",
-    text: "Never miss a dose or vaccination again. Automated notifications keep the whole family on track.",
-    accent: "violet",
+    icon: Bell,
+    title: "Smarter reminders",
+    text: "Medication, checkup, vaccination, and follow-up reminders stay organized by person and priority.",
   },
   {
     icon: BrainCircuit,
-    title: "Ayurvedic AI",
-    text: "Get personalized home remedies and diet tips guided by Ayurvedic wellness patterns.",
-    accent: "amber",
-  },
-];
-
-const heroStats = [
-  { value: "24/7", label: "AI care advisor" },
-  { value: "1", label: "shared family memory" },
-  { value: "6h / 24h / 48h", label: "smart follow-up loops" },
-];
-
-const visualCards = [
-  {
-    icon: FileHeart,
-    title: "Report Memory",
-    text: "Camera uploads become usable care context.",
-    className: "is-report",
-  },
-  {
-    icon: Bell,
-    title: "Smart Reminders",
-    text: "Dose, follow-up, and clinic tasks stay synced.",
-    className: "is-reminder",
+    title: "Family-aware AI care",
+    text: "AI guidance can use family context like allergies, medications, conditions, and prior activity.",
   },
   {
     icon: Stethoscope,
-    title: "Doctor Handoff",
-    text: "Escalations turn into a clean summary packet.",
-    className: "is-doctor",
+    title: "Home-to-clinic continuity",
+    text: "Reports, wellness insights, and next steps stay connected so doctor conversations are easier.",
   },
+];
+
+const trustItems = [
+  "Built for families",
+  "Multi-member care tracking",
+  "Designed for daily household use",
+  "Clear care context at a glance",
 ];
 
 const Landing = () => {
@@ -57,118 +44,131 @@ const Landing = () => {
     <div className="landing-page">
       <Navigation variant="public" />
 
-      <main className="landing-shell">
+      <main className="landing-main">
         <section className="landing-hero" id="home">
-          <div className="landing-hero-pattern" />
-          <div className="landing-hero-glow" />
+          <div className="landing-hero__copy">
+            <span className="landing-kicker">
+              <Sparkles size={16} />
+              Family health, guided together
+            </span>
+            <h1 className="text-h1">Care for every family member, all in one place.</h1>
+            <p className="text-body-lg">
+              SwasthaParivar brings reminders, records, reports, remedies, and AI guidance into
+              one connected care system that helps your whole family stay organized, safer, and on track.
+            </p>
 
-          <div className="landing-hero-grid">
-            <div className="landing-hero-copy">
-              <span className="landing-badge">
-                <Sparkles size={15} />
-                AI Household Care Platform
-              </span>
-
-              <h1 className="landing-title">
-                One care graph for every family health decision.
-              </h1>
-
-              <p className="landing-subtitle">
-                SwasthaParivar connects reminders, vitals, uploaded reports,
-                remedy outcomes, and doctor handoffs into one proactive care
-                workspace that feels curated for each family member.
-              </p>
-
-              <div className="landing-actions">
-                <Link to="/auth" className="landing-btn primary">
-                  Launch Care Workspace
-                  <ArrowRight size={18} />
-                </Link>
-
-                <a href="#features" className="landing-btn secondary">
-                  <Play size={16} fill="currentColor" />
-                  Explore the Flow
-                </a>
-              </div>
-
-              <div className="landing-hero-stats">
-                {heroStats.map((item) => (
-                  <div key={item.label} className="landing-stat">
-                    <strong>{item.value}</strong>
-                    <span>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="landing-mini-points">
-                <span>
-                  <Bell size={15} />
-                  Smart reminders
-                </span>
-                <span>
-                  <Activity size={15} />
-                  Family health tracking
-                </span>
-                <span>
-                  <BrainCircuit size={15} />
-                  Personalized AI care guidance
-                </span>
-              </div>
+            <div className="landing-hero__actions">
+              <Button as={Link} to="/auth" size="lg" rightIcon={<ArrowRight size={18} />}>
+                Get started
+              </Button>
+              <Button as="a" href="#features" variant="secondary" size="lg">
+                Explore features
+              </Button>
             </div>
 
-            <div className="landing-visual" aria-hidden="true">
-              <div className="landing-visual-grid" />
-              <div className="landing-orbit">
-                <div className="landing-orbit-ring landing-orbit-ring--outer" />
-                <div className="landing-orbit-ring landing-orbit-ring--inner" />
-
-                <div className="landing-core-card">
-                  <div className="landing-core-card__icon">
-                    <BrainCircuit size={24} />
-                  </div>
-                  <span>AI Care Brain</span>
-                  <strong>Personalized family memory, safety, and follow-up in one loop.</strong>
-                </div>
-
-                {visualCards.map((card) => (
-                  <article key={card.title} className={`landing-floating-card ${card.className}`}>
-                    <div className="landing-floating-card__icon">
-                      <card.icon size={18} />
-                    </div>
-                    <div>
-                      <h3>{card.title}</h3>
-                      <p>{card.text}</p>
-                    </div>
-                  </article>
-                ))}
+            <div className="landing-hero__stats">
+              <div className="landing-stat">
+                <strong>24/7</strong>
+                <span>AI household support</span>
+              </div>
+              <div className="landing-stat">
+                <strong>1 app</strong>
+                <span>for reminders, records, and reports</span>
+              </div>
+              <div className="landing-stat">
+                <strong>Family-first</strong>
+                <span>care context across every member</span>
               </div>
             </div>
           </div>
+
+          <div className="landing-hero__visual" aria-hidden="true">
+            <div className="landing-cluster landing-cluster--primary">
+              <div className="landing-cluster__badge">
+                <HeartPulse size={16} />
+                Household pulse
+              </div>
+              <strong>2 reminders due today</strong>
+              <span>1 report ready for AI summary</span>
+            </div>
+            <div className="landing-cluster landing-cluster--secondary">
+              <Shield size={16} />
+              Safer care context
+            </div>
+            <div className="landing-cluster landing-cluster--accent">
+              <Activity size={16} />
+              Records, reminders, reports
+            </div>
+            <div className="landing-orbit landing-orbit--one" />
+            <div className="landing-orbit landing-orbit--two" />
+          </div>
+        </section>
+
+        <section className="landing-trust" aria-label="Trust bar">
+          {trustItems.map((item) => (
+            <span key={item} className="landing-trust__pill">
+              {item}
+            </span>
+          ))}
         </section>
 
         <section className="landing-features" id="features">
           <div className="landing-section-head">
-            <h2>Built for real household care, not just chat answers</h2>
-            <p>From home remedies to doctor continuity, every step stays connected.</p>
+            <span className="eyebrow">Why it works</span>
+            <h2 className="text-h2">Built for real family care, not just symptom chat.</h2>
+            <p className="text-body-md">
+              Every surface is designed to reduce friction, improve continuity, and make household
+              health management feel simpler.
+            </p>
           </div>
 
           <div className="landing-feature-grid">
-            {featureCards.map((card) => (
-              <article key={card.title} className={`landing-feature-card ${card.accent}`}>
-                <div className="landing-feature-icon">
-                  <card.icon size={24} />
+            {features.map((feature) => (
+              <article key={feature.title} className="landing-feature-card card card-hover">
+                <div className="landing-feature-card__icon">
+                  <feature.icon size={20} />
                 </div>
-                <h3>{card.title}</h3>
-                <p>{card.text}</p>
+                <h3 className="text-h4">{feature.title}</h3>
+                <p className="text-body-sm">{feature.text}</p>
               </article>
             ))}
           </div>
         </section>
+
+        <section className="landing-cta">
+          <div>
+            <span className="eyebrow">Built for Indian families</span>
+            <h2 className="text-h2">Ready to turn care chaos into one clear family system?</h2>
+            <p className="text-body-md">
+              Start with reminders, records, and AI guidance now, then grow into the full care
+              intelligence layer as your family uses the app.
+            </p>
+          </div>
+          <Button as={Link} to="/auth" size="lg" variant="secondary">
+            Launch SwasthaParivar
+          </Button>
+        </section>
       </main>
 
       <footer className="landing-footer">
-        <p>Copyright 2026 SwasthaParivar. All rights reserved.</p>
-        <span>Scalable MERN Architecture</span>
+        <div>
+          <strong>SwasthaParivar</strong>
+          <p>Family health, reminders, records, and AI care in one connected household system.</p>
+        </div>
+        <nav className="landing-footer__nav" aria-label="Footer navigation">
+          <Link to="/">Home</Link>
+          <a href="#features">Features</a>
+          <Link to="/auth">Login</Link>
+        </nav>
+        <div className="landing-footer__meta">
+          <a href="https://x.com" target="_blank" rel="noreferrer">
+            X
+          </a>
+          <a href="https://www.linkedin.com" target="_blank" rel="noreferrer">
+            LinkedIn
+          </a>
+          <span>Copyright 2026 SwasthaParivar</span>
+        </div>
       </footer>
     </div>
   );

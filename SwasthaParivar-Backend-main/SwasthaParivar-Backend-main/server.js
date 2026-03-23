@@ -1,14 +1,15 @@
-// server.js
 import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
 import helmet from "helmet";
-import morgan from "morgan";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import "express-async-errors";
 
-import { connectDB } from "./utils/db.js";
+import appConfig from "./config/AppConfig.js";
+import { closeDB, connectDB } from "./utils/db.js";
+import { closeRedisClient } from "./utils/redis.js";
 import authRouter from "./routes/authroute.js";
 import membersRouter from "./routes/members.js";
 import healthRouter from "./routes/health.js";
@@ -17,36 +18,65 @@ import reminderRoutes from "./routes/reminderRoutes.js";
 import aiMemoryRoutes from "./routes/aiMemoryRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import remedyRoutes from "./routes/remedyRoutes.js";
-
+import reportRoutes from "./routes/reportRoutes.js";
+import symptomRoutes from "./routes/symptomRoutes.js";
 import auth from "./middleware/auth.js";
-
-// ⭐ Import the CRON JOB (runs automatically every minute)
+import requestSanitizer from "./middleware/requestSanitizer.js";
+import { apiRateLimiter } from "./middleware/rateLimiter.js";
+import { sendError, sendSuccess } from "./utils/apiResponse.js";
+import { logError, logger, requestLogger } from "./utils/logger.js";
+import { captureServerError, flushSentry, initSentry } from "./utils/sentry.js";
 import "./utils/reminderCron.js";
 
-const PORT = process.env.PORT || 5000;
-const allowedOrigins = (
-  process.env.CLIENT_URLS ||
-  "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
-)
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
 const app = express();
+let server;
+let isShuttingDown = false;
+let activeRequests = 0;
 
-// ----------------------------------------
-// MIDDLEWARES
-// ----------------------------------------
-app.use(helmet());
-app.use(morgan("dev"));
+const isLocalDevOrigin = (origin) =>
+  !appConfig.isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin || "");
+
+initSentry(appConfig);
+
+process.on("unhandledRejection", (reason) => {
+  captureServerError(reason, { source: "process.unhandledRejection" });
+  logger.error({
+    route: "process",
+    error: {
+      message: reason?.message || String(reason),
+      stack: reason?.stack || null,
+    },
+    source: "process.unhandledRejection",
+  });
+});
+
+process.on("uncaughtException", async (error) => {
+  captureServerError(error, { source: "process.uncaughtException" });
+  logger.error({
+    route: "process",
+    error: {
+      message: error?.message || "Uncaught exception",
+      stack: error?.stack || null,
+    },
+    source: "process.uncaughtException",
+  });
+
+  await shutdown("uncaughtException");
+});
+
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+app.use(requestLogger);
 app.use(
   cors({
     origin(origin, callback) {
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        (origin && origin.endsWith(".vercel.app"))
-      ) {
+      if (!origin || appConfig.corsOrigins.includes(origin) || isLocalDevOrigin(origin)) {
         return callback(null, true);
       }
 
@@ -55,58 +85,159 @@ app.use(
     credentials: true,
   })
 );
+app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: false, limit: "10mb" }));
+app.use(requestSanitizer);
+app.use((req, res, next) => {
+  if (isShuttingDown) {
+    res.setHeader("Connection", "close");
+    return sendError(res, {
+      status: 503,
+      code: "SERVER_SHUTTING_DOWN",
+      message: "Server is restarting. Please try again in a moment.",
+    });
+  }
 
-// ----------------------------------------
-// PUBLIC ROUTES
-// ----------------------------------------
-app.use("/api/auth", authRouter);
-app.use("/api/ai", aiRoutes);               // AI Chat
-app.use("/api/reminders", reminderRoutes);  // Reminder CRUD (auth inside routes)
-
-// ----------------------------------------
-// PROTECTED ROUTES
-// ----------------------------------------
-app.use("/api/members", auth, membersRouter);
-app.use("/api/health", auth, healthRouter);
-app.use("/api/remedies", auth, remedyRoutes);
-app.use("/api/ai/memory", aiMemoryRoutes);
-app.use("/api", auth, notificationRoutes); // Notifications require login
-
-// ----------------------------------------
-// ROOT ROUTE
-// ----------------------------------------
-app.get("/", (req, res) => res.send("SwasthaParivar API Running 🚀"));
-
-// ----------------------------------------
-// GLOBAL ERROR HANDLER
-// ----------------------------------------
-app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err && err.stack ? err.stack : err);
-  res.status(500).json({ message: "Internal server error" });
+  activeRequests += 1;
+  res.on("finish", () => {
+    activeRequests = Math.max(0, activeRequests - 1);
+  });
+  next();
 });
 
-// ----------------------------------------
-// START SERVER (NO MORE MANUAL SCHEDULER)
-// ----------------------------------------
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: Number(process.uptime().toFixed(2)),
+    version: appConfig.appVersion,
+    environment: appConfig.nodeEnv,
+    activeRequests,
+  });
+});
+
+app.use("/api/auth", authRouter);
+app.use("/api/ai", auth, apiRateLimiter.middleware(), aiRoutes);
+app.use("/api/reminders", auth, apiRateLimiter.middleware(), reminderRoutes);
+app.use("/api/members", auth, apiRateLimiter.middleware(), membersRouter);
+app.use("/api/health", auth, apiRateLimiter.middleware(), healthRouter);
+app.use("/api/remedies", auth, apiRateLimiter.middleware(), remedyRoutes);
+app.use("/api/reports", auth, apiRateLimiter.middleware(), reportRoutes);
+app.use("/api/symptoms", auth, apiRateLimiter.middleware(), symptomRoutes);
+app.use("/api/ai/memory", auth, apiRateLimiter.middleware(), aiMemoryRoutes);
+app.use("/api", auth, apiRateLimiter.middleware(), notificationRoutes);
+
+app.get("/", (req, res) => {
+  return sendSuccess(res, {
+    data: {
+      message: "SwasthaParivar API Running",
+    },
+  });
+});
+
+app.use((req, res) => {
+  return sendError(res, {
+    status: 404,
+    code: "ROUTE_NOT_FOUND",
+    message: "Route not found",
+  });
+});
+
+app.use((err, req, res, next) => {
+  if (err?.message === "Not allowed by CORS") {
+    return sendError(res, {
+      status: 403,
+      code: "CORS_NOT_ALLOWED",
+      message: "This frontend origin is not allowed to access the API",
+    });
+  }
+
+  if (err?.code === "LIMIT_FILE_SIZE") {
+    return sendError(res, {
+      status: 413,
+      code: "FILE_TOO_LARGE",
+      message: "File size must be 10MB or less",
+    });
+  }
+
+  captureServerError(err, {
+    requestId: req?.requestId,
+    route: req?.originalUrl,
+    statusCode: 500,
+  });
+  logError(err, req, { statusCode: 500 });
+  return sendError(res, {
+    status: 500,
+    code: "INTERNAL_ERROR",
+    message: "Internal server error",
+  });
+});
+
+async function shutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  logger.info({ route: "shutdown", signal, activeRequests }, "Starting graceful shutdown");
+
+  const forceTimeout = setTimeout(() => {
+    logger.error({ route: "shutdown", signal }, "Forced shutdown timeout reached");
+    process.exit(1);
+  }, 15000);
+
+  try {
+    if (server) {
+      await new Promise((resolve, reject) => {
+        server.close((error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      });
+    }
+
+    await Promise.allSettled([closeDB(), closeRedisClient(), flushSentry(2000)]);
+    clearTimeout(forceTimeout);
+    logger.info({ route: "shutdown", signal }, "Graceful shutdown completed");
+    process.exit(0);
+  } catch (error) {
+    clearTimeout(forceTimeout);
+    captureServerError(error, { source: "shutdown", signal });
+    logger.error({
+      route: "shutdown",
+      signal,
+      error: {
+        message: error?.message || "Shutdown failed",
+        stack: error?.stack || null,
+      },
+    });
+    process.exit(1);
+  }
+}
+
+process.on("SIGTERM", () => {
+  shutdown("SIGTERM");
+});
+
+process.on("SIGINT", () => {
+  shutdown("SIGINT");
+});
+
 (async () => {
   try {
-    console.log(
-      "Loaded MONGO_URI =",
-      process.env.MONGO_URI
-        ? process.env.MONGO_URI.replace(/:\/\/.*@/, "://<user>:<pass>@")
-        : "NONE"
-    );
+    await connectDB(appConfig.mongoUri);
 
-    await connectDB(process.env.MONGO_URI);
-
-    app.listen(PORT, () => {
-      console.log(`🚀 Backend running on port ${PORT}`);
-      console.log("⏳ ReminderCron is active and running every minute...");
+    server = app.listen(appConfig.port, () => {
+      logger.info({ route: "startup", port: appConfig.port }, "Backend running");
+      logger.info({ route: "startup" }, "Reminder cron is active");
     });
-
   } catch (err) {
-    console.error("Fatal - could not start server due to DB connect error:", err);
+    captureServerError(err, { source: "startup" });
+    logger.error({
+      route: "startup",
+      error: {
+        message: err?.message || "Fatal startup error",
+        stack: err?.stack || null,
+      },
+    });
     process.exit(1);
   }
 })();

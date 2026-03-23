@@ -19,8 +19,8 @@ const REMEDIES = [
     timeMins: 12,
     difficulty: "Easy",
     ayurveda: "Tulsi balances Kapha & Vata; antimicrobial and immune-supporting.",
-    colorFrom: "#79d38d",
-    colorTo: "#2e7d32"
+    colorFrom: "var(--color-success)",
+    colorTo: "var(--color-success)"
   },
   {
     id: "r2",
@@ -37,8 +37,8 @@ const REMEDIES = [
     timeMins: 8,
     difficulty: "Easy",
     ayurveda: "Anti-inflammatory; boosts Ojas and supports recovery.",
-    colorFrom: "#f6bd60",
-    colorTo: "#f59e0b"
+    colorFrom: "var(--color-accent)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r3",
@@ -55,8 +55,8 @@ const REMEDIES = [
     timeMins: 6,
     difficulty: "Very Easy",
     ayurveda: "Stimulates digestion (Agni) and clears mucus.",
-    colorFrom: "#fb923c",
-    colorTo: "#f97316"
+    colorFrom: "var(--color-warning)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r4",
@@ -72,8 +72,8 @@ const REMEDIES = [
     timeMins: 5,
     difficulty: "Easy",
     ayurveda: "Balances all three doshas and gently cleanses the digestive tract.",
-    colorFrom: "#0ea5a4",
-    colorTo: "#2dd4bf"
+    colorFrom: "var(--color-primary)",
+    colorTo: "var(--color-primary-soft-strong)"
   },
   {
     id: "r5",
@@ -89,8 +89,8 @@ const REMEDIES = [
     timeMins: 12,
     difficulty: "Easy",
     ayurveda: "Carminative and soothing for the gut.",
-    colorFrom: "#f59e0b",
-    colorTo: "#fbbf24"
+    colorFrom: "var(--color-warning)",
+    colorTo: "var(--color-accent)"
   },
   {
     id: "r6",
@@ -107,8 +107,8 @@ const REMEDIES = [
     timeMins: 10,
     difficulty: "Easy",
     ayurveda: "A rejuvenating Rasayana that calms the nervous system.",
-    colorFrom: "#7c3aed",
-    colorTo: "#a78bfa"
+    colorFrom: "var(--color-info)",
+    colorTo: "var(--color-info)"
   },
   {
     id: "r7",
@@ -124,8 +124,8 @@ const REMEDIES = [
     timeMins: 2,
     difficulty: "Very Easy",
     ayurveda: "Anti-mucolytic and soothing for throat tissues.",
-    colorFrom: "#ef4444",
-    colorTo: "#fb7185"
+    colorFrom: "var(--color-danger)",
+    colorTo: "var(--color-danger)"
   },
   {
     id: "r8",
@@ -141,8 +141,8 @@ const REMEDIES = [
     timeMins: 15,
     difficulty: "Easy",
     ayurveda: "Grounding for Vata and promotes restful sleep.",
-    colorFrom: "#f97316",
-    colorTo: "#fb923c"
+    colorFrom: "var(--color-warning)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r9",
@@ -158,8 +158,8 @@ const REMEDIES = [
     timeMins: 10,
     difficulty: "Easy",
     ayurveda: "Antimicrobial and blood-purifying.",
-    colorFrom: "#10b981",
-    colorTo: "#34d399"
+    colorFrom: "var(--color-success)",
+    colorTo: "var(--color-success)"
   },
   {
     id: "r10",
@@ -175,8 +175,8 @@ const REMEDIES = [
     timeMins: 6,
     difficulty: "Easy",
     ayurveda: "Demulcent that soothes mucous membranes.",
-    colorFrom: "#ef4444",
-    colorTo: "#fb7185"
+    colorFrom: "var(--color-danger)",
+    colorTo: "var(--color-danger)"
   },
   {
     id: "r11",
@@ -192,8 +192,8 @@ const REMEDIES = [
     timeMins: 12,
     difficulty: "Easy",
     ayurveda: "Supports oral mucosa hygiene and reduces microbial load.",
-    colorFrom: "#fb7185",
-    colorTo: "#f472b6"
+    colorFrom: "var(--color-danger)",
+    colorTo: "var(--color-danger)"
   },
   {
     id: "r12",
@@ -206,8 +206,8 @@ const REMEDIES = [
     timeMins: 5,
     difficulty: "Easy",
     ayurveda: "Carminative and soothing.",
-    colorFrom: "#14b8a6",
-    colorTo: "#34d399"
+    colorFrom: "var(--color-primary)",
+    colorTo: "var(--color-success)"
   },
   {
     id: "r13",
@@ -223,8 +223,8 @@ const REMEDIES = [
     timeMins: 5,
     difficulty: "Very Easy",
     ayurveda: "Warming tonic that supports digestion & circulation.",
-    colorFrom: "#ef4444",
-    colorTo: "#f97316"
+    colorFrom: "var(--color-danger)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r14",
@@ -237,8 +237,8 @@ const REMEDIES = [
     timeMins: 5,
     difficulty: "Very Easy",
     ayurveda: "Reduces Kapha and stimulates Agni.",
-    colorFrom: "#f59e0b",
-    colorTo: "#fbbf24"
+    colorFrom: "var(--color-warning)",
+    colorTo: "var(--color-accent)"
   },
   {
     id: "r15",
@@ -254,8 +254,8 @@ const REMEDIES = [
     timeMins: 6,
     difficulty: "Easy",
     ayurveda: "Nourishing for hair and digestion.",
-    colorFrom: "#2dd4bf",
-    colorTo: "#14b8a6"
+    colorFrom: "var(--color-primary-soft-strong)",
+    colorTo: "var(--color-primary)"
   },
   {
     id: "r16",
@@ -268,8 +268,8 @@ const REMEDIES = [
     timeMins: 6,
     difficulty: "Very Easy",
     ayurveda: "Stimulates digestion and metabolism.",
-    colorFrom: "#fb923c",
-    colorTo: "#f97316"
+    colorFrom: "var(--color-warning)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r17",
@@ -284,8 +284,8 @@ const REMEDIES = [
     timeMins: 2,
     difficulty: "Easy",
     ayurveda: "Lubricates nasal mucosa and balances Vata.",
-    colorFrom: "#f59e0b",
-    colorTo: "#f97316"
+    colorFrom: "var(--color-warning)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r18",
@@ -298,8 +298,8 @@ const REMEDIES = [
     timeMins: 2,
     difficulty: "Very Easy",
     ayurveda: "Boosts Agni and nourishes tissues.",
-    colorFrom: "#f6bd60",
-    colorTo: "#f59e0b"
+    colorFrom: "var(--color-accent)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r19",
@@ -312,8 +312,8 @@ const REMEDIES = [
     timeMins: 8,
     difficulty: "Easy",
     ayurveda: "Soothes nerves and supports digestion.",
-    colorFrom: "#f59e0b",
-    colorTo: "#fb923c"
+    colorFrom: "var(--color-warning)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r20",
@@ -326,8 +326,8 @@ const REMEDIES = [
     timeMins: 12,
     difficulty: "Easy",
     ayurveda: "Antimicrobial and cooling.",
-    colorFrom: "#10b981",
-    colorTo: "#34d399"
+    colorFrom: "var(--color-success)",
+    colorTo: "var(--color-success)"
   },
   {
     id: "r21",
@@ -340,8 +340,8 @@ const REMEDIES = [
     timeMins: 2,
     difficulty: "Very Easy",
     ayurveda: "Anti-inflammatory and antimicrobial.",
-    colorFrom: "#f97316",
-    colorTo: "#f59e0b"
+    colorFrom: "var(--color-warning)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r22",
@@ -354,8 +354,8 @@ const REMEDIES = [
     timeMins: 1,
     difficulty: "Very Easy",
     ayurveda: "Rehydrates body and cools Pitta.",
-    colorFrom: "#93c5fd",
-    colorTo: "#60a5fa"
+    colorFrom: "var(--color-info)",
+    colorTo: "var(--color-info)"
   },
   {
     id: "r23",
@@ -368,8 +368,8 @@ const REMEDIES = [
     timeMins: 6,
     difficulty: "Very Easy",
     ayurveda: "Opens nasal passages and reduces Kapha.",
-    colorFrom: "#fb7185",
-    colorTo: "#f472b6"
+    colorFrom: "var(--color-danger)",
+    colorTo: "var(--color-danger)"
   },
   {
     id: "r24",
@@ -382,8 +382,8 @@ const REMEDIES = [
     timeMins: 5,
     difficulty: "Easy",
     ayurveda: "Demulcent that soothes mucosa.",
-    colorFrom: "#ef4444",
-    colorTo: "#fb7185"
+    colorFrom: "var(--color-danger)",
+    colorTo: "var(--color-danger)"
   },
   {
     id: "r25",
@@ -396,8 +396,8 @@ const REMEDIES = [
     timeMins: 2,
     difficulty: "Very Easy",
     ayurveda: "Stimulates digestion and clears mucus.",
-    colorFrom: "#f97316",
-    colorTo: "#fb923c"
+    colorFrom: "var(--color-warning)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r26",
@@ -410,8 +410,8 @@ const REMEDIES = [
     timeMins: 15,
     difficulty: "Easy",
     ayurveda: "Stimulating and warming for circulation.",
-    colorFrom: "#f59e0b",
-    colorTo: "#fbbf24"
+    colorFrom: "var(--color-warning)",
+    colorTo: "var(--color-accent)"
   },
   {
     id: "r27",
@@ -424,8 +424,8 @@ const REMEDIES = [
     timeMins: 2,
     difficulty: "Very Easy",
     ayurveda: "Soothing and nourishing for nervous system.",
-    colorFrom: "#f6bd60",
-    colorTo: "#f59e0b"
+    colorFrom: "var(--color-accent)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r28",
@@ -438,8 +438,8 @@ const REMEDIES = [
     timeMins: 2,
     difficulty: "Very Easy",
     ayurveda: "Reduces local inflammation and soothes tissues.",
-    colorFrom: "#93c5fd",
-    colorTo: "#60a5fa"
+    colorFrom: "var(--color-info)",
+    colorTo: "var(--color-info)"
   },
   {
     id: "r29",
@@ -454,8 +454,8 @@ const REMEDIES = [
     timeMins: 3,
     difficulty: "Intermediate",
     ayurveda: "Stimulates metabolic fire and clears Ama.",
-    colorFrom: "#ef4444",
-    colorTo: "#f97316"
+    colorFrom: "var(--color-danger)",
+    colorTo: "var(--color-warning)"
   },
   {
     id: "r30",
@@ -468,9 +468,10 @@ const REMEDIES = [
     timeMins: 8,
     difficulty: "Easy",
     ayurveda: "Gentle detox and bowel regulator.",
-    colorFrom: "#0ea5a4",
-    colorTo: "#2dd4bf"
+    colorFrom: "var(--color-primary)",
+    colorTo: "var(--color-primary-soft-strong)"
   }
 ];
 
 export default REMEDIES;
+

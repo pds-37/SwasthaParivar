@@ -1,0 +1,17 @@
+.page-skeleton {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.page-skeleton__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+@media (max-width: 48rem) {
+  .page-skeleton__grid {
+    grid-template-columns: 1fr;
+  }
+}

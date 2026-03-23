@@ -1,0 +1,50 @@
+.pull-refresh {
+  position: relative;
+}
+
+.pull-refresh__indicator {
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  transition: height var(--transition-base);
+}
+
+.pull-refresh__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.5rem;
+  padding: 0 var(--space-4);
+  margin-top: var(--space-2);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-overlay);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  box-shadow: var(--shadow-sm);
+}
+
+.pull-refresh__spinner {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: var(--radius-full);
+  border: 0.125rem solid color-mix(in srgb, var(--color-primary) 24%, transparent);
+  border-top-color: var(--color-primary-strong);
+  animation: pull-refresh-spin 0.8s linear infinite;
+}
+
+.pull-refresh__content {
+  transition: transform var(--transition-base);
+}
+
+.pull-refresh.is-refreshing .pull-refresh__content,
+.pull-refresh.is-pulling .pull-refresh__content {
+  will-change: transform;
+}
+
+@keyframes pull-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

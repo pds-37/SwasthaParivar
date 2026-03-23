@@ -1,75 +1,74 @@
-import React, { useEffect, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import React, { Suspense, lazy } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
 import Navigation from "./components/Navigation";
 import { AuthProvider } from "./components/AuthProvider";
+import ErrorBoundary from "./components/ErrorBoundary";
+import PageSkeleton from "./components/PageSkeleton";
 import { useAuth } from "./components/auth-context";
-import api from "./lib/api";
-
-import Auth from "./pages/Auth";
-import Landing from "./pages/Landing";
-import Dashboard from "./pages/Dashboard";
-import HealthMonitor from "./pages/HealthMonitor";
-import Remedies from "./pages/remedies.jsx";
-import AIChat from "./pages/AIChat";
-import Reminders from "./pages/Reminders";
+import { FamilyStoreProvider } from "./store/family-store";
+import { UIStoreProvider } from "./store/ui-store";
 import { AppThemeProvider } from "./theme/ThemeProvider";
+
+const Auth = lazy(() => import("./pages/Auth"));
+const Landing = lazy(() => import("./pages/Landing"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const HealthMonitor = lazy(() => import("./pages/HealthMonitor"));
+const FamilyMembers = lazy(() => import("./pages/FamilyMembers"));
+const MemberProfile = lazy(() => import("./pages/MemberProfile"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Remedies = lazy(() => import("./pages/remedies.jsx"));
+const AIChat = lazy(() => import("./pages/AIChat"));
+const Reminders = lazy(() => import("./pages/Reminders"));
+const Settings = lazy(() => import("./pages/Settings"));
+
+const RouteScreen = ({ page, componentProps }) => {
+  const location = useLocation();
+  const Page = page;
+
+  return (
+    <ErrorBoundary resetKey={location.pathname}>
+      <Suspense fallback={<PageSkeleton />}>
+        <Page {...componentProps} />
+      </Suspense>
+    </ErrorBoundary>
+  );
+};
 
 const ProtectedLayout = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
-        Loading...
-      </div>
-    );
-  }
-
+  if (loading) return <PageSkeleton />;
   if (!user) return <Navigate to="/auth" replace />;
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navigation />
-      <main style={{ flex: 1 }}>{children}</main>
-    </div>
+    <FamilyStoreProvider>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <Navigation />
+        <main className="app-main-shell">{children}</main>
+      </div>
+    </FamilyStoreProvider>
   );
 };
 
 const GuestOnlyRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <PageSkeleton />;
   if (user) return <Navigate to="/dashboard" replace />;
   return children;
 };
 
 const AppRoutes = () => {
-  const token = localStorage.getItem("token");
-  const [familyData, setFamilyData] = useState([]);
-
-  useEffect(() => {
-    const fetchFamily = async () => {
-      try {
-        const data = await api.get("/members");
-        setFamilyData(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Failed to fetch family data", error);
-        setFamilyData([]);
-      }
-    };
-
-    if (token) fetchFamily();
-  }, [token]);
-
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<RouteScreen page={Landing} />} />
       <Route
         path="/auth"
         element={
           <GuestOnlyRoute>
-            <Auth />
+            <RouteScreen page={Auth} />
           </GuestOnlyRoute>
         }
       />
@@ -77,7 +76,23 @@ const AppRoutes = () => {
         path="/dashboard"
         element={
           <ProtectedLayout>
-            <Dashboard />
+            <RouteScreen page={Dashboard} />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/family"
+        element={
+          <ProtectedLayout>
+            <RouteScreen page={FamilyMembers} />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/family/:id"
+        element={
+          <ProtectedLayout>
+            <RouteScreen page={MemberProfile} />
           </ProtectedLayout>
         }
       />
@@ -85,7 +100,7 @@ const AppRoutes = () => {
         path="/health"
         element={
           <ProtectedLayout>
-            <HealthMonitor />
+            <RouteScreen page={HealthMonitor} />
           </ProtectedLayout>
         }
       />
@@ -93,7 +108,15 @@ const AppRoutes = () => {
         path="/health/:id"
         element={
           <ProtectedLayout>
-            <HealthMonitor />
+            <RouteScreen page={HealthMonitor} />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedLayout>
+            <RouteScreen page={Reports} />
           </ProtectedLayout>
         }
       />
@@ -101,7 +124,7 @@ const AppRoutes = () => {
         path="/remedies"
         element={
           <ProtectedLayout>
-            <Remedies />
+            <RouteScreen page={Remedies} />
           </ProtectedLayout>
         }
       />
@@ -109,7 +132,15 @@ const AppRoutes = () => {
         path="/ai-chat"
         element={
           <ProtectedLayout>
-            <AIChat userFamily={familyData} />
+            <RouteScreen page={AIChat} />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedLayout>
+            <RouteScreen page={Settings} />
           </ProtectedLayout>
         }
       />
@@ -117,7 +148,7 @@ const AppRoutes = () => {
         path="/reminders"
         element={
           <ProtectedLayout>
-            <Reminders />
+            <RouteScreen page={Reminders} />
           </ProtectedLayout>
         }
       />
@@ -126,16 +157,17 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => {
-  return (
-    <AppThemeProvider>
-      <BrowserRouter>
+const App = () => (
+  <AppThemeProvider>
+    <BrowserRouter>
+      <UIStoreProvider>
         <AuthProvider>
           <AppRoutes />
+          <Toaster position="top-right" toastOptions={{ duration: 3200 }} />
         </AuthProvider>
-      </BrowserRouter>
-    </AppThemeProvider>
-  );
-};
+      </UIStoreProvider>
+    </BrowserRouter>
+  </AppThemeProvider>
+);
 
 export default App;

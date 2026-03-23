@@ -28,19 +28,25 @@ const emergencyContactSchema = new mongoose.Schema({
 }, { _id: false });
 
 const familyMemberSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  name: { type: String, required: true },
-  age: { type: Number, default: 0 },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    minlength: 2,
+    maxlength: 80,
+  },
+  age: { type: Number, default: 0, min: 0, max: 120 },
   gender: { type: String, enum: ["male", "female", "other"], default: "other" },
-  avatar: { type: String },
-  relation: { type: String, default: "" },
+  avatar: { type: String, trim: true, maxlength: 200 },
+  relation: { type: String, default: "", trim: true, maxlength: 40 },
 
   // Embedded health snapshots power household-level risk scoring.
   health: { type: healthSchema, default: () => ({}) },
 
-  conditions: [{ type: String }],
-  allergies: [{ type: String }],
-  medications: [{ type: String }],
+  conditions: [{ type: String, trim: true, maxlength: 60 }],
+  allergies: [{ type: String, trim: true, maxlength: 60 }],
+  medications: [{ type: String, trim: true, maxlength: 80 }],
   pregnancyStatus: {
     type: String,
     enum: ["not_applicable", "not_pregnant", "pregnant", "postpartum"],
@@ -51,6 +57,8 @@ const familyMemberSchema = new mongoose.Schema({
   baselinePreferences: { type: baselinePreferencesSchema, default: () => ({}) },
   emergencyContact: { type: emergencyContactSchema, default: () => ({}) },
 }, { timestamps: true });
+
+familyMemberSchema.index({ user: 1, createdAt: -1 });
 
 export default mongoose.models.FamilyMember ||
   mongoose.model("FamilyMember", familyMemberSchema);

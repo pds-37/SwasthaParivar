@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { logger } from "./logger.js";
 
 export async function connectDB(uri) {
   if (!uri) {
@@ -6,13 +7,29 @@ export async function connectDB(uri) {
   }
 
   try {
+    mongoose.set("sanitizeFilter", true);
+    mongoose.set("strictQuery", true);
+
     await mongoose.connect(uri, {
-      family: 4, // ✅ FORCE IPv4 (THIS FIXES YOUR ERROR)
+      family: 4,
+      serverSelectionTimeoutMS: 10000,
     });
 
-    console.log("🔥 MongoDB Connected");
+    logger.info({ route: "database" }, "MongoDB connected");
   } catch (err) {
-    console.error("❌ MongoDB Error:", err);
+    logger.error({
+      route: "database",
+      error: {
+        message: err.message,
+        stack: err.stack,
+      },
+    });
     throw err;
   }
+}
+
+export async function closeDB() {
+  if (mongoose.connection.readyState === 0) return;
+  await mongoose.connection.close();
+  logger.info({ route: "database" }, "MongoDB disconnected");
 }

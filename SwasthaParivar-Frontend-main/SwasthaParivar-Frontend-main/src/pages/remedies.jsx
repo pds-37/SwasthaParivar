@@ -24,7 +24,7 @@ import {
 } from "../lib/remedyInsights";
 import "./remedies.css";
 
-const createGradient = (from = "#0f766e", to = "#14b8a6") =>
+const createGradient = (from = "var(--color-primary-strong)", to = "var(--color-primary)") =>
   `linear-gradient(135deg, ${from}, ${to})`;
 
 const normalizeGeneratedRemedy = (payload, seedText) => ({
@@ -45,8 +45,8 @@ const normalizeGeneratedRemedy = (payload, seedText) => ({
   ayurveda: payload?.ayurveda || payload?.whyItWorks || "",
   warnings: Array.isArray(payload?.warnings) ? payload.warnings : [],
   bestFor: Array.isArray(payload?.bestFor) ? payload.bestFor : [],
-  colorFrom: payload?.colorFrom || "#0f8b8d",
-  colorTo: payload?.colorTo || "#14b8a6",
+  colorFrom: payload?.colorFrom || "var(--color-primary-strong)",
+  colorTo: payload?.colorTo || "var(--color-primary)",
   source: "ai",
 });
 

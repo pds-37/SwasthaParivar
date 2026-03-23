@@ -1,31 +1,113 @@
-import React, { useState } from "react";
+import React, { useEffect, useReducer } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { AuthContext } from "./auth-context";
 
+const parseStoredUser = () => {
+  const storedUser = localStorage.getItem("user");
+
+  if (!storedUser) {
+    return { user: null };
+  }
+
+  try {
+    return {
+      user: JSON.parse(storedUser),
+    };
+  } catch {
+    localStorage.removeItem("user");
+    return { user: null };
+  }
+};
+
+const authReducer = (state, action) => {
+  switch (action.type) {
+    case "AUTH_SET":
+      return {
+        ...state,
+        user: action.payload.user,
+        token: null,
+      };
+    case "AUTH_CLEAR":
+      return {
+        ...state,
+        user: null,
+        token: null,
+      };
+    case "AUTH_LOADING":
+      return {
+        ...state,
+        loading: action.payload,
+      };
+    default:
+      return state;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-
-    if (!token || !storedUser) return null;
-
-    try {
-      return JSON.parse(storedUser);
-    } catch {
-      localStorage.removeItem("user");
-      return null;
-    }
+  const [state, dispatch] = useReducer(authReducer, null, () => {
+    const stored = parseStoredUser();
+    return {
+      user: stored.user,
+      token: null,
+      loading: true,
+    };
   });
-  const loading = false;
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      dispatch({ type: "AUTH_LOADING", payload: true });
+
+      try {
+        const data = await api.get("/auth/session", { skipAuth: true });
+        if (!cancelled && data?.user) {
+          localStorage.removeItem("token");
+          localStorage.setItem("user", JSON.stringify(data.user));
+          dispatch({
+            type: "AUTH_SET",
+            payload: {
+              user: data.user,
+            },
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          dispatch({ type: "AUTH_CLEAR" });
+        }
+      } finally {
+        if (!cancelled) {
+          dispatch({ type: "AUTH_LOADING", payload: false });
+        }
+      }
+    };
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const setAuthenticatedState = (data) => {
+    localStorage.removeItem("token");
+    localStorage.setItem("user", JSON.stringify(data.user));
+    dispatch({
+      type: "AUTH_SET",
+      payload: {
+        user: data.user,
+      },
+    });
+  };
 
   const login = async (credentials) => {
     try {
       const data = await api.post("/auth/login", credentials);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      setUser(data.user);
+      setAuthenticatedState(data);
       navigate("/dashboard");
     } catch (error) {
       console.error("Login failed", error);
@@ -36,9 +118,7 @@ export const AuthProvider = ({ children }) => {
   const signup = async (userData) => {
     try {
       const data = await api.post("/auth/signup", userData);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      setUser(data.user);
+      setAuthenticatedState(data);
       navigate("/dashboard");
     } catch (error) {
       console.error("Signup failed", error);
@@ -46,16 +126,32 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout", {}, { skipAuth: true });
+    } catch {
+      // Clear client state even if the request fails.
+    }
+
     localStorage.removeItem("user");
-    setUser(null);
+    localStorage.removeItem("token");
+    dispatch({ type: "AUTH_CLEAR" });
     navigate("/");
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
-      {!loading && children}
+    <AuthContext.Provider
+      value={{
+        user: state.user,
+        token: state.token,
+        isAuthenticated: Boolean(state.user),
+        loading: state.loading,
+        login,
+        signup,
+        logout,
+      }}
+    >
+      {!state.loading && children}
     </AuthContext.Provider>
   );
 };

@@ -1,10 +1,11 @@
 import express from "express";
 import auth from "../middleware/auth.js";
 import { saveSubscription } from "../controllers/notificationController.js";
+import { validate } from "../middleware/validate.js";
+import { notificationSubscriptionSchema } from "../validations/notificationSchemas.js";
 
 const router = express.Router();
 
-// ⭐ Save Push Subscription Route
-router.post("/notifications/subscribe", auth, saveSubscription);
+router.post("/notifications/subscribe", auth, validate(notificationSubscriptionSchema), saveSubscription);
 
 export default router;

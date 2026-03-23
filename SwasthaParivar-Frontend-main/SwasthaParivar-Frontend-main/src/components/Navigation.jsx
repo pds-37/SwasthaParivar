@@ -1,248 +1,366 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  AppBar,
-  Avatar,
-  Box,
-  Button,
-  Divider,
-  IconButton,
-  Menu,
-  MenuItem,
-  Paper,
-  Toolbar,
-  Typography,
-  useTheme,
-} from "@mui/material";
-import DarkModeIcon from "@mui/icons-material/DarkMode";
-import LightModeIcon from "@mui/icons-material/LightMode";
-import {
-  Activity,
   Bell,
-  Heart,
-  LayoutDashboard,
+  BellRing,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  HeartPulse,
+  Home,
   Leaf,
   LogOut,
-  Sparkles,
+  Menu,
+  MessageSquareText,
+  Moon,
+  Settings,
+  SunMedium,
+  Users,
 } from "lucide-react";
 
-import { useAuth } from "./auth-context";
 import { subscribePush } from "../hooks/usePush";
+import { useFamilyStore } from "../store/family-store";
+import { useUIStore } from "../store/ui-store";
 import { useThemeMode } from "../theme/theme-context";
+import { useAuth } from "./auth-context";
+import { Button } from "./ui";
+import "./Navigation.css";
+
+const publicLinks = [
+  { href: "#home", label: "Home" },
+  { href: "#features", label: "Features" },
+  { href: "#features", label: "Family AI" },
+  { href: "#features", label: "Reminders" },
+];
+
+const primaryLinks = [
+  { path: "/dashboard", label: "Home", icon: Home },
+  { path: "/family", label: "Family", icon: Users },
+  { path: "/reminders", label: "Reminders", icon: Bell },
+  { path: "/reports", label: "Reports", icon: FileText },
+  { path: "/ai-chat", label: "AI Chat", icon: MessageSquareText },
+];
+
+const secondaryLinks = [
+  { path: "/health", label: "Health", icon: HeartPulse },
+  { path: "/remedies", label: "Remedies", icon: Leaf },
+  { path: "/settings", label: "Settings", icon: Settings },
+];
 
 const Navigation = ({ variant = "app" }) => {
   const { user, logout } = useAuth();
-  const location = useLocation();
-  const theme = useTheme();
   const { mode, toggleTheme } = useThemeMode();
-  const [anchorEl, setAnchorEl] = React.useState(null);
-
+  const { members, selectedMember, setSelectedMember } = useFamilyStore();
+  const { sidebarCollapsed, setSidebarCollapsed } = useUIStore();
+  const location = useLocation();
   const isPublic = variant === "public";
-  const isDark = mode === "dark";
-  const openMenu = (event) => setAnchorEl(event.currentTarget);
-  const closeMenu = () => setAnchorEl(null);
-  const isActive = (path) => location.pathname === path;
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const navItems = isPublic
-    ? [
-        { path: "#home", label: "Home", icon: <LayoutDashboard size={16} />, anchor: true },
-        { path: "#features", label: "Health", icon: <Activity size={16} />, anchor: true },
-        { path: "#features", label: "Remedies", icon: <Leaf size={16} />, anchor: true },
-        { path: "#features", label: "AI Chat", icon: <Sparkles size={16} />, anchor: true },
-        { path: "#features", label: "Reminders", icon: <Bell size={16} />, anchor: true },
-      ]
-    : [
-        { path: "/dashboard", label: "Home", icon: <LayoutDashboard size={16} /> },
-        { path: "/health", label: "Health", icon: <Activity size={16} /> },
-        { path: "/remedies", label: "Remedies", icon: <Leaf size={16} /> },
-        { path: "/ai-chat", label: "AI Chat", icon: <Sparkles size={16} /> },
-        { path: "/reminders", label: "Reminders", icon: <Bell size={16} /> },
-      ];
+  useEffect(() => {
+    if (isPublic) return undefined;
 
-  return (
-    <AppBar
-      position="sticky"
-      elevation={0}
-      sx={{
-        background: "var(--nav-bg)",
-        borderBottom: `1px solid var(--nav-border)`,
-        boxShadow: isPublic ? "var(--shadow-sm)" : "none",
-      }}
-    >
-      <Toolbar
-        sx={{
-          maxWidth: "1240px",
-          margin: "0 auto",
-          width: "100%",
-          minHeight: "78px !important",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 2,
-          px: { xs: 2, md: 3 },
-          py: 1,
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
-          <Paper
-            component={Link}
-            to={isPublic ? "/" : "/dashboard"}
-            elevation={0}
-            sx={{
-              p: 1.15,
-              bgcolor: "primary.main",
-              borderRadius: "16px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textDecoration: "none",
-              boxShadow: "0 14px 30px rgba(22, 163, 148, 0.22)",
-            }}
-          >
-            <Heart size={19} color="white" />
-          </Paper>
+    document.documentElement.classList.toggle("sidebar-collapsed", sidebarCollapsed);
+    return () => {
+      document.documentElement.classList.remove("sidebar-collapsed");
+    };
+  }, [isPublic, sidebarCollapsed]);
 
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 800,
-                color: theme.palette.text.primary,
-                lineHeight: 1.1,
-                letterSpacing: "-0.02em",
-                fontFamily: '"Sora", "Manrope", sans-serif',
-              }}
-            >
-              SwasthaParivar
-            </Typography>
-            <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-              AI Household Care
-            </Typography>
-          </Box>
-        </Box>
+  const currentPrimary = useMemo(
+    () =>
+      primaryLinks.find(
+        (item) =>
+          location.pathname === item.path ||
+          (item.path !== "/dashboard" && location.pathname.startsWith(`${item.path}/`))
+      )?.path || "/dashboard",
+    [location.pathname]
+  );
 
-        <Box sx={{ display: { xs: "none", md: "flex" }, gap: 0.75, alignItems: "center" }}>
-          {navItems.map((nav) => {
-            const active = !nav.anchor && isActive(nav.path);
+  const allAppLinks = [...primaryLinks, ...secondaryLinks];
+  const memberScope = selectedMember?._id || "family";
+  const selectedScopeName = selectedMember?.name || "All family";
 
-            return (
-              <Button
-                key={`${variant}-${nav.label}`}
-                component={nav.anchor ? "a" : Link}
-                href={nav.anchor ? nav.path : undefined}
-                to={nav.anchor ? undefined : nav.path}
-                startIcon={nav.icon}
-                sx={{
-                  minHeight: 42,
-                  px: 2.1,
-                  borderRadius: 999,
-                  color: active ? "var(--brand-dark)" : theme.palette.text.secondary,
-                  backgroundColor: active ? "var(--brand-soft)" : "transparent",
-                  border: active ? "1px solid var(--brand-soft-strong)" : "1px solid transparent",
-                  fontWeight: active ? 800 : 600,
-                }}
-              >
-                {nav.label}
-              </Button>
-            );
-          })}
-        </Box>
+  if (isPublic) {
+    return (
+      <header className="public-nav">
+        <div className="public-nav__inner">
+          <Link className="public-nav__brand" to="/">
+            <span className="public-nav__mark">
+              <HeartPulse size={18} />
+            </span>
+            <span>
+              <strong>SwasthaParivar</strong>
+              <small>Family Health OS</small>
+            </span>
+          </Link>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <IconButton
-            onClick={toggleTheme}
-            sx={{
-              width: 44,
-              height: 44,
-              bgcolor: "var(--surface-glass)",
-              borderRadius: "16px",
-              border: "1px solid var(--border)",
-            }}
-          >
-            {isDark ? (
-              <LightModeIcon sx={{ color: "#f8fbfd", fontSize: 20 }} />
-            ) : (
-              <DarkModeIcon sx={{ color: "#20303a", fontSize: 20 }} />
-            )}
-          </IconButton>
+          <nav className="public-nav__links" aria-label="Public navigation">
+            {publicLinks.map((link) => (
+              <a key={link.label} href={link.href}>
+                {link.label}
+              </a>
+            ))}
+          </nav>
 
-          {isPublic ? (
-            <Button
-              component={Link}
-              to="/auth"
-              variant="contained"
-              sx={{
-                borderRadius: 999,
-                px: 2.7,
-                bgcolor: "primary.main",
-                minWidth: 124,
-              }}
-            >
+          <div className="public-nav__actions">
+            <button type="button" className="icon-btn" onClick={toggleTheme} aria-label="Toggle theme">
+              {mode === "dark" ? <SunMedium size={18} /> : <Moon size={18} />}
+            </button>
+            <Button as={Link} to="/auth" size="sm">
               Launch App
             </Button>
-          ) : (
-            <>
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<Bell size={15} />}
-                onClick={subscribePush}
-                sx={{
-                  display: { xs: "none", sm: "inline-flex" },
-                  borderRadius: 999,
-                  px: 2.2,
-                  bgcolor: "primary.main",
-                }}
-              >
-                Enable Notifications
-              </Button>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.9,
-                  cursor: "pointer",
-                  pl: { xs: 0, sm: 0.5 },
-                }}
-                onClick={openMenu}
-              >
-                <Avatar sx={{ bgcolor: "secondary.main", width: 36, height: 36, fontWeight: 800 }}>
-                  {user?.fullName?.charAt(0) || "U"}
-                </Avatar>
-                <Typography
-                  sx={{
-                    fontWeight: 700,
-                    display: { xs: "none", sm: "block" },
-                    maxWidth: 130,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {user?.fullName}
-                </Typography>
-              </Box>
+  return (
+    <>
+      <header className="mobile-app-header">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Open navigation"
+        >
+          <Menu size={18} />
+        </button>
 
-              <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
-                <MenuItem disabled>{user?.email}</MenuItem>
-                <Divider />
-                <MenuItem
-                  sx={{ color: "error.main" }}
-                  onClick={() => {
-                    closeMenu();
-                    logout();
-                  }}
+        <Link className="mobile-app-header__brand" to="/dashboard">
+          <span className="mobile-app-header__mark">
+            <HeartPulse size={16} />
+          </span>
+          <span>
+            <strong>SwasthaParivar</strong>
+            <small>{selectedScopeName}</small>
+          </span>
+        </Link>
+
+        <button type="button" className="icon-btn" onClick={toggleTheme} aria-label="Toggle theme">
+          {mode === "dark" ? <SunMedium size={18} /> : <Moon size={18} />}
+        </button>
+      </header>
+
+      <aside className={`app-sidebar ${sidebarCollapsed ? "is-collapsed" : ""}`}>
+        <div className="app-sidebar__header">
+          <Link className="app-sidebar__brand" to="/dashboard">
+            <span className="app-sidebar__mark">
+              <HeartPulse size={19} />
+            </span>
+            <span className="app-sidebar__brand-copy">
+              <strong>SwasthaParivar</strong>
+              <small>AI household care</small>
+            </span>
+          </Link>
+
+          <button
+            type="button"
+            className="icon-btn app-sidebar__collapse"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
+        </div>
+
+        <div className="app-sidebar__scope card">
+          <span className="app-sidebar__scope-label">Member context</span>
+          <select
+            value={memberScope}
+            onChange={(event) =>
+              setSelectedMember(
+                event.target.value === "family"
+                  ? null
+                  : members.find((member) => member._id === event.target.value) || null
+              )
+            }
+          >
+            <option value="family">All family</option>
+            {members.map((member) => (
+              <option key={member._id} value={member._id}>
+                {member.name}
+              </option>
+            ))}
+          </select>
+          <small>Switch focus before asking AI or reviewing reminders.</small>
+        </div>
+
+        <nav className="app-sidebar__nav" aria-label="Primary application navigation">
+          <div className="app-sidebar__group">
+            <span className="app-sidebar__group-label">Core</span>
+            {primaryLinks.map((item) => {
+              const active =
+                location.pathname === item.path ||
+                (item.path !== "/dashboard" && location.pathname.startsWith(`${item.path}/`));
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`app-sidebar__link ${active ? "is-active" : ""}`}
+                  aria-current={active ? "page" : undefined}
+                  title={sidebarCollapsed ? item.label : undefined}
                 >
-                  <LogOut size={18} style={{ marginRight: 8 }} />
-                  Sign Out
-                </MenuItem>
-              </Menu>
-            </>
-          )}
-        </Box>
-      </Toolbar>
-    </AppBar>
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="app-sidebar__group">
+            <span className="app-sidebar__group-label">More</span>
+            {secondaryLinks.map((item) => {
+              const active =
+                location.pathname === item.path ||
+                location.pathname.startsWith(`${item.path}/`);
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`app-sidebar__link ${active ? "is-active" : ""}`}
+                  aria-current={active ? "page" : undefined}
+                  title={sidebarCollapsed ? item.label : undefined}
+                >
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+
+        <div className="app-sidebar__footer">
+          <Button
+            variant="secondary"
+            size="sm"
+            fullWidth={!sidebarCollapsed}
+            leftIcon={<BellRing size={16} />}
+            onClick={subscribePush}
+            className="app-sidebar__notify-btn"
+            aria-label="Enable reminders"
+            title="Enable reminders"
+          >
+            {sidebarCollapsed ? null : "Enable reminders"}
+          </Button>
+
+          <div className="app-sidebar__profile card">
+            <div className="avatar avatar--md">{user?.fullName?.charAt(0) || "U"}</div>
+            <div className="app-sidebar__profile-copy">
+              <strong>{user?.fullName || "Family account"}</strong>
+              <span>{user?.email || "Signed in"}</span>
+            </div>
+            <button type="button" className="icon-btn" onClick={toggleTheme} aria-label="Toggle theme">
+              {mode === "dark" ? <SunMedium size={18} /> : <Moon size={18} />}
+            </button>
+          </div>
+
+          <button type="button" className="app-sidebar__logout" onClick={logout}>
+            <LogOut size={16} />
+            <span>Sign out</span>
+          </button>
+        </div>
+      </aside>
+
+      <div className={`app-drawer ${drawerOpen ? "is-open" : ""}`} aria-hidden={!drawerOpen}>
+        <button type="button" className="app-drawer__backdrop" onClick={() => setDrawerOpen(false)} />
+        <div className="app-drawer__panel">
+          <div className="app-drawer__header">
+            <div>
+              <strong>SwasthaParivar</strong>
+              <small>Household care navigation</small>
+            </div>
+            <button type="button" className="icon-btn" onClick={() => setDrawerOpen(false)} aria-label="Close navigation">
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          <label className="app-drawer__scope">
+            <span>Member context</span>
+            <select
+              value={memberScope}
+              onChange={(event) =>
+                setSelectedMember(
+                  event.target.value === "family"
+                    ? null
+                    : members.find((member) => member._id === event.target.value) || null
+                )
+              }
+            >
+              <option value="family">All family</option>
+              {members.map((member) => (
+                <option key={member._id} value={member._id}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <nav className="app-drawer__links">
+            {allAppLinks.map((item) => {
+              const active =
+                location.pathname === item.path ||
+                (item.path !== "/dashboard" && location.pathname.startsWith(`${item.path}/`));
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`app-drawer__link ${active ? "is-active" : ""}`}
+                  onClick={() => setDrawerOpen(false)}
+                >
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="app-drawer__footer">
+            <Button variant="secondary" leftIcon={<BellRing size={16} />} onClick={subscribePush} fullWidth>
+              Enable notifications
+            </Button>
+            <Button variant="ghost" onClick={toggleTheme} fullWidth>
+              Switch to {mode === "dark" ? "light" : "dark"} mode
+            </Button>
+            <div className="app-drawer__profile">
+              <div className="avatar avatar--md">{user?.fullName?.charAt(0) || "U"}</div>
+              <div>
+                <strong>{user?.fullName || "Family account"}</strong>
+                <span>{user?.email || "Signed in"}</span>
+              </div>
+            </div>
+            <button type="button" className="app-sidebar__logout" onClick={logout}>
+              <LogOut size={16} />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <nav className="mobile-tabbar" aria-label="Mobile application navigation">
+        {primaryLinks.map((item) => {
+          const Icon = item.icon;
+          const active = currentPrimary === item.path;
+
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`mobile-tabbar__link ${active ? "is-active" : ""}`}
+              aria-current={active ? "page" : undefined}
+            >
+              <Icon size={18} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 };
 

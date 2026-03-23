@@ -1,43 +1,53 @@
 import express from "express";
 import auth from "../middleware/auth.js";
 import AIMemory from "../models/aimemorymodel.js";
+import { sendError, sendSuccess } from "../utils/apiResponse.js";
+import { validate } from "../middleware/validate.js";
+import { aiMemoryBodySchema, aiMemoryQuerySchema } from "../validations/aiSchemas.js";
 
 const router = express.Router();
 
-router.get("/", auth, async (req, res) => {
+router.get("/", auth, validate(aiMemoryQuerySchema, "query"), async (req, res) => {
   try {
     const member = req.query.member || "Self";
     const memory = await AIMemory.findOne({ ownerId: req.userId, member });
 
-    if (!memory) {
-      return res.status(200).json({ messages: [] });
-    }
-
-    res.json({ messages: memory.messages });
-  } catch (err) {
-    console.error("AI Memory GET error:", err);
-    res.status(500).json({ error: "Failed to load memory" });
+    return sendSuccess(res, {
+      data: {
+        messages: memory?.messages || [],
+      },
+    });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "AI_MEMORY_LOAD_FAILED",
+      message: "Failed to load memory",
+      details: error.message,
+    });
   }
 });
 
-router.post("/", auth, async (req, res) => {
+router.post("/", auth, validate(aiMemoryBodySchema), async (req, res) => {
   try {
     const { member, messages } = req.body;
-
-    if (!member || !Array.isArray(messages)) {
-      return res.status(400).json({ error: "member & messages required" });
-    }
-
     const memory = await AIMemory.findOneAndUpdate(
       { ownerId: req.userId, member },
       { $set: { messages } },
       { new: true, upsert: true, runValidators: true }
     );
 
-    res.json({ success: true, messages: memory.messages });
-  } catch (err) {
-    console.error("AI Memory POST error:", err);
-    res.status(500).json({ error: "Failed to save memory" });
+    return sendSuccess(res, {
+      data: {
+        messages: memory.messages,
+      },
+    });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "AI_MEMORY_SAVE_FAILED",
+      message: "Failed to save memory",
+      details: error.message,
+    });
   }
 });
 

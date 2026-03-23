@@ -1,5 +1,6 @@
 import cron from "node-cron";
-import Reminder from "../models/Reminder.js";
+import mongoose from "mongoose";
+import Reminder from "../models/remindermodel.js";
 
 /**
  * This scheduler runs every minute (for dev) or once per day (for prod).
@@ -59,7 +60,7 @@ export function startReminderScheduler({ env = "dev" } = {}) {
       // Find active reminders due now or earlier
       const due = await Reminder.find({
         active: true,
-        nextRunAt: { $lte: now },
+        nextRunAt: mongoose.trusted({ $lte: now }),
       }).limit(200).exec();
 
       if (!due.length) return;

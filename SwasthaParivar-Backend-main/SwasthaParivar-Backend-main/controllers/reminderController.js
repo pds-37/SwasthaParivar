@@ -1,11 +1,12 @@
-import Reminder from "../models/remindermodel.js";
 import mongoose from "mongoose";
+import Reminder from "../models/remindermodel.js";
+import FamilyMember from "../models/familymembermodel.js";
+import { sendError, sendSuccess } from "../utils/apiResponse.js";
+import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 
-/* ------------------ UTIL: COMPUTE NEXT RUN DATE ------------------ */
 function computeNextRun(currentDate = new Date(), frequency, options = {}) {
   const next = new Date(currentDate);
 
-  // Apply time (HH:mm)
   if (options.time) {
     const [hh, mm] = options.time.split(":").map(Number);
     next.setHours(hh ?? 9, mm ?? 0, 0, 0);
@@ -15,26 +16,21 @@ function computeNextRun(currentDate = new Date(), frequency, options = {}) {
     case "daily":
       next.setDate(next.getDate() + 1);
       break;
-
     case "weekly": {
       const target = typeof options.weekday === "number" ? options.weekday : next.getDay();
       const delta = (target - next.getDay() + 7) % 7 || 7;
       next.setDate(next.getDate() + delta);
       break;
     }
-
     case "monthly": {
       const dom = options.dayOfMonth || next.getDate();
       next.setMonth(next.getMonth() + 1);
-      next.setDate(Math.min(dom, daysInMonth(next.getFullYear(), next.getMonth())));
+      next.setDate(Math.min(dom, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()));
       break;
     }
-
     case "yearly":
       next.setFullYear(next.getFullYear() + 1);
       break;
-
-    case "once":
     default:
       break;
   }
@@ -42,184 +38,265 @@ function computeNextRun(currentDate = new Date(), frequency, options = {}) {
   return next;
 }
 
-function daysInMonth(year, month) {
-  return new Date(year, month + 1, 0).getDate();
-}
+const ensureMemberOwnership = async (ownerId, memberId) => {
+  if (!memberId) return true;
+  if (!mongoose.Types.ObjectId.isValid(memberId)) return false;
+  return Boolean(await FamilyMember.exists({ _id: memberId, user: ownerId }));
+};
 
-/* ------------------ CREATE REMINDER ------------------ */
 export const createReminder = async (req, res) => {
   try {
     const ownerId = req.user._id;
+    const { title, description, category, memberId, frequency, options, nextRunAt, meta } = req.body;
 
-    const {
-      title,
-      description,
-      category,
-      memberId,
-      frequency,
-      options,
-      nextRunAt,
-      meta,
-    } = req.body;
+    if (!(await ensureMemberOwnership(ownerId, memberId))) {
+      return sendError(res, {
+        status: 404,
+        code: "MEMBER_NOT_FOUND",
+        message: "Selected family member was not found",
+      });
+    }
 
-    // REQUIRED FIELDS
-    if (!title) return res.status(400).json({ message: "Title required" });
-    if (!category) return res.status(400).json({ message: "Category required" });
-
-    let nextDate = nextRunAt
+    const nextDate = nextRunAt
       ? new Date(nextRunAt)
       : computeNextRun(new Date(), frequency || "once", options || {});
 
-    const rem = new Reminder({
+    const reminder = await Reminder.create({
       ownerId,
       memberId: memberId ? new mongoose.Types.ObjectId(memberId) : undefined,
       title,
       description,
-      category, // 🔥 FIXED
+      category,
       frequency: frequency || "once",
       options: options || {},
       nextRunAt: nextDate,
       meta: meta || {},
     });
 
-    await rem.save();
-    res.status(201).json({ reminder: rem });
-
-  } catch (err) {
-    console.error("createReminder:", err);
-    res.status(500).json({ message: "Server error" });
+    return sendSuccess(res, {
+      status: 201,
+      data: reminder,
+    });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "REMINDER_CREATE_FAILED",
+      message: "Could not create reminder",
+      details: error.message,
+    });
   }
 };
 
-/* ------------------ LIST REMINDERS ------------------ */
 export const listReminders = async (req, res) => {
   try {
     const ownerId = req.user._id;
-    const reminders = await Reminder.find({ ownerId }).sort({ nextRunAt: 1 });
-    res.json({ reminders });
-  } catch (err) {
-    console.error("listReminders:", err);
-    res.status(500).json({ message: "Server error" });
+    const pagination = parsePagination(req.query);
+    const filter = { ownerId, deletedAt: null };
+    const [reminders, total] = await Promise.all([
+      Reminder.find(filter).sort({ nextRunAt: 1 }).skip(pagination.skip).limit(pagination.limit),
+      Reminder.countDocuments(filter),
+    ]);
+
+    return sendSuccess(res, {
+      data: reminders,
+      meta: buildPaginationMeta({ ...pagination, total }),
+    });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "REMINDER_LIST_FAILED",
+      message: "Could not load reminders",
+      details: error.message,
+    });
   }
 };
 
-/* ------------------ GET SINGLE REMINDER ------------------ */
 export const getReminder = async (req, res) => {
   try {
-    const ownerId = req.user._id;
-    const rem = await Reminder.findOne({ _id: req.params.id, ownerId });
-    if (!rem) return res.status(404).json({ message: "Not found" });
-    res.json({ reminder: rem });
-  } catch (err) {
-    console.error("getReminder:", err);
-    res.status(500).json({ message: "Server error" });
+    const reminder = await Reminder.findOne({
+      _id: req.params.id,
+      ownerId: req.user._id,
+      deletedAt: null,
+    });
+
+    if (!reminder) {
+      return sendError(res, {
+        status: 404,
+        code: "REMINDER_NOT_FOUND",
+        message: "Reminder not found",
+      });
+    }
+
+    return sendSuccess(res, { data: reminder });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "REMINDER_FETCH_FAILED",
+      message: "Could not load reminder",
+      details: error.message,
+    });
   }
 };
 
-/* ------------------ UPDATE REMINDER ------------------ */
 export const updateReminder = async (req, res) => {
   try {
     const ownerId = req.user._id;
-    const update = req.body;
+    const update = { ...req.body };
 
-    // If frequency/options changed, compute nextRunAt
-    if ((update.frequency || update.options) && !update.nextRunAt) {
-      update.nextRunAt = computeNextRun(
-        new Date(),
-        update.frequency || "once",
-        update.options || {}
-      );
+    if (update.memberId && !(await ensureMemberOwnership(ownerId, update.memberId))) {
+      return sendError(res, {
+        status: 404,
+        code: "MEMBER_NOT_FOUND",
+        message: "Selected family member was not found",
+      });
     }
 
-    const rem = await Reminder.findOneAndUpdate(
-      { _id: req.params.id, ownerId },
+    if ((update.frequency || update.options) && !update.nextRunAt) {
+      update.nextRunAt = computeNextRun(new Date(), update.frequency || "once", update.options || {});
+    }
+
+    const reminder = await Reminder.findOneAndUpdate(
+      { _id: req.params.id, ownerId, deletedAt: null },
       update,
       { new: true }
     );
 
-    if (!rem) return res.status(404).json({ message: "Not found" });
-    res.json({ reminder: rem });
-
-  } catch (err) {
-    console.error("updateReminder:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-/* ------------------ DELETE REMINDER ------------------ */
-export const deleteReminder = async (req, res) => {
-  try {
-    const ownerId = req.user._id;
-    const rem = await Reminder.findOneAndDelete({
-      _id: req.params.id,
-      ownerId,
-    });
-
-    if (!rem) return res.status(404).json({ message: "Not found" });
-    res.json({ message: "Deleted" });
-
-  } catch (err) {
-    console.error("deleteReminder:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-/* ------------------ TRIGGER MANUALLY ------------------ */
-export const triggerReminderNow = async (req, res) => {
-  try {
-    const ownerId = req.user._id;
-    const rem = await Reminder.findOne({
-      _id: req.params.id,
-      ownerId,
-    });
-
-    if (!rem) return res.status(404).json({ message: "Not found" });
-
-    rem.lastTriggeredAt = new Date();
-
-    if (rem.frequency && rem.frequency !== "once") {
-      rem.nextRunAt = computeNextRun(
-        rem.nextRunAt || new Date(),
-        rem.frequency,
-        rem.options || {}
-      );
-    } else {
-      rem.active = false;
+    if (!reminder) {
+      return sendError(res, {
+        status: 404,
+        code: "REMINDER_NOT_FOUND",
+        message: "Reminder not found",
+      });
     }
 
-    await rem.save();
-    res.json({ reminder: rem });
-
-  } catch (err) {
-    console.error("triggerReminderNow:", err);
-    res.status(500).json({ message: "Server error" });
+    return sendSuccess(res, { data: reminder });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "REMINDER_UPDATE_FAILED",
+      message: "Could not update reminder",
+      details: error.message,
+    });
   }
 };
 
-// soft delete
+export const deleteReminder = async (req, res) => {
+  try {
+    const reminder = await Reminder.findOneAndDelete({
+      _id: req.params.id,
+      ownerId: req.user._id,
+    });
+
+    if (!reminder) {
+      return sendError(res, {
+        status: 404,
+        code: "REMINDER_NOT_FOUND",
+        message: "Reminder not found",
+      });
+    }
+
+    return sendSuccess(res, {
+      data: { id: reminder._id, deleted: true },
+    });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "REMINDER_DELETE_FAILED",
+      message: "Could not delete reminder",
+      details: error.message,
+    });
+  }
+};
+
+export const triggerReminderNow = async (req, res) => {
+  try {
+    const reminder = await Reminder.findOne({
+      _id: req.params.id,
+      ownerId: req.user._id,
+      deletedAt: null,
+    });
+
+    if (!reminder) {
+      return sendError(res, {
+        status: 404,
+        code: "REMINDER_NOT_FOUND",
+        message: "Reminder not found",
+      });
+    }
+
+    reminder.lastTriggeredAt = new Date();
+    if (reminder.frequency && reminder.frequency !== "once") {
+      reminder.nextRunAt = computeNextRun(
+        reminder.nextRunAt || new Date(),
+        reminder.frequency,
+        reminder.options || {}
+      );
+    } else {
+      reminder.active = false;
+    }
+
+    await reminder.save();
+    return sendSuccess(res, { data: reminder });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "REMINDER_TRIGGER_FAILED",
+      message: "Could not trigger reminder",
+      details: error.message,
+    });
+  }
+};
+
 export const softDeleteReminder = async (req, res) => {
   try {
-    const ownerId = req.user._id;
-    const rem = await Reminder.findOneAndUpdate(
-      { _id: req.params.id, ownerId },
-      { active: false },
+    const reminder = await Reminder.findOneAndUpdate(
+      { _id: req.params.id, ownerId: req.user._id },
+      { active: false, deletedAt: new Date() },
       { new: true }
     );
-    if (!rem) return res.status(404).json({ message: "Not found" });
-    res.json({ reminder: rem });
-  } catch (err) { res.status(500).json({ message:"Server error" }); }
+
+    if (!reminder) {
+      return sendError(res, {
+        status: 404,
+        code: "REMINDER_NOT_FOUND",
+        message: "Reminder not found",
+      });
+    }
+
+    return sendSuccess(res, { data: reminder });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "REMINDER_DELETE_FAILED",
+      message: "Could not soft delete reminder",
+      details: error.message,
+    });
+  }
 };
 
 export const restoreReminder = async (req, res) => {
   try {
-    const ownerId = req.user._id;
-    const rem = await Reminder.findOneAndUpdate(
-      { _id: req.params.id, ownerId },
-      { active: true },
+    const reminder = await Reminder.findOneAndUpdate(
+      { _id: req.params.id, ownerId: req.user._id },
+      { active: true, deletedAt: null },
       { new: true }
     );
-    if (!rem) return res.status(404).json({ message: "Not found" });
-    res.json({ reminder: rem });
-  } catch (err) { res.status(500).json({ message:"Server error" }); }
-};
 
+    if (!reminder) {
+      return sendError(res, {
+        status: 404,
+        code: "REMINDER_NOT_FOUND",
+        message: "Reminder not found",
+      });
+    }
+
+    return sendSuccess(res, { data: reminder });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "REMINDER_RESTORE_FAILED",
+      message: "Could not restore reminder",
+      details: error.message,
+    });
+  }
+};

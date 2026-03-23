@@ -1,286 +1,262 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import toast from "react-hot-toast";
-import { Bell, CalendarClock, Plus } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Bell, CalendarDays, LayoutList, Plus } from "lucide-react";
+
 import CreateReminder from "../components/CreateReminder";
 import ReminderCard from "../components/ReminderCard";
-import api from "../lib/api";
+import { Button, EmptyState, Modal, PullToRefresh, Skeleton } from "../components/ui";
+import { useReminders } from "../hooks/useReminders";
+import notify from "../lib/notify";
+import { readReminderDraft } from "../lib/reminderDraft";
+import { useFamilyStore } from "../store/family-store";
 import "./Reminders.css";
 
-const GROUPS = {
-  TODAY: "Today",
-  THIS_WEEK: "This Week",
-  LATER: "Later",
+const startOfDay = (value) => new Date(value.getFullYear(), value.getMonth(), value.getDate());
+
+const buildMobileWeek = () => {
+  const today = startOfDay(new Date());
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() + index);
+    return date;
+  });
 };
 
-const categories = ["all", "medicine", "vaccination", "checkup", "custom"];
-
-function groupByTimeline(reminders = []) {
+const buildMonthGrid = () => {
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
-  const endOfWeek = new Date(startOfToday);
-  endOfWeek.setDate(endOfWeek.getDate() + (7 - startOfToday.getDay()));
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const start = new Date(monthStart);
+  start.setDate(monthStart.getDate() - monthStart.getDay());
 
-  const groups = {
-    [GROUPS.TODAY]: [],
-    [GROUPS.THIS_WEEK]: [],
-    [GROUPS.LATER]: [],
-  };
+  const days = [];
+  const cursor = new Date(start);
+  while (cursor <= monthEnd || cursor.getDay() !== 0) {
+    days.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+};
 
-  reminders.forEach((reminder) => {
-    if (!reminder?.nextRunAt) return;
-    const next = new Date(reminder.nextRunAt);
-
-    if (next >= startOfToday && next <= endOfToday) {
-      groups[GROUPS.TODAY].push(reminder);
-    } else if (next > endOfToday && next <= endOfWeek) {
-      groups[GROUPS.THIS_WEEK].push(reminder);
-    } else {
-      groups[GROUPS.LATER].push(reminder);
-    }
-  });
-
-  return groups;
-}
+const isSameDay = (first, second) =>
+  new Date(first).toDateString() === new Date(second).toDateString();
 
 const Reminders = () => {
-  const [reminders, setReminders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("upcoming");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [showCreate, setShowCreate] = useState(false);
+  const { members, loading: membersLoading } = useFamilyStore();
+  const { reminders: rawReminders, loading: remindersLoading, deleteReminder, mutate } = useReminders();
+  const [viewMode, setViewMode] = useState("calendar");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showCreate, setShowCreate] = useState(() => Boolean(readReminderDraft()));
   const [editing, setEditing] = useState(null);
-  const remindersRef = useRef([]);
+  const loading = membersLoading || remindersLoading;
+  const reminders = useMemo(() => {
+    const byId = new Map(members.map((member) => [member._id, member]));
+    return rawReminders.map((reminder) => ({
+      ...reminder,
+      memberName: byId.get(reminder.memberId)?.name || reminder.memberName || "Family member",
+    }));
+  }, [members, rawReminders]);
 
-  const syncReminders = (nextReminders) => {
-    remindersRef.current = nextReminders;
-    setReminders(nextReminders);
-  };
+  const overdue = useMemo(
+    () =>
+      reminders
+        .filter((item) => new Date(item.nextRunAt) < new Date())
+        .sort((first, second) => new Date(first.nextRunAt) - new Date(second.nextRunAt)),
+    [reminders]
+  );
 
-  const fetchReminders = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await api.get("/reminders");
-      syncReminders(Array.isArray(response) ? response : response?.reminders || []);
-    } catch (error) {
-      console.error("fetchReminders error:", error);
-    }
-    setLoading(false);
-  }, []);
+  const filteredByDate = useMemo(
+    () =>
+      reminders
+        .filter((item) => isSameDay(item.nextRunAt, selectedDate))
+        .sort((first, second) => new Date(first.nextRunAt) - new Date(second.nextRunAt)),
+    [reminders, selectedDate]
+  );
 
-  useEffect(() => {
-    const loadTimer = setTimeout(() => {
-      fetchReminders();
-    }, 0);
-
-    const timer = setInterval(() => setReminders((current) => [...current]), 60000);
-
-    return () => {
-      clearTimeout(loadTimer);
-      clearInterval(timer);
-    };
-  }, [fetchReminders]);
+  const mobileWeek = useMemo(() => buildMobileWeek(), []);
+  const monthGrid = useMemo(() => buildMonthGrid(), []);
 
   const handleDelete = async (id) => {
-    const previous = remindersRef.current;
-    const item = previous.find((reminder) => reminder._id === id);
-
-    if (!item) return;
-
-    syncReminders(previous.filter((entry) => entry._id !== id));
-
-    toast(
-      (toastInstance) => (
-        <div className="reminders-toast">
-          <span>Deleted "{item.title}"</span>
-          <button
-            className="reminders-toast__undo"
-            onClick={() => {
-              toast.dismiss(toastInstance.id);
-              syncReminders([item, ...remindersRef.current]);
-            }}
-          >
-            Undo
-          </button>
-        </div>
-      ),
-      { duration: 5000 }
-    );
-
-    setTimeout(async () => {
-      const stillDeleted = !remindersRef.current.some((entry) => entry._id === id);
-      if (!stillDeleted) return;
-
-      try {
-        await api.delete(`/reminders/${id}`);
-      } catch (error) {
-        console.error("delete error:", error);
-        toast.error("Delete failed. Restoring reminder.");
-        syncReminders(previous);
-      }
-    }, 5200);
-  };
-
-  const handleEdit = (reminder) => {
-    setEditing(reminder);
-    setShowCreate(true);
-  };
-
-  const handleCreatedOrUpdated = () => {
-    setEditing(null);
-    setShowCreate(false);
-    fetchReminders();
-  };
-
-  const filtered = useMemo(() => {
-    const byCategory = reminders.filter((reminder) => {
-      if (categoryFilter === "all") return true;
-      return reminder.category?.toLowerCase() === categoryFilter;
-    });
-
-    if (tab === "upcoming") {
-      return byCategory.filter((reminder) => new Date(reminder.nextRunAt) >= new Date());
+    try {
+      await deleteReminder(id);
+      notify.success("Reminder deleted");
+    } catch {
+      notify.error("Could not delete reminder");
     }
-
-    return byCategory;
-  }, [categoryFilter, reminders, tab]);
-
-  const groups = useMemo(() => groupByTimeline(filtered), [filtered]);
+  };
 
   return (
     <div className="reminders-page">
-      <div className="app-shell reminders-shell">
+      <PullToRefresh
+        onRefresh={async () => {
+          await Promise.all([mutate?.(), Promise.resolve()]);
+        }}
+      >
+        <div className="app-shell reminders-shell">
         <section className="reminders-hero">
           <div>
             <span className="eyebrow">
               <Bell size={16} />
-              Care Scheduling
+              Care scheduling
             </span>
-            <h1>Medical reminders that feel organized, not overwhelming.</h1>
-            <p>
-              Schedule medicine, vaccination, and checkup tasks in a timeline that keeps the whole family on track. Attach reports from camera or gallery so reminders carry useful AI context too.
+            <h1 className="text-h2">Stay ahead of household care with a calmer reminder timeline.</h1>
+            <p className="text-body-md">
+              Switch between calendar and list views, keep overdue tasks visible, and create one reminder for one or many family members.
             </p>
           </div>
 
-          <div className="reminders-hero__stats surface-card">
-            <div>
-              <strong>{reminders.length}</strong>
-              <span>Total reminders</span>
+          <div className="reminders-hero__actions">
+            <div className="reminders-view-toggle">
+              <button
+                type="button"
+                className={viewMode === "calendar" ? "is-active" : ""}
+                onClick={() => setViewMode("calendar")}
+              >
+                <CalendarDays size={16} />
+                Calendar
+              </button>
+              <button
+                type="button"
+                className={viewMode === "list" ? "is-active" : ""}
+                onClick={() => setViewMode("list")}
+              >
+                <LayoutList size={16} />
+                List
+              </button>
             </div>
-            <div>
-              <strong>{groups[GROUPS.TODAY]?.length || 0}</strong>
-              <span>Due today</span>
-            </div>
-            <div>
-              <strong>{groups[GROUPS.THIS_WEEK]?.length || 0}</strong>
-              <span>This week</span>
-            </div>
+
+            <Button leftIcon={<Plus size={18} />} onClick={() => setShowCreate(true)}>
+              Create reminder
+            </Button>
           </div>
         </section>
 
-        <section className="surface-card reminders-toolbar">
-          <div className="reminders-toolbar__left">
-            <div className="reminders-tab-group">
-              <button
-                type="button"
-                className={`pill-button ${tab === "upcoming" ? "active" : ""}`}
-                onClick={() => {
-                  setTab("upcoming");
-                  setShowCreate(false);
-                  setEditing(null);
-                }}
-              >
-                Upcoming
-              </button>
-              <button
-                type="button"
-                className={`pill-button ${tab === "all" ? "active" : ""}`}
-                onClick={() => {
-                  setTab("all");
-                  setShowCreate(false);
-                  setEditing(null);
-                }}
-              >
-                All reminders
-              </button>
+        {loading ? (
+          <div className="reminders-loading">
+            <Skeleton variant="card" />
+            <Skeleton variant="card" />
+          </div>
+        ) : null}
+
+        {!loading && overdue.length > 0 ? (
+          <section className="reminders-overdue card">
+            <div className="section-header">
+              <div>
+                <h2 className="text-h4">Overdue reminders</h2>
+                <p className="text-body-sm muted-copy">These tasks need attention first.</p>
+              </div>
             </div>
 
-            <div className="reminders-categories">
-              {categories.map((category) => (
+            <div className="reminders-list">
+              {overdue.map((reminder) => (
+                <ReminderCard key={reminder._id} reminder={reminder} onDelete={handleDelete} onEdit={setEditing} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {!loading && viewMode === "calendar" ? (
+          <section className="reminders-calendar card">
+            <div className="reminders-mobile-week">
+              {mobileWeek.map((date) => (
                 <button
+                  key={date.toISOString()}
                   type="button"
-                  key={category}
-                  className={`reminders-category ${categoryFilter === category ? "active" : ""}`}
-                  onClick={() => setCategoryFilter(category)}
+                  className={`reminders-day-pill ${isSameDay(date, selectedDate) ? "is-active" : ""}`}
+                  onClick={() => setSelectedDate(date)}
                 >
-                  {category}
+                  <span>{date.toLocaleDateString("en-IN", { weekday: "short" })}</span>
+                  <strong>{date.getDate()}</strong>
                 </button>
               ))}
             </div>
-          </div>
 
-          <button
-            type="button"
-            className="reminders-create-btn"
-            onClick={() => {
-              setShowCreate(true);
-              setEditing(null);
-            }}
-          >
-            <Plus size={16} />
-            Create reminder
-          </button>
-        </section>
+            <div className="reminders-month-grid">
+              {monthGrid.map((date) => {
+                const active = isSameDay(date, selectedDate);
+                const count = reminders.filter((item) => isSameDay(item.nextRunAt, date)).length;
+                return (
+                  <button
+                    key={date.toISOString()}
+                    type="button"
+                    className={`reminders-month-day ${active ? "is-active" : ""}`}
+                    onClick={() => setSelectedDate(date)}
+                  >
+                    <span>{date.getDate()}</span>
+                    <small>{count ? `${count} items` : "Free"}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
 
-        {showCreate && (
-          <CreateReminder
-            key={editing?._id || "new"}
-            existing={editing}
-            refresh={handleCreatedOrUpdated}
-            cancel={() => {
-              setEditing(null);
-              setShowCreate(false);
-            }}
-          />
-        )}
+        {!loading && (
+          <section className="reminders-list-section">
+            <div className="section-header">
+              <div>
+                <h2 className="text-h4">
+                  {viewMode === "calendar" ? `Tasks for ${selectedDate.toLocaleDateString("en-IN", { day: "numeric", month: "long" })}` : "All reminders"}
+                </h2>
+                <p className="text-body-sm muted-copy">
+                  {viewMode === "calendar"
+                    ? "Reminders scheduled for the selected day."
+                    : "Every scheduled care reminder across your household."}
+                </p>
+              </div>
+            </div>
 
-        {!loading && filtered.length === 0 && !showCreate && (
-          <section className="surface-card reminders-empty">
-            <CalendarClock size={34} />
-            <h3>No reminders found</h3>
-            <p>Create your first reminder to start organizing care tasks by person and date.</p>
+            {(viewMode === "calendar" ? filteredByDate : reminders).length === 0 ? (
+              <EmptyState
+                icon={<Bell size={18} />}
+                heading="No reminders for this view"
+                description="Create a new reminder to start organizing medicines, checkups, and family follow-ups."
+                ctaLabel="Create reminder"
+                onCta={() => setShowCreate(true)}
+              />
+            ) : (
+              <div className="reminders-list">
+                {(viewMode === "calendar" ? filteredByDate : reminders)
+                  .sort((first, second) => new Date(first.nextRunAt) - new Date(second.nextRunAt))
+                  .map((reminder) => (
+                    <ReminderCard
+                      key={reminder._id}
+                      reminder={reminder}
+                      onDelete={handleDelete}
+                      onEdit={setEditing}
+                    />
+                  ))}
+              </div>
+            )}
           </section>
         )}
+        </div>
+      </PullToRefresh>
 
-        {!loading && !showCreate && filtered.length > 0 && (
-          <div className="reminders-groups">
-            {[GROUPS.TODAY, GROUPS.THIS_WEEK, GROUPS.LATER].map((groupKey) => {
-              const items = groups[groupKey] || [];
-              if (items.length === 0) return null;
-
-              return (
-                <section key={groupKey} className="reminders-group">
-                  <div className="reminders-group__head">
-                    <h2>{groupKey}</h2>
-                    <span>{items.length} items</span>
-                  </div>
-
-                  <div className="reminders-group__list">
-                    {items.map((reminder) => (
-                      <ReminderCard
-                        key={reminder._id}
-                        reminder={reminder}
-                        onDelete={handleDelete}
-                        onEdit={handleEdit}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {showCreate || editing ? (
+        <Modal
+          open
+          onClose={() => {
+            setShowCreate(false);
+            setEditing(null);
+          }}
+          title={editing ? "Edit reminder" : "Create reminder"}
+          description="Schedule medicine, vaccination, checkup, or custom family care tasks."
+          size="lg"
+        >
+          <CreateReminder
+            existing={editing}
+            refresh={() => {
+              setShowCreate(false);
+              setEditing(null);
+              mutate();
+            }}
+            cancel={() => {
+              setShowCreate(false);
+              setEditing(null);
+            }}
+          />
+        </Modal>
+      ) : null}
     </div>
   );
 };

@@ -1,35 +1,59 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import EmojiPicker from "emoji-picker-react";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
-import {
-  Download,
-  ImagePlus,
-  Mic,
-  RotateCcw,
-  Search,
-  Sparkles,
-  Sticker,
-  UserRound,
-} from "lucide-react";
+import { ArrowLeft, Paperclip, Plus, Send, Sparkles, UserRound } from "lucide-react";
+
 import api from "../lib/api";
-import { useThemeMode } from "../theme/theme-context";
+import { Button } from "../components/ui";
+import { useAIChat } from "../hooks/useAIChat";
+import notify from "../lib/notify";
+import { saveReminderDraft } from "../lib/reminderDraft";
+import { useFamilyStore } from "../store/family-store";
 import "./AIChat.css";
 
-const SUGGESTED = [
-  "What checkups should a 60-year-old have?",
-  "Vaccination reminders for a 5-year-old",
-  "Home remedies for common cold",
-  "Daily diet tips for diabetes",
-  "How often should I get a dental check-up?",
+const MEDICATION_KEYWORDS = [
+  "paracetamol",
+  "acetaminophen",
+  "ibuprofen",
+  "cetirizine",
+  "azithromycin",
+  "amoxicillin",
+  "omeprazole",
+  "pantoprazole",
+  "metformin",
+  "insulin",
+  "iron",
+  "vitamin d",
+  "calcium",
+  "salbutamol",
 ];
 
-const starterMessage = {
-  sender: "ai",
-  text: "Hello, I am your health assistant. How can I help today?",
-};
+const SYMPTOM_KEYWORDS = [
+  "fever",
+  "cough",
+  "cold",
+  "sore throat",
+  "headache",
+  "body ache",
+  "nausea",
+  "vomiting",
+  "diarrhea",
+  "acidity",
+  "bloating",
+  "fatigue",
+  "rash",
+  "congestion",
+  "dizziness",
+  "wheezing",
+];
+
+const SUGGESTED_PROMPTS = [
+  "What are symptoms of dengue?",
+  "Is paracetamol safe for children under 5?",
+  "What can help with mild acidity after dinner?",
+  "How should I prepare for a blood test tomorrow morning?",
+];
 
 const fileToBase64Payload = (file) =>
   new Promise((resolve, reject) => {
@@ -48,6 +72,7 @@ const fileToBase64Payload = (file) =>
       resolve({
         data,
         mimeType,
+        preview: result,
         fileName: file.name,
       });
     };
@@ -56,470 +81,579 @@ const fileToBase64Payload = (file) =>
     reader.readAsDataURL(file);
   });
 
-export default function AIChat({ userFamily = [] }) {
-  const { mode } = useThemeMode();
+const buildDefaultConversation = () => [];
+
+const findMatches = (text, keywords) => {
+  const normalized = String(text || "").toLowerCase();
+  return keywords.filter((keyword) => normalized.includes(keyword)).slice(0, 3);
+};
+
+const toDisplayLabel = (value = "") =>
+  value.replace(/\b\w/g, (character) => character.toUpperCase());
+
+const safeReadConversation = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const truncateThreadTitle = (value = "", maxLength = 42) => {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
+};
+
+const formatConversationTime = (timestamp) => {
+  if (!timestamp) return "No activity yet";
+
+  const date = new Date(timestamp);
+  const now = new Date();
+  const sameDay = date.toDateString() === now.toDateString();
+
+  if (sameDay) {
+    return date.toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 7) {
+    return date.toLocaleDateString("en-IN", { weekday: "short" });
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
+};
+
+const getConversationTitle = (messages = [], fallbackLabel = "New chat") => {
+  const firstUserMessage = messages.find(
+    (message) => message?.sender === "user" && String(message?.text || "").trim()
+  );
+
+  if (!firstUserMessage) {
+    return fallbackLabel;
+  }
+
+  return truncateThreadTitle(firstUserMessage.text);
+};
+
+const AIChat = () => {
+  const navigate = useNavigate();
+  const { members: userFamily, selectedMember, setSelectedMember, refreshMembers } = useFamilyStore();
+  const contexts = useMemo(
+    () => [
+      { key: "family", label: "All family", memberValue: "All family", memberId: null },
+      ...userFamily.map((member) => ({
+        key: member._id || member.name,
+        label: member.name,
+        memberValue: member.name,
+        memberId: member._id,
+      })),
+    ],
+    [userFamily]
+  );
+
+  const [selectedContext, setSelectedContext] = useState(() => selectedMember?._id || "family");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [selectedMember, setSelectedMember] = useState("Self");
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(true);
   const [attachmentPreview, setAttachmentPreview] = useState(null);
-  const [newMessagesAvailable, setNewMessagesAvailable] = useState(false);
-  const [lastError, setLastError] = useState(null);
+  const [pendingReminderSuggestion, setPendingReminderSuggestion] = useState(null);
+  const listRef = useRef(null);
 
-  const mountedRef = useRef(false);
-  const scrollRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const userAtBottomRef = useRef(true);
-  const pendingRequestRef = useRef(null);
-
-  useEffect(() => {
-    mountedRef.current = true;
-
-    const load = async () => {
-      setLastError(null);
-
-      try {
-        const data = await api.get(`/ai/memory?member=${encodeURIComponent(selectedMember)}`);
-        if (data?.messages?.length) {
-          setMessages(data.messages);
-          return;
-        }
-      } catch (error) {
-        if (error?.status === 401) {
-          setMessages([{ sender: "ai", text: "Unauthorized. Please log in again.", ts: Date.now() }]);
-          return;
-        }
-      }
-
-      try {
-        const raw = localStorage.getItem(`aichat_mem_${selectedMember}`);
-        if (raw) {
-          setMessages(JSON.parse(raw));
-          return;
-        }
-      } catch {
-        // ignore local storage failure
-      }
-
-      setMessages([{ ...starterMessage, ts: Date.now() }]);
-    };
-
-    load();
-
-    return () => {
-      mountedRef.current = false;
-      recognitionRef.current?.stop?.();
-    };
-  }, [selectedMember]);
+  const currentContext = contexts.find((item) => item.key === selectedContext) || contexts[0];
+  const contextLabel = currentContext?.label || "All family";
+  const memberValue = currentContext?.memberValue || "All family";
+  const activeMember = useMemo(
+    () => userFamily.find((member) => member._id === currentContext?.memberId) || null,
+    [currentContext?.memberId, userFamily]
+  );
+  const { messages: remoteMessages, saveMemory } = useAIChat(memberValue);
+  const hasMessages = messages.length > 0;
 
   useEffect(() => {
-    if (!mountedRef.current) return;
-
-    const timeoutId = setTimeout(async () => {
-      const payload = { member: selectedMember, messages };
-
-      try {
-        await api.post("/ai/memory", payload);
-      } catch {
-        try {
-          localStorage.setItem(`aichat_mem_${selectedMember}`, JSON.stringify(messages));
-        } catch {
-          // ignore local storage failure
-        }
-      }
-    }, 800);
-
-    return () => clearTimeout(timeoutId);
-  }, [messages, selectedMember]);
+    if (!selectedMember?._id) return;
+    setSelectedContext(selectedMember._id);
+  }, [selectedMember?._id]);
 
   useEffect(() => {
-    const scroller = scrollRef.current;
-    if (!scroller) return;
-
-    const onScroll = () => {
-      const distance = scroller.scrollHeight - (scroller.scrollTop + scroller.clientHeight);
-      userAtBottomRef.current = distance < 160;
-      if (userAtBottomRef.current) setNewMessagesAvailable(false);
-    };
-
-    scroller.addEventListener("scroll", onScroll);
-    onScroll();
-
-    return () => scroller.removeEventListener("scroll", onScroll);
-  }, []);
+    if (contexts.some((context) => context.key === selectedContext)) return;
+    setSelectedContext("family");
+  }, [contexts, selectedContext]);
 
   useEffect(() => {
-    const scroller = scrollRef.current;
-    if (!scroller) return;
-
-    if (userAtBottomRef.current) {
-      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
-    } else {
-      setNewMessagesAvailable(true);
-    }
-  }, [messages]);
-
-  const startRecording = () => {
-    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
-      alert("Speech recognition is not supported in this browser.");
+    if (remoteMessages.length > 0) {
+      setMessages(remoteMessages);
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.interimResults = false;
-    recognition.continuous = false;
-    recognition.maxAlternatives = 1;
-    recognition.onstart = () => setIsRecording(true);
-    recognition.onend = () => setIsRecording(false);
-    recognition.onerror = () => setIsRecording(false);
-    recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map((result) => result[0].transcript)
-        .join(" ");
-      setInput((previous) => (previous ? `${previous} ${transcript}` : transcript));
-    };
+    const cached = safeReadConversation(`aichat_mem_${memberValue}`);
+    setMessages(cached.length ? cached : buildDefaultConversation());
+  }, [memberValue, remoteMessages]);
 
-    recognition.start();
-    recognitionRef.current = recognition;
+  useEffect(() => {
+    localStorage.setItem(`aichat_mem_${memberValue}`, JSON.stringify(messages));
+  }, [memberValue, messages]);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
+
+  const conversationHistory = contexts
+    .map((context) => {
+      const parsed = safeReadConversation(`aichat_mem_${context.memberValue}`);
+      const lastMessage = parsed[parsed.length - 1];
+      const userMessageCount = parsed.filter((message) => message?.sender === "user").length;
+
+      return {
+        ...context,
+        title: getConversationTitle(parsed, `New ${context.label.toLowerCase()} chat`),
+        updatedLabel: formatConversationTime(lastMessage?.ts || 0),
+        messageCount: userMessageCount,
+        ts: lastMessage?.ts || 0,
+      };
+    })
+    .sort((first, second) =>
+      first.key === selectedContext ? -1 : second.key === selectedContext ? 1 : second.ts - first.ts
+    );
+
+  const persistConversation = async (nextMessages) => {
+    try {
+      await saveMemory({
+        member: memberValue,
+        messages: nextMessages,
+      });
+    } catch {
+      // local cache stays as the fallback source
+    }
   };
 
-  const stopRecording = () => {
-    recognitionRef.current?.stop?.();
-    setIsRecording(false);
+  const startNewChat = async () => {
+    const nextMessages = buildDefaultConversation();
+    setMessages(nextMessages);
+    setInput("");
+    setAttachmentPreview(null);
+    setPendingReminderSuggestion(null);
+    setMobileHistoryOpen(false);
+    await persistConversation(nextMessages);
   };
 
-  const onFileChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setAttachmentPreview({ file, url: URL.createObjectURL(file) });
+  const buildAiActions = (text) => {
+    if (!activeMember) {
+      return [];
+    }
+
+    const medications = findMatches(text, MEDICATION_KEYWORDS);
+    const symptoms = findMatches(text, SYMPTOM_KEYWORDS);
+    const actions = [];
+
+    if (medications[0]) {
+      actions.push({
+        type: "add-medication",
+        label: `Add ${toDisplayLabel(medications[0])} to ${activeMember.name}`,
+        value: medications[0],
+      });
+    }
+
+    if (symptoms.length) {
+      actions.push({
+        type: "log-symptom",
+        label: `Log ${symptoms.map(toDisplayLabel).join(", ")}`,
+        value: symptoms,
+      });
+    }
+
+    if (medications.length || /daily|twice|schedule|remind|follow up|take\b/i.test(text)) {
+      actions.push({
+        type: "set-reminder",
+        label: `Set reminder for ${activeMember.name}`,
+        value: medications[0] || "Follow-up care",
+      });
+    }
+
+    return actions;
+  };
+
+  const createAiMessage = (text, options = {}) => ({
+    sender: "ai",
+    text,
+    ts: Date.now(),
+    actions: options.disableActions ? [] : buildAiActions(text),
+  });
+
+  const openReminderDraft = ({ title, memberId, memberName, description = "", frequency = "daily" }) => {
+    saveReminderDraft({
+      title,
+      description,
+      category: "medicine",
+      frequency,
+      selectedMembers: [memberId],
+      memberName,
+    });
+    navigate("/reminders");
+  };
+
+  const handleMessageAction = async (action, message) => {
+    if (!activeMember) {
+      notify.error("Select a specific family member first");
+      return;
+    }
+
+    try {
+      if (action.type === "add-medication") {
+        const nextMedications = Array.from(
+          new Set([...(activeMember.medications || []), toDisplayLabel(action.value)])
+        );
+        await api.patch(`/members/${activeMember._id}/profile`, {
+          medications: nextMedications,
+        });
+        await refreshMembers?.();
+        notify.success(`${toDisplayLabel(action.value)} added to ${activeMember.name}`);
+        setPendingReminderSuggestion({
+          title: toDisplayLabel(action.value),
+          memberId: activeMember._id,
+          memberName: activeMember.name,
+        });
+        return;
+      }
+
+      if (action.type === "log-symptom") {
+        await api.post("/symptoms/episodes", {
+          memberId: activeMember._id,
+          symptoms: action.value.map((item) => ({
+            name: toDisplayLabel(item),
+            severity: 2,
+          })),
+          severity: "mild",
+          sourceMessage: message.text,
+        });
+        notify.success(`Symptom episode logged for ${activeMember.name}`);
+        return;
+      }
+
+      if (action.type === "set-reminder") {
+        openReminderDraft({
+          title: toDisplayLabel(action.value),
+          memberId: activeMember._id,
+          memberName: activeMember.name,
+          description: `Suggested from AI guidance for ${activeMember.name}.`,
+        });
+      }
+    } catch (error) {
+      notify.error(error.message || "Could not complete that action");
+    }
+  };
+
+  const sendMessage = async (messageText = input) => {
+    const trimmed = String(messageText || "").trim();
+    if (!trimmed) return;
+
+    const nextUserMessage = { sender: "user", text: trimmed, ts: Date.now() };
+    const history = [...messages, nextUserMessage];
+    setMessages(history);
+    setInput("");
+    setLoading(true);
+    setMobileHistoryOpen(false);
+    persistConversation(history);
+
+    try {
+      const response = await api.post("/ai/chat", {
+        message: trimmed,
+        member: memberValue,
+        history: history.slice(-8).map(({ sender, text, ts }) => ({ sender, text, ts })),
+      });
+
+      const nextMessages = [
+        ...history,
+        createAiMessage(response?.reply || response?.text || "No response from AI.", {
+          disableActions: Boolean(response?.outOfScope),
+        }),
+      ];
+      setMessages(nextMessages);
+      persistConversation(nextMessages);
+    } catch (error) {
+      const fallbackMessage =
+        error?.message ||
+        "I could not reach the server right now. Please try again in a moment.";
+      const nextMessages = [
+        ...history,
+        createAiMessage(fallbackMessage),
+      ];
+      setMessages(nextMessages);
+      persistConversation(nextMessages);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const sendAttachment = async () => {
-    if (!attachmentPreview?.file) return;
+    if (!attachmentPreview) return;
 
-    setMessages((previous) => [
-      ...previous,
-      { sender: "user", text: "Sent an image", ts: Date.now(), attachment: attachmentPreview.url },
-    ]);
+    const nextMessages = [
+      ...messages,
+      {
+        sender: "user",
+        text: `Attached ${attachmentPreview.fileName}`,
+        ts: Date.now(),
+        attachment: attachmentPreview.preview,
+      },
+    ];
+    setMessages(nextMessages);
+    persistConversation(nextMessages);
+    setLoading(true);
 
     try {
-      const payload = await fileToBase64Payload(attachmentPreview.file);
-      const data = await api.post("/ai/attachments", {
-        imageData: payload.data,
-        mimeType: payload.mimeType,
-        fileName: payload.fileName,
-        member: selectedMember,
+      const response = await api.post("/ai/attachments", {
+        imageData: attachmentPreview.data,
+        mimeType: attachmentPreview.mimeType,
+        fileName: attachmentPreview.fileName,
+        member: memberValue,
       });
 
-      setMessages((previous) => [
-        ...previous,
-        {
-          sender: "ai",
-          text: data?.reply || "Image uploaded successfully.",
-          ts: Date.now(),
-        },
-      ]);
-    } catch (error) {
-      setMessages((previous) => [
-        ...previous,
-        {
-          sender: "ai",
-          text:
-            error?.status === 401
-              ? "Unauthorized. Please log in to upload attachments."
-              : "Image upload failed. Please try again.",
-          ts: Date.now(),
-        },
-      ]);
-    } finally {
+      const replyText =
+        response?.isHealthReport === false
+          ? response?.reason || "Please upload a genuine health report."
+          : response?.reply || "Attachment reviewed successfully.";
+
+      const updatedMessages = [...nextMessages, createAiMessage(replyText)];
+      setMessages(updatedMessages);
+      persistConversation(updatedMessages);
       setAttachmentPreview(null);
-    }
-  };
-
-  const exportToPDF = () => {
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const margin = 40;
-    const width = doc.internal.pageSize.getWidth() - margin * 2;
-    let y = 60;
-
-    doc.setFontSize(18);
-    doc.text("SwasthaParivar - Chat Export", margin, y);
-    y += 28;
-    doc.setFontSize(11);
-
-    messages.forEach((message) => {
-      const sender = message.sender === "user" ? "You" : "Assistant";
-      const lines = doc.splitTextToSize(`${sender}: ${message.text}`, width);
-
-      if (y + lines.length * 14 > doc.internal.pageSize.getHeight() - 40) {
-        doc.addPage();
-        y = 40;
-      }
-
-      doc.text(lines, margin, y);
-      y += lines.length * 14 + 10;
-    });
-
-    doc.save("chat.pdf");
-  };
-
-  const handleSend = async (overrideText = null) => {
-    const messageText = (overrideText ?? input).trim();
-    if (!messageText) return;
-
-    setMessages((previous) => [...previous, { sender: "user", text: messageText, ts: Date.now() }]);
-    setInput("");
-    setShowEmojiPicker(false);
-    setIsTyping(true);
-    setLastError(null);
-
-    pendingRequestRef.current?.abort?.();
-    const controller = new AbortController();
-    pendingRequestRef.current = controller;
-
-    try {
-      const parsed = await api.post(
-        "/ai/chat",
-        { message: messageText, member: selectedMember },
-        { signal: controller.signal }
-      );
-      const reply = parsed?.reply || parsed?.text || parsed?.message || "Sorry, no response.";
-
-      setTimeout(() => {
-        if (!mountedRef.current) return;
-        setMessages((previous) => [...previous, { sender: "ai", text: String(reply), ts: Date.now() }]);
-        setIsTyping(false);
-      }, 280);
-    } catch (error) {
-      if (error.name !== "AbortError") {
-        setMessages((previous) => [
-          ...previous,
-          {
-            sender: "ai",
-            text:
-              error?.status === 401
-                ? "Unauthorized. Please log in to use AI features."
-                : "Sorry, I could not reach the server right now.",
-            ts: Date.now(),
-          },
-        ]);
-        setLastError(error.message || "Network error");
-      }
-      setIsTyping(false);
+    } catch {
+      const updatedMessages = [
+        ...nextMessages,
+        createAiMessage("I could not analyze this attachment right now."),
+      ];
+      setMessages(updatedMessages);
+      persistConversation(updatedMessages);
     } finally {
-      pendingRequestRef.current = null;
+      setLoading(false);
     }
-  };
-
-  const handleChipSend = (question) => {
-    setInput(question);
-    setTimeout(() => handleSend(question), 100);
-  };
-
-  const filteredMessages = messages.filter((message) =>
-    message.text.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const markdownComponents = {
-    p: ({ children }) => {
-      const text = String(children).trim().toLowerCase();
-      if (text.startsWith("warning:") || text.startsWith("alert:")) {
-        return <div className="ai-chat-warning">{children}</div>;
-      }
-      return <p>{children}</p>;
-    },
   };
 
   return (
-    <div className={`ai-chat-page ${mode === "dark" ? "dark" : ""}`}>
+    <div className="ai-chat-page">
       <div className="app-shell ai-chat-shell">
-        <section className="ai-chat-hero">
-          <div>
-            <span className="eyebrow">
-              <Sparkles size={16} />
-              AI Wellness Assistant
-            </span>
-            <h1>Ask health questions in a workspace built for clarity.</h1>
-            <p>
-              Search past conversations, switch family context, upload images, and keep one organized AI thread for household care.
-            </p>
+        <aside className={`ai-chat-sidebar ${mobileHistoryOpen ? "is-open" : ""}`}>
+          <div className="ai-chat-sidebar__head">
+            <div className="ai-chat-sidebar__title-block">
+              <span className="eyebrow">
+                <Sparkles size={16} />
+                Care conversations
+              </span>
+              <h1 className="text-h4">Conversations</h1>
+            </div>
+
+            <button type="button" className="ai-chat-sidebar__new" onClick={startNewChat}>
+              <Plus size={16} />
+              New chat
+            </button>
           </div>
 
-          <div className="surface-card ai-chat-hero__controls">
-            <label className="ai-chat-control">
-              <span>Search messages</span>
-              <div className="ai-chat-control__input">
-                <Search size={16} />
-                <input
-                  placeholder="Find a message..."
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </div>
-            </label>
-
-            <label className="ai-chat-control">
-              <span>Conversation context</span>
-              <div className="ai-chat-control__input">
-                <UserRound size={16} />
-                <select value={selectedMember} onChange={(event) => setSelectedMember(event.target.value)}>
-                  <option value="Self">Self</option>
-                  {userFamily.map((member) => (
-                    <option key={member._id || member.name} value={member.name}>
-                      {member.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </label>
-
-            <div className="ai-chat-toolbar">
-              <button type="button" className="ai-chat-toolbar__btn" onClick={exportToPDF}>
-                <Download size={15} />
-                Export
-              </button>
+          <div className="ai-chat-history">
+            {conversationHistory.map((conversation) => (
               <button
+                key={conversation.key}
                 type="button"
-                className="ai-chat-toolbar__btn"
+                className={`ai-chat-history__item ${selectedContext === conversation.key ? "is-active" : ""}`}
                 onClick={() => {
-                  setMessages([]);
-                  localStorage.removeItem(`aichat_mem_${selectedMember}`);
+                  setSelectedContext(conversation.key);
+                  setSelectedMember(
+                    conversation.memberId
+                      ? userFamily.find((member) => member._id === conversation.memberId) || null
+                      : null
+                  );
+                  setMobileHistoryOpen(false);
                 }}
               >
-                <RotateCcw size={15} />
-                Clear
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <div className="ai-chat-suggestions">
-          {SUGGESTED.map((question) => (
-            <button key={question} type="button" className="pill-button" onClick={() => handleChipSend(question)}>
-              {question}
-            </button>
-          ))}
-        </div>
-
-        <section className="surface-card ai-chat-panel">
-          <div className="ai-chat-panel__messages" ref={scrollRef}>
-            {filteredMessages.map((message, index) => (
-              <div
-                key={`${message.ts || index}-${index}`}
-                className={`ai-chat-row ${message.sender === "user" ? "is-user" : "is-ai"}`}
-              >
-                <div className={`ai-chat-bubble ${message.sender === "user" ? "is-user" : "is-ai"}`}>
-                  {message.attachment && (
-                    <img src={message.attachment} alt="attachment" className="ai-chat-bubble__image" />
-                  )}
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                    {message.text}
-                  </ReactMarkdown>
-                  <div className="ai-chat-bubble__time">
-                    {new Date(message.ts || Date.now()).toLocaleString()}
+                <span className="avatar avatar--sm">{conversation.label.charAt(0)}</span>
+                <div className="ai-chat-history__content">
+                  <div className="ai-chat-history__item-head">
+                    <strong>{conversation.title}</strong>
+                    <small>{conversation.updatedLabel}</small>
+                  </div>
+                  <div className="ai-chat-history__item-meta">
+                    <span>{conversation.label}</span>
+                    <span>{conversation.messageCount} question{conversation.messageCount === 1 ? "" : "s"}</span>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
+          </div>
+        </aside>
 
-            {isTyping && (
-              <div className="ai-chat-row is-ai">
-                <div className="ai-chat-bubble is-ai ai-chat-bubble--typing" aria-hidden>
-                  <span />
-                  <span />
-                  <span />
-                </div>
+        <section className="ai-chat-main">
+          <div className="ai-chat-main__top">
+            <div className="ai-chat-main__intro">
+              <button type="button" className="icon-btn ai-chat-back" onClick={() => setMobileHistoryOpen(true)}>
+                <ArrowLeft size={18} />
+              </button>
+
+              <div>
+                <h2 className="ai-chat-main__title">Family AI advisor</h2>
+                <p className="ai-chat-main__subtitle">Health-only guidance for symptoms, medicines, reports, and reminders</p>
               </div>
-            )}
+            </div>
 
-            {lastError && <div className="ai-chat-warning">Connection problem: {String(lastError)}</div>}
+            <div className="ai-chat-main__context">
+              <div className="badge badge--primary">
+                <UserRound size={14} />
+                Context: talking about {contextLabel}
+              </div>
+
+              <div className="ai-chat-context-pills">
+                {contexts.map((context) => (
+                  <button
+                    key={context.key}
+                    type="button"
+                    className={`pill-button ${selectedContext === context.key ? "is-active" : ""}`}
+                    onClick={() => {
+                      setSelectedContext(context.key);
+                      setSelectedMember(
+                        context.memberId
+                          ? userFamily.find((member) => member._id === context.memberId) || null
+                          : null
+                      );
+                    }}
+                  >
+                    {context.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {newMessagesAvailable && (
-            <button
-              type="button"
-              className="ai-chat-new"
-              onClick={() => {
-                const scroller = scrollRef.current;
-                scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
-                setNewMessagesAvailable(false);
-              }}
-            >
-              New messages
-            </button>
-          )}
-
-          {attachmentPreview && (
-            <div className="ai-chat-attachment">
-              <img src={attachmentPreview.url} alt="preview" className="ai-chat-attachment__image" />
-              <div className="ai-chat-attachment__actions">
-                <button type="button" className="ai-chat-toolbar__btn" onClick={sendAttachment}>
-                  Send image
-                </button>
-                <button type="button" className="ai-chat-toolbar__btn" onClick={() => setAttachmentPreview(null)}>
-                  Remove
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="ai-chat-composer">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={onFileChange}
-              style={{ display: "none" }}
-              id="aichat-file"
-            />
-
-            <label htmlFor="aichat-file" className="ai-chat-composer__icon" title="Attach image">
-              <ImagePlus size={18} />
-            </label>
-
-            <button
-              type="button"
-              className={`ai-chat-composer__icon ${isRecording ? "is-recording" : ""}`}
-              onClick={() => (isRecording ? stopRecording() : startRecording())}
-              title="Record voice"
-            >
-              <Mic size={18} />
-            </button>
-
-            <div className="ai-chat-composer__emoji">
-              <button type="button" className="ai-chat-composer__icon" onClick={() => setShowEmojiPicker((previous) => !previous)}>
-                <Sticker size={18} />
-              </button>
-              {showEmojiPicker && (
-                <div className="ai-chat-composer__emoji-panel">
-                  <EmojiPicker onEmojiClick={(emojiData) => setInput((previous) => previous + (emojiData?.emoji || ""))} />
+          <div className="ai-chat-messages" ref={listRef}>
+            <div className={`ai-chat-thread ${hasMessages ? "" : "is-empty"}`}>
+              {!hasMessages ? (
+                <div className="ai-chat-empty">
+                  <h3>Ask a family health question</h3>
+                  <p>This assistant only handles health topics like symptoms, medicines, reports, vitals, reminders, and safer next steps.</p>
+                  <div className="ai-chat-empty__suggestions">
+                    {SUGGESTED_PROMPTS.map((prompt) => (
+                      <button key={prompt} type="button" className="pill-button" onClick={() => sendMessage(prompt)}>
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
+              ) : null}
+
+              {messages.map((message, index) => (
+                <article
+                  key={`${message.ts || index}-${index}`}
+                  className={`ai-chat-message ${message.sender === "user" ? "is-user" : "is-ai"}`}
+                >
+                  <div className={`ai-chat-bubble ${message.sender === "user" ? "is-user" : "is-ai"}`}>
+                    {message.attachment ? <img src={message.attachment} alt="attachment" loading="lazy" /> : null}
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+
+                    {message.sender === "ai" && message.actions?.length ? (
+                      <div className="ai-chat-actions">
+                        {message.actions.map((action) => (
+                          <button
+                            key={`${message.ts}-${action.type}-${action.label}`}
+                            type="button"
+                            className="pill-button"
+                            onClick={() => handleMessageAction(action, message)}
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <small>{new Date(message.ts || Date.now()).toLocaleString("en-IN")}</small>
+                  </div>
+                </article>
+              ))}
+
+              {loading ? (
+                <article className="ai-chat-message is-ai">
+                  <div className="ai-chat-bubble is-ai ai-chat-bubble--typing">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </article>
+              ) : null}
             </div>
+          </div>
 
-            <input
-              className="ai-chat-composer__input"
-              placeholder="Ask a health question..."
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
+          <div className="ai-chat-composer-wrap">
+            {pendingReminderSuggestion ? (
+              <div className="ai-chat-reminder-suggestion">
+                <div>
+                  <strong>Want to set a daily reminder for {pendingReminderSuggestion.title}?</strong>
+                  <p>
+                    This was just added to {pendingReminderSuggestion.memberName}&apos;s medications, so we can prefill
+                    the reminder for you.
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => openReminderDraft(pendingReminderSuggestion)}>
+                  Create reminder
+                </Button>
+              </div>
+            ) : null}
 
-            <button type="button" className="ai-chat-composer__send" onClick={() => handleSend()}>
-              Send
-            </button>
+            {attachmentPreview ? (
+              <div className="ai-chat-attachment">
+                <img src={attachmentPreview.preview} alt={attachmentPreview.fileName} loading="lazy" />
+                <div>
+                  <strong>{attachmentPreview.fileName}</strong>
+                  <p>Ready to send to the AI for review.</p>
+                </div>
+                <Button size="sm" onClick={sendAttachment}>
+                  Send attachment
+                </Button>
+              </div>
+            ) : null}
+
+            <div className="ai-chat-composer">
+              <label className="ai-chat-composer__icon">
+                <Paperclip size={18} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    const payload = await fileToBase64Payload(file);
+                    setAttachmentPreview(payload);
+                  }}
+                />
+              </label>
+
+              <input
+                className="ai-chat-composer__input"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="Ask about symptoms, medicines, reports, vitals, or reminders"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    sendMessage();
+                  }
+                }}
+              />
+
+              <Button rightIcon={<Send size={16} />} onClick={() => sendMessage()}>
+                Send
+              </Button>
+            </div>
           </div>
         </section>
       </div>
     </div>
   );
-}
+};
+
+export default AIChat;

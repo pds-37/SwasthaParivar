@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import FamilyMember from "../models/familymembermodel.js";
+import { sendError, sendSuccess } from "../utils/apiResponse.js";
 
 const TEMPLATE_LIBRARY = [
   {
@@ -439,18 +440,21 @@ export const generateRemedy = async (req, res) => {
       remedy = buildFallbackRemedy(query, context);
     }
 
-    return res.json({
-      remedy,
-      context: {
-        focusLabel: context.focusLabel,
-        healthNotes: context.healthNotes,
-        flags: context.flags,
+    return sendSuccess(res, {
+      data: {
+        remedy,
+        context: {
+          focusLabel: context.focusLabel,
+          healthNotes: context.healthNotes,
+          flags: context.flags,
+        },
       },
     });
   } catch (error) {
-    console.error("Remedy generation error:", error);
-    return res.status(500).json({
-      error: "Failed to generate remedy",
+    return sendError(res, {
+      status: 500,
+      code: "REMEDY_GENERATION_FAILED",
+      message: "Failed to generate remedy",
       details: error.message,
     });
   }

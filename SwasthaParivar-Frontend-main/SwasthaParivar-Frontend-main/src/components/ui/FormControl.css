@@ -1,0 +1,210 @@
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.ui-field__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.ui-field__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.ui-field__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 3rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    background-color var(--transition-base);
+}
+
+.ui-field__control:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 0.25rem var(--color-focus-ring);
+}
+
+.ui-field__control.is-disabled {
+  opacity: 0.68;
+  background: var(--color-surface-raised);
+}
+
+.ui-field__control.is-error {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--color-danger) 16%, transparent);
+}
+
+.ui-field__icon,
+.ui-field__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+
+.ui-field__icon {
+  padding-left: var(--space-4);
+}
+
+.ui-field__action {
+  padding-right: var(--space-4);
+}
+
+.ui-field__input,
+.ui-field__select,
+.ui-field__textarea {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--text-md);
+  line-height: 1.5;
+  outline: 0;
+}
+
+.ui-field__input,
+.ui-field__select {
+  min-height: 3rem;
+  padding: 0 var(--space-4);
+}
+
+.ui-field__control.has-left-icon .ui-field__input,
+.ui-field__control.has-left-icon .ui-field__select {
+  padding-left: 0;
+}
+
+.ui-field__control.has-right-slot .ui-field__input,
+.ui-field__control.has-right-slot .ui-field__select {
+  padding-right: 0;
+}
+
+.ui-field__textarea {
+  min-height: 7.5rem;
+  resize: vertical;
+  padding: var(--space-4);
+}
+
+.ui-field__input::placeholder,
+.ui-field__textarea::placeholder {
+  color: var(--color-text-disabled);
+  opacity: 1;
+}
+
+.ui-field__helper,
+.ui-field__error {
+  min-height: 1rem;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.ui-field__helper {
+  color: var(--color-text-secondary);
+}
+
+.ui-field__error {
+  color: var(--color-danger);
+}
+
+.ui-field__input:-webkit-autofill,
+.ui-field__input:-webkit-autofill:hover,
+.ui-field__input:-webkit-autofill:focus,
+.ui-field__textarea:-webkit-autofill,
+.ui-field__textarea:-webkit-autofill:hover,
+.ui-field__textarea:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px var(--color-surface) inset;
+  -webkit-text-fill-color: var(--color-text-primary);
+  caret-color: var(--color-primary);
+}
+
+.ui-check {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  color: var(--color-text-primary);
+}
+
+.ui-check__box {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.125rem;
+  accent-color: var(--color-primary);
+}
+
+.ui-check__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ui-check__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.ui-check__helper {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.ui-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+}
+
+.ui-toggle__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ui-toggle__track {
+  position: relative;
+  width: 2.875rem;
+  height: 1.625rem;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  transition: background-color var(--transition-base);
+}
+
+.ui-toggle__track::after {
+  content: "";
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-base);
+}
+
+.ui-toggle__input:checked + .ui-toggle__track {
+  background: var(--color-primary);
+}
+
+.ui-toggle__input:checked + .ui-toggle__track::after {
+  transform: translateX(1.25rem);
+}
+
+.ui-toggle__input:focus-visible + .ui-toggle__track {
+  box-shadow: 0 0 0 0.25rem var(--color-focus-ring);
+}

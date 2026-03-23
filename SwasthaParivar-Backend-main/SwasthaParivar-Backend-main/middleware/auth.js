@@ -1,25 +1,43 @@
-// middleware/auth.js
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 import User from "../models/user.js";
-dotenv.config();
-
-const jwtSecret = process.env.JWT_SECRET || "dev_secret_replace_in_prod";
+import { sendError } from "../utils/apiResponse.js";
+import { getAccessTokenFromRequest, verifyJwt } from "../utils/tokenCookies.js";
 
 export default async function auth(req, res, next) {
   try {
-    const header = req.headers.authorization || req.headers.Authorization;
-    if (!header?.startsWith?.("Bearer ")) return res.status(401).json({ message: "Unauthorized" });
+    const token = getAccessTokenFromRequest(req);
+    if (!token) {
+      return sendError(res, {
+        status: 401,
+        code: "UNAUTHORIZED",
+        message: "Authentication required",
+      });
+    }
 
-    const token = header.split(" ")[1];
-    const payload = jwt.verify(token, jwtSecret);
-    // attach user id and optionally fetch user
+    const payload = verifyJwt(token);
+    if (payload.type !== "access") {
+      return sendError(res, {
+        status: 401,
+        code: "INVALID_TOKEN",
+        message: "Invalid access token",
+      });
+    }
+
     req.userId = payload.id;
-    // optional: load user doc
     req.user = await User.findById(payload.id).select("-password").lean();
+    if (!req.user) {
+      return sendError(res, {
+        status: 401,
+        code: "UNAUTHORIZED",
+        message: "User no longer exists",
+      });
+    }
+
     next();
   } catch (err) {
-    console.error("Auth error:", err.message);
-    return res.status(401).json({ message: "Invalid token" });
+    return sendError(res, {
+      status: 401,
+      code: "INVALID_TOKEN",
+      message: "Invalid or expired token",
+    });
   }
 }

@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import User from "../models/user.js";
+import { sendError, sendSuccess } from "../utils/apiResponse.js";
 
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
@@ -17,18 +18,20 @@ if (pushEnabled) {
 
 export const saveSubscription = async (req, res) => {
   try {
-    if (!req.body?.subscription) {
-      return res.status(400).json({ error: "subscription is required" });
-    }
-
     await User.findByIdAndUpdate(req.userId, {
       $set: { pushSubscription: req.body.subscription },
     });
 
-    res.json({ success: true });
+    return sendSuccess(res, {
+      data: { subscribed: true },
+    });
   } catch (err) {
-    console.error("Save subscription error:", err);
-    res.status(500).json({ error: err.message });
+    return sendError(res, {
+      status: 500,
+      code: "NOTIFICATION_SUBSCRIBE_FAILED",
+      message: "Could not save push subscription",
+      details: err.message,
+    });
   }
 };
 
