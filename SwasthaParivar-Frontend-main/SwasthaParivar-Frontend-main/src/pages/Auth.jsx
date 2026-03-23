@@ -97,6 +97,16 @@ const getAuthFieldErrors = ({ isLogin, formData }) => {
   return nextErrors;
 };
 
+const getReadableAuthError = (error) => {
+  const message = error?.message || "";
+
+  if (/network error/i.test(message)) {
+    return "Could not reach the server. Please try again in a moment. If this is a deployed preview, the backend may still be waking up or the frontend origin may not be allowed yet.";
+  }
+
+  return message || "Authentication failed";
+};
+
 const Auth = () => {
   const { login, signup } = useAuth();
   const { mode, toggleTheme } = useThemeMode();
@@ -168,7 +178,7 @@ const Auth = () => {
         });
       }
     } catch (err) {
-      setError(err.message || "Authentication failed");
+      setError(getReadableAuthError(err));
     } finally {
       setLoading(false);
     }
@@ -177,10 +187,7 @@ const Auth = () => {
   const handleGoogleContinue = () => {
     setError("");
     setGoogleLoading(true);
-    const currentOrigin = window.location.origin;
-    window.location.assign(
-      `${buildApiUrl("/auth/google/start")}?returnTo=${encodeURIComponent(currentOrigin)}`
-    );
+    window.location.assign(buildApiUrl("/auth/google/start"));
   };
 
   return (

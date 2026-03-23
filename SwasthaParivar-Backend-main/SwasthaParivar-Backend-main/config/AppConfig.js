@@ -25,12 +25,24 @@ class AppConfig {
     this.validate();
   }
 
+  normalizeOrigin(value = "") {
+    try {
+      return new URL(value).origin;
+    } catch {
+      return "";
+    }
+  }
+
   get isProduction() {
     return this.nodeEnv === "production";
   }
 
   get defaultClientUrl() {
-    return this.clientUrls[0] || "http://localhost:5173";
+    return (
+      this.clientUrls.find((origin) => !origin.includes("*")) ||
+      this.clientUrls[0] ||
+      "http://localhost:5173"
+    );
   }
 
   get hasGoogleAuth() {
@@ -41,10 +53,73 @@ class AppConfig {
     const fallback =
       "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:4173,http://127.0.0.1:4173";
 
-    return (rawValue || fallback)
+    return [...new Set((rawValue || fallback)
       .split(",")
-      .map((origin) => origin.trim())
-      .filter(Boolean);
+      .map((origin) => this.normalizeOrigin(origin.trim()) || origin.trim())
+      .filter(Boolean))];
+  }
+
+  isLocalDevOrigin(origin = "") {
+    return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+  }
+
+  matchesAllowedOrigin(origin = "") {
+    const normalizedOrigin = this.normalizeOrigin(origin);
+    if (!normalizedOrigin) {
+      return false;
+    }
+
+    if (!this.isProduction && this.isLocalDevOrigin(normalizedOrigin)) {
+      return true;
+    }
+
+    return this.corsOrigins.some((allowedOrigin) =>
+      this.matchesOriginPattern(normalizedOrigin, allowedOrigin)
+    );
+  }
+
+  matchesOriginPattern(origin, allowedOrigin) {
+    if (origin === allowedOrigin) {
+      return true;
+    }
+
+    if (allowedOrigin.includes("*")) {
+      return this.matchesWildcardOrigin(origin, allowedOrigin);
+    }
+
+    return this.matchesVercelPreviewOrigin(origin, allowedOrigin);
+  }
+
+  matchesWildcardOrigin(origin, allowedOrigin) {
+    const escaped = allowedOrigin.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`^${escaped.replace(/\\\*/g, ".*")}$`, "i");
+    return pattern.test(origin);
+  }
+
+  matchesVercelPreviewOrigin(origin, allowedOrigin) {
+    try {
+      const candidateUrl = new URL(origin);
+      const allowedUrl = new URL(allowedOrigin);
+      const allowedHostname = allowedUrl.hostname;
+
+      if (
+        candidateUrl.protocol !== allowedUrl.protocol ||
+        !allowedHostname.endsWith(".vercel.app")
+      ) {
+        return false;
+      }
+
+      const projectSlug = allowedHostname.replace(/\.vercel\.app$/i, "");
+      const candidateHostname = candidateUrl.hostname;
+
+      return (
+        candidateHostname === allowedHostname ||
+        (candidateHostname.startsWith(`${projectSlug}-`) &&
+          candidateHostname.endsWith(".vercel.app"))
+      );
+    } catch {
+      return false;
+    }
   }
 
   validate() {

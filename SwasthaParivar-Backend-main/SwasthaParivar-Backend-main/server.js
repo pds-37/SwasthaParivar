@@ -33,9 +33,6 @@ let server;
 let isShuttingDown = false;
 let activeRequests = 0;
 
-const isLocalDevOrigin = (origin) =>
-  !appConfig.isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin || "");
-
 initSentry(appConfig);
 
 process.on("unhandledRejection", (reason) => {
@@ -76,7 +73,7 @@ app.use(requestLogger);
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || appConfig.corsOrigins.includes(origin) || isLocalDevOrigin(origin)) {
+      if (!origin || appConfig.matchesAllowedOrigin(origin)) {
         return callback(null, true);
       }
 

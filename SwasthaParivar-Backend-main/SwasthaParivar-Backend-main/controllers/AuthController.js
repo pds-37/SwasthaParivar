@@ -13,7 +13,6 @@ const GOOGLE_STATE_COOKIE = "sp_google_state";
 const GOOGLE_RETURN_COOKIE = "sp_google_return_to";
 const GOOGLE_COOKIE_PATH = "/api/auth";
 const GOOGLE_COOKIE_MAX_AGE_MS = 10 * 60 * 1000;
-const LOCAL_DEV_ORIGIN_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
 
 const getGoogleCookieOptions = (maxAge) => ({
   ...getCookieOptions(maxAge, GOOGLE_COOKIE_PATH),
@@ -29,9 +28,7 @@ const normalizeOrigin = (value = "") => {
 };
 
 const isAllowedClientOrigin = (origin) =>
-  Boolean(origin) &&
-  (appConfig.clientUrls.includes(origin) ||
-    (!appConfig.isProduction && LOCAL_DEV_ORIGIN_PATTERN.test(origin)));
+  Boolean(origin) && appConfig.matchesAllowedOrigin(origin);
 
 const resolveClientOrigin = (req, candidate = "") => {
   const normalizedCandidate = normalizeOrigin(candidate);
