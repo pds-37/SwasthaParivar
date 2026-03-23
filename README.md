@@ -141,9 +141,7 @@ Swastha Parivar/
 │   └── SwasthaParivar-Frontend-main/
 ├── SwasthaParivar-Backend-main/
 │   └── SwasthaParivar-Backend-main/
-├── APP_QA_PLAYBOOK.md
-├── CHANGES.md
-└── DEPLOYMENT.md
+
 ```
 
 ---
