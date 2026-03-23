@@ -14,25 +14,6 @@ Organize reminders, reports, member records, health snapshots, and AI-guided car
 
 ---
 
-## 📸 Screenshots
-
-> Replace the placeholder links below with your actual screenshot URLs once uploaded to `/assets` or an image host.
-
-### Dashboard & Family Overview
-![Dashboard](https://via.placeholder.com/1200x650/1a1a2e/4CAF50?text=Dashboard+–+Family+Overview)
-
-### Health Snapshots & Vitals
-![Health Snapshots](https://via.placeholder.com/1200x650/1a1a2e/4CAF50?text=Health+Snapshots+%26+Vitals+Tracker)
-
-### AI Health Advisor
-![AI Chat](https://via.placeholder.com/1200x650/1a1a2e/4CAF50?text=AI+Health+Advisor+Chat)
-
-### Reminders & Reports
-| Reminders | Reports |
-|-----------|---------|
-| ![Reminders](https://via.placeholder.com/580x380/1a1a2e/4CAF50?text=Reminder+Scheduler) | ![Reports](https://via.placeholder.com/580x380/1a1a2e/4CAF50?text=Report+Upload+%26+AI+Summary) |
-
----
 
 ## 🩺 The Problem
 
