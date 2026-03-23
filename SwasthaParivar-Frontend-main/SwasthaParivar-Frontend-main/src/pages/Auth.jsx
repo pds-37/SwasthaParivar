@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   HeartPulse,
@@ -345,7 +345,8 @@ const Auth = () => {
           </Button>
 
           <p className="policy-text">
-            By continuing, you agree to our Terms of Service and Privacy Policy.
+            By continuing, you agree to our <Link to="/terms">Terms of Service</Link> and{" "}
+            <Link to="/privacy">Privacy Policy</Link>.
           </p>
         </section>
       </div>

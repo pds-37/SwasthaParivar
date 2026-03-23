@@ -13,6 +13,8 @@ import { AppThemeProvider } from "./theme/ThemeProvider";
 
 const Auth = lazy(() => import("./pages/Auth"));
 const Landing = lazy(() => import("./pages/Landing"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const HealthMonitor = lazy(() => import("./pages/HealthMonitor"));
 const FamilyMembers = lazy(() => import("./pages/FamilyMembers"));
@@ -84,6 +86,8 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<RouteScreen page={Landing} />} />
+      <Route path="/privacy" element={<RouteScreen page={Privacy} />} />
+      <Route path="/terms" element={<RouteScreen page={Terms} />} />
       <Route
         path="/auth"
         element={
