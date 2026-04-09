@@ -55,6 +55,9 @@ const SUGGESTED_PROMPTS = [
   "How should I prepare for a blood test tomorrow morning?",
 ];
 
+const CHAT_HISTORY_LIMIT = 8;
+const CHAT_HISTORY_TEXT_MAX = 2000;
+
 const fileToBase64Payload = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -82,6 +85,13 @@ const fileToBase64Payload = (file) =>
   });
 
 const buildDefaultConversation = () => [];
+
+const serializeHistoryForRequest = (entries = []) =>
+  entries.slice(-CHAT_HISTORY_LIMIT).map(({ sender, text, ts }) => ({
+    sender: sender === "user" ? "user" : "ai",
+    text: String(text || "").trim().slice(0, CHAT_HISTORY_TEXT_MAX),
+    ts,
+  }));
 
 const findMatches = (text, keywords) => {
   const normalized = String(text || "").toLowerCase();
@@ -368,7 +378,7 @@ const AIChat = () => {
       const response = await api.post("/ai/chat", {
         message: trimmed,
         member: memberValue,
-        history: history.slice(-8).map(({ sender, text, ts }) => ({ sender, text, ts })),
+        history: serializeHistoryForRequest(history),
       });
 
       const nextMessages = [
