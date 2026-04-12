@@ -3,9 +3,22 @@ import householdService from "../services/household/HouseholdService.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 
+const buildSymptomScope = (householdId, ownerId) =>
+  householdId
+    ? {
+        $or: [
+          { householdId },
+          { ownerId, householdId: null },
+        ],
+      }
+    : { ownerId };
+
 export const createSymptomEpisode = async (req, res) => {
   try {
-    const householdContext = await householdService.ensureUserHouseholdContext(req.userId);
+    const householdContext = await householdService.getOptionalUserHouseholdContext(
+      req.userId,
+      "createSymptomEpisode"
+    );
     const memberResult = await householdService.findAccessibleMember(req.userId, req.body.memberId);
 
     if (memberResult.error || !memberResult.member) {
@@ -42,13 +55,13 @@ export const createSymptomEpisode = async (req, res) => {
 
 export const listSymptomEpisodes = async (req, res) => {
   try {
-    const householdContext = await householdService.ensureUserHouseholdContext(req.userId);
+    const householdContext = await householdService.getOptionalUserHouseholdContext(
+      req.userId,
+      "listSymptomEpisodes"
+    );
     const pagination = parsePagination(req.query);
     const filter = {
-      $or: [
-        { householdId: householdContext?.household?._id || null },
-        { ownerId: req.userId },
-      ],
+      ...buildSymptomScope(householdContext?.household?._id || null, req.userId),
       ...(req.query.memberId ? { memberId: req.query.memberId } : {}),
     };
 

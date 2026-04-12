@@ -96,6 +96,7 @@ const FamilyDashboard = () => {
       }),
     [reminders]
   );
+  const dashboardSubheading = `${today} - ${remindersToday.length} due today`;
 
   const upcomingReminders = useMemo(
     () =>
@@ -263,12 +264,10 @@ const FamilyDashboard = () => {
           <div className="dashboard-overview__copy">
             <span className="eyebrow">
               <Sparkles size={16} />
-              Household command center
+              Care snapshot
             </span>
             <h1 className="text-h1">{dashboardHeading}</h1>
-            <p className="text-body-lg">
-              {today} - {remindersToday.length} reminder{remindersToday.length === 1 ? "" : "s"} due today
-            </p>
+            <p className="text-body-lg">{dashboardSubheading}</p>
 
             <div className="dashboard-summary-pills">
               <span className="badge badge--primary">{members.length} family profiles</span>

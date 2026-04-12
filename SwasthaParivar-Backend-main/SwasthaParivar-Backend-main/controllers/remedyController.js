@@ -215,7 +215,10 @@ function buildMemberSignal(member) {
 
 async function buildFocusContext(userId, selectedMemberId) {
   let members = [];
-  const householdContext = await householdService.ensureUserHouseholdContext(userId);
+  const householdContext = await householdService.getOptionalUserHouseholdContext(
+    userId,
+    "buildRemedyFocusContext"
+  );
   const householdId = householdContext?.household?._id || null;
 
   if (
@@ -225,7 +228,7 @@ async function buildFocusContext(userId, selectedMemberId) {
   ) {
     const member = await FamilyMember.findOne({
       _id: selectedMemberId,
-      householdId,
+      ...(householdId ? { householdId } : { user: userId }),
       profileStatus: { $ne: "archived" },
     }).lean();
 
@@ -235,10 +238,17 @@ async function buildFocusContext(userId, selectedMemberId) {
   }
 
   if (members.length === 0) {
-    members = await FamilyMember.find({
-      householdId,
-      profileStatus: { $ne: "archived" },
-    }).lean();
+    members = await FamilyMember.find(
+      householdId
+        ? {
+            householdId,
+            profileStatus: { $ne: "archived" },
+          }
+        : {
+            user: userId,
+            profileStatus: { $ne: "archived" },
+          }
+    ).lean();
   }
 
   const signals = members.map(buildMemberSignal);

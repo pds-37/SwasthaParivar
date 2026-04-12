@@ -303,11 +303,17 @@ class FamilyMemberService {
       return { status: 400, error: { code: "VALIDATION_ERROR", message: sanitized.error } };
     }
 
-    const householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+    const householdContext = await householdService.getOptionalUserHouseholdContext(
+      ownerId,
+      "createMember"
+    );
     if (!householdContext) {
       return {
-        status: 404,
-        error: { code: "HOUSEHOLD_NOT_FOUND", message: "Household not found" },
+        status: 503,
+        error: {
+          code: "HOUSEHOLD_UNAVAILABLE",
+          message: "Household setup is still syncing. Please try again in a moment.",
+        },
       };
     }
 
@@ -406,19 +412,23 @@ class FamilyMemberService {
       return { status: 400, error: { code: "INVALID_MEMBER_ID", message: "Invalid member id" } };
     }
 
-    const householdContext = await householdService.ensureUserHouseholdContext(ownerId);
-    if (!householdContext) {
-      return {
-        status: 404,
-        error: { code: "HOUSEHOLD_NOT_FOUND", message: "Household not found" },
-      };
-    }
-
-    const member = await FamilyMember.findOne({
-      _id: memberId,
-      householdId: householdContext.household._id,
-      profileStatus: { $ne: "archived" },
-    });
+    const householdContext = await householdService.getOptionalUserHouseholdContext(
+      ownerId,
+      "deleteMember"
+    );
+    const member = await FamilyMember.findOne(
+      householdContext
+        ? {
+            _id: memberId,
+            householdId: householdContext.household._id,
+            profileStatus: { $ne: "archived" },
+          }
+        : {
+            _id: memberId,
+            user: ownerId,
+            profileStatus: { $ne: "archived" },
+          }
+    );
 
     if (!member) {
       return { status: 404, error: { code: "MEMBER_NOT_FOUND", message: "Member not found" } };

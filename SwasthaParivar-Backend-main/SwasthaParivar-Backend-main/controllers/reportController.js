@@ -38,21 +38,24 @@ const serializeReport = (req, report) => {
   };
 };
 
+const buildReportScope = (householdId, ownerId) =>
+  householdId
+    ? {
+        $or: [
+          { householdId },
+          { ownerId, householdId: null },
+        ],
+      }
+    : { ownerId };
+
 export const listReports = async (req, res) => {
   try {
     const pagination = parsePagination(req.query);
-    let householdContext = null;
-    try {
-      householdContext = await householdService.ensureUserHouseholdContext(req.userId);
-    } catch {
-      householdContext = null;
-    }
-    const filter = {
-      $or: [
-        { householdId: householdContext?.household?._id || null },
-        { ownerId: req.userId },
-      ],
-    };
+    const householdContext = await householdService.getOptionalUserHouseholdContext(
+      req.userId,
+      "listReports"
+    );
+    const filter = buildReportScope(householdContext?.household?._id || null, req.userId);
 
     if (req.query.memberId) {
       filter.memberId = req.query.memberId;
@@ -87,7 +90,10 @@ export const listReports = async (req, res) => {
 
 export const uploadReport = async (req, res) => {
   try {
-    const householdContext = await householdService.ensureUserHouseholdContext(req.userId);
+    const householdContext = await householdService.getOptionalUserHouseholdContext(
+      req.userId,
+      "uploadReport"
+    );
 
     if (!req.file) {
       return sendError(res, {
@@ -133,12 +139,21 @@ export const uploadReport = async (req, res) => {
 
     const member = memberResult.member;
 
-    const review = await reviewHealthAttachment({
-      base64Data: req.file.buffer.toString("base64"),
-      mimeType: detectedMime,
-      fileName: req.file.originalname,
-      memberLabel: member.name,
-    });
+    let review;
+    try {
+      review = await reviewHealthAttachment({
+        base64Data: req.file.buffer.toString("base64"),
+        mimeType: detectedMime,
+        fileName: req.file.originalname,
+        memberLabel: member.name,
+      });
+    } catch {
+      review = {
+        isHealthReport: true,
+        summary: "AI summary is temporarily unavailable. The report was still saved.",
+        reason: "AI review unavailable",
+      };
+    }
 
     if (!review.isHealthReport) {
       return sendError(res, {
@@ -179,13 +194,13 @@ export const uploadReport = async (req, res) => {
 
 export const downloadReport = async (req, res) => {
   try {
-    const householdContext = await householdService.ensureUserHouseholdContext(req.userId);
+    const householdContext = await householdService.getOptionalUserHouseholdContext(
+      req.userId,
+      "downloadReport"
+    );
     const report = await Report.findOne({
       _id: req.params.id,
-      $or: [
-        { householdId: householdContext?.household?._id || null },
-        { ownerId: req.userId },
-      ],
+      ...buildReportScope(householdContext?.household?._id || null, req.userId),
     }).select("+fileBuffer");
 
     if (!report) {

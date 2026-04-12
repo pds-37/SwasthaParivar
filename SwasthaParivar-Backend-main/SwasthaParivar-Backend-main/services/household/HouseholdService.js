@@ -314,21 +314,62 @@ class HouseholdService {
     });
   }
 
+  getUserIdValue(userOrId) {
+    const userId =
+      typeof userOrId === "object" && userOrId?._id ? userOrId._id : userOrId;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return null;
+    }
+
+    return userId;
+  }
+
   async buildFallbackSummary(userId) {
+    const normalizedUserId = this.getUserIdValue(userId);
+    if (!normalizedUserId) {
+      return {
+        household: null,
+        selfMember: null,
+        members: [],
+        memberships: [],
+        pendingInvites: [],
+      };
+    }
+
     const members = await FamilyMember.find({
-      user: userId,
+      user: normalizedUserId,
       profileStatus: { $ne: "archived" },
     })
       .sort({ createdAt: 1 })
       .lean();
 
+    const selfMember =
+      members.find((member) => String(member.linkedUserId || "") === String(normalizedUserId)) ||
+      members.find((member) => member.profileType === "self") ||
+      null;
+
     return {
       household: null,
-      selfMember: null,
+      selfMember,
       members,
       memberships: [],
       pendingInvites: [],
     };
+  }
+
+  async getOptionalUserHouseholdContext(userOrId, action = "optionalHouseholdContext") {
+    const userId = this.getUserIdValue(userOrId);
+    if (!userId) {
+      return null;
+    }
+
+    try {
+      return await this.ensureUserHouseholdContext(userOrId);
+    } catch (error) {
+      this.logHouseholdFallback(userId, error, action);
+      return null;
+    }
   }
 
   buildSafeUser(user, context = {}) {

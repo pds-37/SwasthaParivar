@@ -60,15 +60,13 @@ const ensureMemberAccess = async (userId, memberId) => {
   return Boolean(result?.member);
 };
 
+const getHouseholdContext = (userId, action) =>
+  householdService.getOptionalUserHouseholdContext(userId, action);
+
 export const createReminder = async (req, res) => {
   try {
-    const ownerId = req.user._id;
-    let householdContext = null;
-    try {
-      householdContext = await householdService.ensureUserHouseholdContext(ownerId);
-    } catch {
-      householdContext = null;
-    }
+    const ownerId = req.userId;
+    const householdContext = await getHouseholdContext(ownerId, "createReminder");
     const { title, description, category, memberId, frequency, options, nextRunAt, meta } = req.body;
 
     if (!(await ensureMemberAccess(ownerId, memberId))) {
@@ -112,13 +110,8 @@ export const createReminder = async (req, res) => {
 
 export const listReminders = async (req, res) => {
   try {
-    const ownerId = req.user._id;
-    let householdContext = null;
-    try {
-      householdContext = await householdService.ensureUserHouseholdContext(ownerId);
-    } catch {
-      householdContext = null;
-    }
+    const ownerId = req.userId;
+    const householdContext = await getHouseholdContext(ownerId, "listReminders");
     const pagination = parsePagination(req.query);
     const filter = buildReminderScope(householdContext?.household?._id || null, ownerId);
     const [reminders, total] = await Promise.all([
@@ -142,10 +135,11 @@ export const listReminders = async (req, res) => {
 
 export const getReminder = async (req, res) => {
   try {
-    const householdContext = await householdService.ensureUserHouseholdContext(req.user._id);
+    const ownerId = req.userId;
+    const householdContext = await getHouseholdContext(ownerId, "getReminder");
     const reminder = await Reminder.findOne({
       _id: req.params.id,
-      ...buildReminderScope(householdContext?.household?._id || null, req.user._id),
+      ...buildReminderScope(householdContext?.household?._id || null, ownerId),
     });
 
     if (!reminder) {
@@ -169,8 +163,8 @@ export const getReminder = async (req, res) => {
 
 export const updateReminder = async (req, res) => {
   try {
-    const ownerId = req.user._id;
-    const householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+    const ownerId = req.userId;
+    const householdContext = await getHouseholdContext(ownerId, "updateReminder");
     const update = { ...req.body };
 
     if (update.memberId && !(await ensureMemberAccess(ownerId, update.memberId))) {
@@ -212,10 +206,11 @@ export const updateReminder = async (req, res) => {
 
 export const deleteReminder = async (req, res) => {
   try {
-    const householdContext = await householdService.ensureUserHouseholdContext(req.user._id);
+    const ownerId = req.userId;
+    const householdContext = await getHouseholdContext(ownerId, "deleteReminder");
     const reminder = await Reminder.findOneAndDelete({
       _id: req.params.id,
-      ...buildReminderScope(householdContext?.household?._id || null, req.user._id),
+      ...buildReminderScope(householdContext?.household?._id || null, ownerId),
     });
 
     if (!reminder) {
@@ -241,10 +236,11 @@ export const deleteReminder = async (req, res) => {
 
 export const triggerReminderNow = async (req, res) => {
   try {
-    const householdContext = await householdService.ensureUserHouseholdContext(req.user._id);
+    const ownerId = req.userId;
+    const householdContext = await getHouseholdContext(ownerId, "triggerReminder");
     const reminder = await Reminder.findOne({
       _id: req.params.id,
-      ...buildReminderScope(householdContext?.household?._id || null, req.user._id),
+      ...buildReminderScope(householdContext?.household?._id || null, ownerId),
     });
 
     if (!reminder) {
@@ -280,9 +276,13 @@ export const triggerReminderNow = async (req, res) => {
 
 export const softDeleteReminder = async (req, res) => {
   try {
-    const householdContext = await householdService.ensureUserHouseholdContext(req.user._id);
+    const ownerId = req.userId;
+    const householdContext = await getHouseholdContext(ownerId, "softDeleteReminder");
     const reminder = await Reminder.findOneAndUpdate(
-      { _id: req.params.id, ...buildReminderScope(householdContext?.household?._id || null, req.user._id) },
+      {
+        _id: req.params.id,
+        ...buildReminderScope(householdContext?.household?._id || null, ownerId),
+      },
       { active: false, deletedAt: new Date() },
       { new: true }
     );
@@ -308,14 +308,20 @@ export const softDeleteReminder = async (req, res) => {
 
 export const restoreReminder = async (req, res) => {
   try {
-    const householdContext = await householdService.ensureUserHouseholdContext(req.user._id);
+    const ownerId = req.userId;
+    const householdContext = await getHouseholdContext(ownerId, "restoreReminder");
+    const restoreScope = householdContext?.household?._id
+      ? {
+          $or: [
+            { householdId: householdContext.household._id },
+            { ownerId, householdId: null },
+          ],
+        }
+      : { ownerId };
     const reminder = await Reminder.findOneAndUpdate(
       {
         _id: req.params.id,
-        $or: [
-          { householdId: householdContext?.household?._id || null },
-          { ownerId: req.user._id, householdId: null },
-        ],
+        ...restoreScope,
       },
       { active: true, deletedAt: null },
       { new: true }

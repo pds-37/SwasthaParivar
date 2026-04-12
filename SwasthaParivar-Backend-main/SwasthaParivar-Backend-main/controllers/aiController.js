@@ -244,6 +244,82 @@ function buildOutOfScopeReply() {
   return "I can only help with family health topics such as symptoms, medicines, reports, reminders, vitals, remedies, and doctor follow-up. Please ask a health-related question and mention the family member or health issue you need help with.";
 }
 
+function buildRuleBasedHealthReply(message, context = {}) {
+  const normalized = String(message || "").trim().toLowerCase();
+  const focusLabel = context?.focusLabel || "your family";
+
+  const response = {
+    summary: `Here is general guidance for ${focusLabel}.`,
+    doNow: [
+      "Rest, hydrate, and keep meals light.",
+      "Track symptoms for the next 12 to 24 hours.",
+    ],
+    watchOuts: [
+      "Avoid starting new medicines unless you already know they are safe for the person involved.",
+    ],
+    doctor: [
+      "Get medical help sooner if symptoms become severe, keep worsening, or feel unusual for this person.",
+    ],
+  };
+
+  if (/(acidity|acid reflux|heartburn|indigestion|gas|bloating)/i.test(normalized)) {
+    response.summary = `This sounds like mild acidity or post-meal indigestion for ${focusLabel}.`;
+    response.doNow = [
+      "Sip water slowly and stay upright for 2 to 3 hours after dinner.",
+      "Choose a lighter next meal and avoid spicy, oily, or very late-night food.",
+      "A short gentle walk after meals can help if the person feels comfortable.",
+    ];
+    response.watchOuts = [
+      "Avoid lying flat right after eating.",
+      "Avoid repeated use of painkillers or trigger foods if they usually worsen acidity.",
+    ];
+    response.doctor = [
+      "Contact a doctor urgently for chest pain, vomiting blood, black stools, trouble swallowing, or severe persistent pain.",
+      "Arrange a medical review if acidity is happening often or disturbing sleep.",
+    ];
+  } else if (/(fever|temperature|viral)/i.test(normalized)) {
+    response.summary = `This sounds like a fever-related concern for ${focusLabel}.`;
+    response.doNow = [
+      "Encourage fluids, rest, and light food.",
+      "Check temperature and note any worsening symptoms.",
+      "Use only medicines already known to be safe for that person.",
+    ];
+    response.watchOuts = [
+      "Watch for dehydration, reduced urination, unusual sleepiness, or confusion.",
+    ];
+    response.doctor = [
+      "Get urgent help for breathing trouble, severe weakness, dehydration, seizures, or fever that is very high or persistent.",
+    ];
+  } else if (/(cough|cold|sore throat|congestion)/i.test(normalized)) {
+    response.summary = `This sounds like a mild upper-respiratory issue for ${focusLabel}.`;
+    response.doNow = [
+      "Encourage fluids, warm drinks, and rest.",
+      "Steam inhalation can help some adults if done carefully.",
+      "Honey can soothe the throat for adults and children over 1 year old.",
+    ];
+    response.watchOuts = [
+      "Avoid smoke exposure and very cold drinks if they worsen symptoms.",
+    ];
+    response.doctor = [
+      "Get medical help for breathing difficulty, chest pain, blue lips, wheezing, or symptoms that keep worsening.",
+    ];
+  }
+
+  return [
+    "Summary:",
+    response.summary,
+    "",
+    "What to do now:",
+    ...response.doNow.map((item) => `- ${item}`),
+    "",
+    "Watch-outs:",
+    ...response.watchOuts.map((item) => `- ${item}`),
+    "",
+    "When to contact a doctor:",
+    ...response.doctor.map((item) => `- ${item}`),
+  ].join("\n");
+}
+
 function getLatestEntry(entries = []) {
   return entries
     .slice()
@@ -507,13 +583,29 @@ export const chatWithAI = async (req, res) => {
       };
     }
     const prompt = buildAdvisorPrompt({ message, member, history, context });
-    const reply = await generateWithGemini(prompt, { mode: "chat" });
-    await storeAIInsight({
-      userId: req.userId,
-      context,
-      message,
-      reply,
-    });
+    let reply;
+    try {
+      reply = await generateWithGemini(prompt, { mode: "chat" });
+    } catch {
+      reply = buildRuleBasedHealthReply(message, context);
+    }
+
+    try {
+      await storeAIInsight({
+        userId: req.userId,
+        context,
+        message,
+        reply,
+      });
+    } catch (error) {
+      logger.warn({
+        route: "ai-chat-insight",
+        userId: req.userId,
+        error: {
+          message: error?.message || "Could not store AI insight",
+        },
+      });
+    }
 
     return sendSuccess(res, {
       data: { reply },
