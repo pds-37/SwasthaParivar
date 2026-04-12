@@ -63,7 +63,12 @@ const ensureMemberAccess = async (userId, memberId) => {
 export const createReminder = async (req, res) => {
   try {
     const ownerId = req.user._id;
-    const householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+    let householdContext = null;
+    try {
+      householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+    } catch {
+      householdContext = null;
+    }
     const { title, description, category, memberId, frequency, options, nextRunAt, meta } = req.body;
 
     if (!(await ensureMemberAccess(ownerId, memberId))) {
@@ -108,7 +113,12 @@ export const createReminder = async (req, res) => {
 export const listReminders = async (req, res) => {
   try {
     const ownerId = req.user._id;
-    const householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+    let householdContext = null;
+    try {
+      householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+    } catch {
+      householdContext = null;
+    }
     const pagination = parsePagination(req.query);
     const filter = buildReminderScope(householdContext?.household?._id || null, ownerId);
     const [reminders, total] = await Promise.all([

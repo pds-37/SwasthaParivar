@@ -259,27 +259,35 @@ class FamilyMemberService {
 
   async list(ownerId, query = {}) {
     const pagination = parsePagination(query);
-    const householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+    let memberFilter;
 
-    if (!householdContext) {
-      return {
-        status: 404,
-        error: { code: "HOUSEHOLD_NOT_FOUND", message: "Household not found" },
+    try {
+      const householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+
+      if (!householdContext) {
+        return {
+          status: 404,
+          error: { code: "HOUSEHOLD_NOT_FOUND", message: "Household not found" },
+        };
+      }
+
+      memberFilter = {
+        householdId: householdContext.household._id,
+        profileStatus: { $ne: "archived" },
+      };
+    } catch {
+      memberFilter = {
+        user: ownerId,
+        profileStatus: { $ne: "archived" },
       };
     }
 
     const [members, total] = await Promise.all([
-      FamilyMember.find({
-        householdId: householdContext.household._id,
-        profileStatus: { $ne: "archived" },
-      })
+      FamilyMember.find(memberFilter)
         .sort({ createdAt: -1 })
         .skip(pagination.skip)
         .limit(pagination.limit),
-      FamilyMember.countDocuments({
-        householdId: householdContext.household._id,
-        profileStatus: { $ne: "archived" },
-      }),
+      FamilyMember.countDocuments(memberFilter),
     ]);
 
     return {

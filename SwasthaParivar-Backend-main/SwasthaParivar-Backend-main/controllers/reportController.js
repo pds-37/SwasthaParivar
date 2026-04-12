@@ -41,7 +41,12 @@ const serializeReport = (req, report) => {
 export const listReports = async (req, res) => {
   try {
     const pagination = parsePagination(req.query);
-    const householdContext = await householdService.ensureUserHouseholdContext(req.userId);
+    let householdContext = null;
+    try {
+      householdContext = await householdService.ensureUserHouseholdContext(req.userId);
+    } catch {
+      householdContext = null;
+    }
     const filter = {
       $or: [
         { householdId: householdContext?.household?._id || null },

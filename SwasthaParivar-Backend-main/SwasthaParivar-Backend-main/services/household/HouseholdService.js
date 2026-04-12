@@ -9,6 +9,7 @@ import Reminder from "../../models/remindermodel.js";
 import Report from "../../models/reportmodel.js";
 import SymptomEpisode from "../../models/symptomepisode.js";
 import User from "../../models/user.js";
+import { logger } from "../../utils/logger.js";
 
 const HEALTH_METRICS = [
   "bloodPressure",
@@ -302,6 +303,34 @@ class HouseholdService {
     user.primaryMemberProfileId = primaryMemberProfileId;
   }
 
+  logHouseholdFallback(userId, error, action) {
+    logger.warn({
+      route: "household-fallback",
+      userId: String(userId || ""),
+      action,
+      error: {
+        message: error?.message || "Household fallback triggered",
+      },
+    });
+  }
+
+  async buildFallbackSummary(userId) {
+    const members = await FamilyMember.find({
+      user: userId,
+      profileStatus: { $ne: "archived" },
+    })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    return {
+      household: null,
+      selfMember: null,
+      members,
+      memberships: [],
+      pendingInvites: [],
+    };
+  }
+
   buildSafeUser(user, context = {}) {
     return {
       id: user._id,
@@ -482,13 +511,21 @@ class HouseholdService {
   }
 
   async listHouseholdMembers(userId) {
-    const context = await this.ensureUserHouseholdContext(userId);
-    if (!context) return [];
+    try {
+      const context = await this.ensureUserHouseholdContext(userId);
+      if (!context) return [];
 
-    return FamilyMember.find({
-      householdId: context.household._id,
-      profileStatus: { $ne: "archived" },
-    }).sort({ createdAt: 1 });
+      return FamilyMember.find({
+        householdId: context.household._id,
+        profileStatus: { $ne: "archived" },
+      }).sort({ createdAt: 1 });
+    } catch (error) {
+      this.logHouseholdFallback(userId, error, "listHouseholdMembers");
+      return FamilyMember.find({
+        user: userId,
+        profileStatus: { $ne: "archived" },
+      }).sort({ createdAt: 1 });
+    }
   }
 
   async findAccessibleMember(userId, memberId) {
@@ -496,39 +533,63 @@ class HouseholdService {
       return { error: "Invalid member id", status: 400 };
     }
 
-    const context = await this.ensureUserHouseholdContext(userId);
-    if (!context) {
-      return { error: "Household not found", status: 404 };
-    }
+    let member = null;
 
-    const member = await FamilyMember.findOne({
-      _id: memberId,
-      householdId: context.household._id,
-      profileStatus: { $ne: "archived" },
-    });
+    try {
+      const context = await this.ensureUserHouseholdContext(userId);
+      if (!context) {
+        return { error: "Household not found", status: 404 };
+      }
+
+      member = await FamilyMember.findOne({
+        _id: memberId,
+        householdId: context.household._id,
+        profileStatus: { $ne: "archived" },
+      });
+    } catch (error) {
+      this.logHouseholdFallback(userId, error, "findAccessibleMember");
+      member = await FamilyMember.findOne({
+        _id: memberId,
+        user: userId,
+        profileStatus: { $ne: "archived" },
+      });
+    }
 
     if (!member) {
       return { error: "Member not found", status: 404 };
     }
 
-    return { member, household: context.household };
+    return { member, household: member.householdId ? { _id: member.householdId } : null };
   }
 
   async findHouseholdMemberByName(userId, name) {
     const normalized = this.normalizeText(name, { maxLength: 80 });
     if (!normalized) return null;
 
-    const context = await this.ensureUserHouseholdContext(userId);
-    if (!context) return null;
-
-    return FamilyMember.findOne({
-      householdId: context.household._id,
-      profileStatus: { $ne: "archived" },
+    const nameFilter = {
       name: mongoose.trusted({
         $regex: `^${normalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
         $options: "i",
       }),
-    });
+    };
+
+    try {
+      const context = await this.ensureUserHouseholdContext(userId);
+      if (!context) return null;
+
+      return FamilyMember.findOne({
+        householdId: context.household._id,
+        profileStatus: { $ne: "archived" },
+        ...nameFilter,
+      });
+    } catch (error) {
+      this.logHouseholdFallback(userId, error, "findHouseholdMemberByName");
+      return FamilyMember.findOne({
+        user: userId,
+        profileStatus: { $ne: "archived" },
+        ...nameFilter,
+      });
+    }
   }
 
   serializeInvite(invite) {
@@ -585,36 +646,41 @@ class HouseholdService {
   }
 
   async getHouseholdSummary(userId) {
-    const context = await this.ensureUserHouseholdContext(userId);
-    if (!context) {
-      return null;
+    try {
+      const context = await this.ensureUserHouseholdContext(userId);
+      if (!context) {
+        return null;
+      }
+
+      const [members, memberships, pendingInvites] = await Promise.all([
+        FamilyMember.find({
+          householdId: context.household._id,
+          profileStatus: { $ne: "archived" },
+        }).sort({ createdAt: 1 }).lean(),
+        HouseholdMembership.find({
+          householdId: context.household._id,
+          status: "active",
+        }).populate("userId", "email fullName avatarUrl").lean(),
+        HouseholdInvite.find({
+          householdId: context.household._id,
+          status: "pending",
+          expiresAt: { $gt: new Date() },
+        }).sort({ createdAt: -1 }).lean(),
+      ]);
+
+      return {
+        household: this.serializeHousehold(context.household),
+        selfMember: members.find(
+          (member) => String(member._id) === String(context.selfMember._id)
+        ) || context.selfMember.toObject(),
+        members,
+        memberships: memberships.map((membership) => this.serializeMembership(membership)),
+        pendingInvites: pendingInvites.map((invite) => this.serializeInvite(invite)),
+      };
+    } catch (error) {
+      this.logHouseholdFallback(userId, error, "getHouseholdSummary");
+      return this.buildFallbackSummary(userId);
     }
-
-    const [members, memberships, pendingInvites] = await Promise.all([
-      FamilyMember.find({
-        householdId: context.household._id,
-        profileStatus: { $ne: "archived" },
-      }).sort({ createdAt: 1 }).lean(),
-      HouseholdMembership.find({
-        householdId: context.household._id,
-        status: "active",
-      }).populate("userId", "email fullName avatarUrl").lean(),
-      HouseholdInvite.find({
-        householdId: context.household._id,
-        status: "pending",
-        expiresAt: { $gt: new Date() },
-      }).sort({ createdAt: -1 }).lean(),
-    ]);
-
-    return {
-      household: this.serializeHousehold(context.household),
-      selfMember: members.find(
-        (member) => String(member._id) === String(context.selfMember._id)
-      ) || context.selfMember.toObject(),
-      members,
-      memberships: memberships.map((membership) => this.serializeMembership(membership)),
-      pendingInvites: pendingInvites.map((invite) => this.serializeInvite(invite)),
-    };
   }
 
   async generateUniqueInviteCode() {

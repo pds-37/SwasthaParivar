@@ -495,7 +495,17 @@ export const chatWithAI = async (req, res) => {
       return handleCreateReminder(message, req.userId, res, member);
     }
 
-    const context = await buildConversationContext(req.userId, member);
+    let context;
+    try {
+      context = await buildConversationContext(req.userId, member);
+    } catch {
+      context = {
+        focusLabel: member || "Whole Family",
+        memberId: null,
+        summary:
+          "Saved household context could not be loaded for this account right now. Give careful general guidance and ask short follow-up questions when personalization matters.",
+      };
+    }
     const prompt = buildAdvisorPrompt({ message, member, history, context });
     const reply = await generateWithGemini(prompt, { mode: "chat" });
     await storeAIInsight({
@@ -669,7 +679,12 @@ User: "${message}"
   }
 
   const nextRunAt = new Date(`${parsed.date}T${parsed.time}:00`);
-  const householdContext = await householdService.ensureUserHouseholdContext(userId);
+  let householdContext = null;
+  try {
+    householdContext = await householdService.ensureUserHouseholdContext(userId);
+  } catch {
+    householdContext = null;
+  }
 
   const reminder = await Reminder.create({
     ownerId: userId,
@@ -724,7 +739,12 @@ User: "${message}"
 
   const cleanTitle = parsed.title.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
   const keyword = cleanTitle.split(" ").slice(-1)[0];
-  const householdContext = await householdService.ensureUserHouseholdContext(userId);
+  let householdContext = null;
+  try {
+    householdContext = await householdService.ensureUserHouseholdContext(userId);
+  } catch {
+    householdContext = null;
+  }
 
   const reminder = await Reminder.findOne({
     $and: [
@@ -795,7 +815,12 @@ User: "${message}"
       message: "Title missing for update",
     });
   }
-  const householdContext = await householdService.ensureUserHouseholdContext(userId);
+  let householdContext = null;
+  try {
+    householdContext = await householdService.ensureUserHouseholdContext(userId);
+  } catch {
+    householdContext = null;
+  }
 
   const reminder = await Reminder.findOne({
     ...buildReminderScope(householdContext?.household?._id || null, userId),
