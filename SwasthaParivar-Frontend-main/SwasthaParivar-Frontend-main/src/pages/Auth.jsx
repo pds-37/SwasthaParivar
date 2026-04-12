@@ -45,6 +45,12 @@ const GOOGLE_AUTH_ERRORS = {
   google_code_missing: "Google sign-in could not be completed. Please try again.",
   google_profile_invalid: "Your Google account did not return a valid verified email.",
   google_auth_not_configured: "Google sign-in is not configured yet. Please add the Google OAuth credentials first.",
+  google_redirect_uri_mismatch: "Google OAuth is using a different callback URL than the one configured in Google Cloud Console.",
+  google_client_invalid: "Google OAuth client credentials are invalid on the backend deployment.",
+  google_code_invalid: "This Google sign-in attempt expired or was already used. Please try again.",
+  google_token_exchange_failed: "Google sign-in could not be completed by the backend. Please verify the deployed Google OAuth settings.",
+  google_profile_fetch_failed: "Google account details could not be loaded. Please try again.",
+  google_auth_failed: "Google sign-in failed unexpectedly. Please try again.",
 };
 
 const getPasswordStrength = (value) => {
@@ -187,7 +193,10 @@ const Auth = () => {
   const handleGoogleContinue = () => {
     setError("");
     setGoogleLoading(true);
-    window.location.assign(buildApiUrl("/auth/google/start"));
+
+    const nextUrl = new URL(buildApiUrl("/auth/google/start"), window.location.origin);
+    nextUrl.searchParams.set("returnTo", window.location.origin);
+    window.location.assign(nextUrl.toString());
   };
 
   return (

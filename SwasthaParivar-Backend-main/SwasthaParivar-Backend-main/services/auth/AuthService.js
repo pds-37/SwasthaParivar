@@ -4,6 +4,21 @@ import jwt from "jsonwebtoken";
 import User from "../../models/user.js";
 import appConfig from "../../config/AppConfig.js";
 import householdService from "../household/HouseholdService.js";
+import { logger } from "../../utils/logger.js";
+
+class AuthServiceError extends Error {
+  constructor(code, message, status = 500, details = null) {
+    super(message);
+    this.name = "AuthServiceError";
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+}
+
+const isDuplicateKeyError = (error) => error?.code === 11000;
+
+const normalizeProviderError = (value = "") => String(value || "").toLowerCase();
 
 class AuthService {
   isGoogleAuthConfigured() {
@@ -83,7 +98,41 @@ class AuthService {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Google token exchange failed: ${body || response.statusText}`);
+      const normalizedBody = normalizeProviderError(body || response.statusText);
+
+      if (normalizedBody.includes("redirect_uri_mismatch")) {
+        throw new AuthServiceError(
+          "GOOGLE_REDIRECT_URI_MISMATCH",
+          "Google sign-in redirect URI does not match the configured callback URL.",
+          502,
+          body || response.statusText
+        );
+      }
+
+      if (normalizedBody.includes("invalid_client")) {
+        throw new AuthServiceError(
+          "GOOGLE_CLIENT_INVALID",
+          "Google OAuth client credentials are invalid.",
+          502,
+          body || response.statusText
+        );
+      }
+
+      if (normalizedBody.includes("invalid_grant")) {
+        throw new AuthServiceError(
+          "GOOGLE_CODE_INVALID",
+          "Google sign-in expired or was already used. Please try again.",
+          400,
+          body || response.statusText
+        );
+      }
+
+      throw new AuthServiceError(
+        "GOOGLE_TOKEN_EXCHANGE_FAILED",
+        "Google sign-in could not be completed.",
+        502,
+        body || response.statusText
+      );
     }
 
     return response.json();
@@ -98,7 +147,12 @@ class AuthService {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Google profile lookup failed: ${body || response.statusText}`);
+      throw new AuthServiceError(
+        "GOOGLE_PROFILE_FETCH_FAILED",
+        "Google account details could not be loaded.",
+        502,
+        body || response.statusText
+      );
     }
 
     return response.json();
@@ -128,12 +182,26 @@ class AuthService {
     const accessToken = this.issueAccessToken(user._id);
     const refreshToken = this.issueRefreshToken(user._id);
     await this.persistRefreshToken(user._id, refreshToken);
-    const householdContext = await householdService.ensureUserHouseholdContext(user);
+    let safeUser = householdService.buildSafeUser(user);
+
+    try {
+      const householdContext = await householdService.ensureUserHouseholdContext(user);
+      safeUser = householdContext?.safeUser || safeUser;
+    } catch (error) {
+      logger.error({
+        route: "auth.buildSession",
+        userId: String(user?._id || ""),
+        error: {
+          message: error?.message || "Could not build household context during auth",
+          stack: error?.stack || null,
+        },
+      });
+    }
 
     return {
       accessToken,
       refreshToken,
-      user: householdContext?.safeUser || householdService.buildSafeUser(user),
+      user: safeUser,
     };
   }
 
@@ -166,11 +234,19 @@ class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const user = await User.create({
-      email,
-      fullName,
-      password: hashedPassword,
-    });
+    let user;
+    try {
+      user = await User.create({
+        email,
+        fullName,
+        password: hashedPassword,
+      });
+    } catch (error) {
+      if (isDuplicateKeyError(error)) {
+        return { status: 409, error: { code: "USER_EXISTS", message: "User already exists" } };
+      }
+      throw error;
+    }
 
     const session = await this.buildSession(user);
 
@@ -236,13 +312,27 @@ class AuthService {
 
     if (!user) {
       const generatedPassword = await bcrypt.hash(`${crypto.randomUUID()}::${email}`, 12);
-      user = await User.create({
-        email,
-        fullName,
-        password: generatedPassword,
-        googleId,
-        avatarUrl: profile?.picture || null,
-      });
+      try {
+        user = await User.create({
+          email,
+          fullName,
+          password: generatedPassword,
+          googleId,
+          avatarUrl: profile?.picture || null,
+        });
+      } catch (error) {
+        if (!isDuplicateKeyError(error)) {
+          throw error;
+        }
+
+        user = await User.findOne({
+          $or: [{ googleId }, { email }],
+        });
+
+        if (!user) {
+          throw error;
+        }
+      }
     } else {
       const updates = {};
 

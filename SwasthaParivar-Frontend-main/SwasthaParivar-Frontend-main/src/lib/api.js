@@ -63,7 +63,13 @@ apiClient.interceptors.response.use(
     const isAuthBootstrap = originalRequest.url?.includes("/auth/session");
     const isAuthEntry = originalRequest.url?.includes("/auth/login") || originalRequest.url?.includes("/auth/signup");
 
-    if (status === 401 && !originalRequest.__retry && !isRefreshRequest && !isAuthEntry) {
+    if (
+      status === 401 &&
+      !originalRequest.__retry &&
+      !isRefreshRequest &&
+      !isAuthEntry &&
+      !isAuthBootstrap
+    ) {
       originalRequest.__retry = true;
 
       try {

@@ -16,7 +16,7 @@ const GOOGLE_COOKIE_MAX_AGE_MS = 10 * 60 * 1000;
 
 const getGoogleCookieOptions = (maxAge) => ({
   ...getCookieOptions(maxAge, GOOGLE_COOKIE_PATH),
-  sameSite: "lax",
+  sameSite: appConfig.isProduction ? "none" : "lax",
 });
 
 const normalizeOrigin = (value = "") => {
@@ -57,6 +57,11 @@ const buildClientUrl = (origin, pathname, params = {}) => {
     }
   });
   return url.toString();
+};
+
+const normalizeAuthErrorCode = (error, fallback = "google_auth_failed") => {
+  const code = String(error?.code || "").trim();
+  return code ? code.toLowerCase() : fallback;
 };
 
 const clearGoogleCookies = (res) => {
@@ -184,13 +189,17 @@ class AuthController {
 
     clearGoogleCookies(res);
 
-    const result = await authService.loginWithGoogle({ code: req.query.code });
-    if (result.error) {
-      return fail(result.error.code.toLowerCase());
-    }
+    try {
+      const result = await authService.loginWithGoogle({ code: req.query.code });
+      if (result.error) {
+        return fail(normalizeAuthErrorCode(result.error));
+      }
 
-    setAuthCookies(res, result.data);
-    return res.redirect(buildClientUrl(clientOrigin, "/dashboard"));
+      setAuthCookies(res, result.data);
+      return res.redirect(buildClientUrl(clientOrigin, "/dashboard"));
+    } catch (error) {
+      return fail(normalizeAuthErrorCode(error));
+    }
   }
 }
 
