@@ -285,6 +285,23 @@ class HouseholdService {
     return changed;
   }
 
+  async syncUserHouseholdState(user, { activeHouseholdId, primaryMemberProfileId }) {
+    const nextState = {
+      activeHouseholdId,
+      primaryMemberProfileId,
+    };
+
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: nextState,
+      }
+    );
+
+    user.activeHouseholdId = activeHouseholdId;
+    user.primaryMemberProfileId = primaryMemberProfileId;
+  }
+
   buildSafeUser(user, context = {}) {
     return {
       id: user._id,
@@ -450,9 +467,10 @@ class HouseholdService {
       String(user.primaryMemberProfileId || "") !== String(selfMember._id);
 
     if (needsUserUpdate) {
-      user.activeHouseholdId = household._id;
-      user.primaryMemberProfileId = selfMember._id;
-      await user.save();
+      await this.syncUserHouseholdState(user, {
+        activeHouseholdId: household._id,
+        primaryMemberProfileId: selfMember._id,
+      });
     }
 
     return {
@@ -786,8 +804,10 @@ class HouseholdService {
       await this.cleanupHouseholdIfEmpty(currentContext.household._id);
     }
 
-    user.activeHouseholdId = invite.householdId;
-    await user.save();
+    await this.syncUserHouseholdState(user, {
+      activeHouseholdId: invite.householdId,
+      primaryMemberProfileId: user.primaryMemberProfileId || currentContext?.selfMember?._id || null,
+    });
 
     invite.status = "accepted";
     invite.acceptedByUserId = userId;

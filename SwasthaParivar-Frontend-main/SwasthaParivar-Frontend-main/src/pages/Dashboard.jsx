@@ -80,13 +80,11 @@ const FamilyDashboard = () => {
     month: "long",
   });
 
-  const firstName = user?.fullName?.split(" ")?.[0] || "there";
-  const dashboardHeading =
-    members.length === 0 || membersError
-      ? "Hello, new user"
-      : user?.fullName
-        ? `Welcome back, ${firstName}`
-        : "Welcome back";
+  const displayName =
+    user?.fullName?.split(" ")?.[0] ||
+    user?.email?.split("@")?.[0] ||
+    "there";
+  const dashboardHeading = `Hi, ${displayName}`;
 
   const remindersToday = useMemo(
     () =>

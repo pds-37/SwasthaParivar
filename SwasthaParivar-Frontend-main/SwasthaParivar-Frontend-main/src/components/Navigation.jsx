@@ -186,7 +186,7 @@ const Navigation = ({ variant = "app" }) => {
               </option>
             ))}
           </select>
-          <small>Self view is temporarily disabled. Household mode stays active for now.</small>
+          <small>Household mode is active.</small>
         </div>
 
         <nav className="app-sidebar__nav" aria-label="Primary application navigation">

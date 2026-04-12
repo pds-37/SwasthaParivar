@@ -349,8 +349,13 @@ class AuthService {
       }
 
       if (Object.keys(updates).length > 0) {
+        await User.updateOne(
+          { _id: user._id },
+          {
+            $set: updates,
+          }
+        );
         Object.assign(user, updates);
-        await user.save();
       }
     }
 
