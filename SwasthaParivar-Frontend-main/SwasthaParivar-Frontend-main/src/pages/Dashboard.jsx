@@ -58,7 +58,7 @@ const getMemberSnapshot = (member = {}) => {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { members, loading: membersLoading, createMember, refreshMembers } = useFamilyStore();
+  const { members, selectedMember, loading: membersLoading, createMember, refreshMembers } = useFamilyStore();
   const { reminders, loading: remindersLoading, mutate: refreshReminders } = useReminders();
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAlerts, setShowAlerts] = useState(false);
