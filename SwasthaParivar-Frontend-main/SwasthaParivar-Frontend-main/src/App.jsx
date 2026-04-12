@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import Navigation from "./components/Navigation";
 import { AuthProvider } from "./components/AuthProvider";
 import ErrorBoundary from "./components/ErrorBoundary";
+import FloatingAIButton from "./components/FloatingAIButton";
 import PageSkeleton from "./components/PageSkeleton";
 import { useAuth } from "./components/auth-context";
 import { FamilyStoreProvider } from "./store/family-store";
@@ -55,6 +56,7 @@ const ProtectedLayout = ({ children }) => {
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Navigation />
         <main className="app-main-shell">{children}</main>
+        <FloatingAIButton />
       </div>
     </FamilyStoreProvider>
   );

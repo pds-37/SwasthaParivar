@@ -3,7 +3,7 @@ import Reminder from "../models/remindermodel.js";
 import FamilyMember from "../models/familymembermodel.js";
 import AIInsight from "../models/aiinsightmodel.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { reviewHealthAttachment } from "../services/ai/reportReviewService.js";
+import { triageHealthAttachment } from "../services/ai/reportReviewService.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 import { logger } from "../utils/logger.js";
@@ -568,7 +568,7 @@ export const analyzeAttachment = async (req, res) => {
       });
     }
 
-    const review = await reviewHealthAttachment({
+    const review = await triageHealthAttachment({
       base64Data: imageData,
       mimeType,
       fileName,
@@ -578,10 +578,13 @@ export const analyzeAttachment = async (req, res) => {
     return sendSuccess(res, {
       data: {
         reply: review.summary,
+        attachmentType: review.attachmentType,
         isHealthReport: review.isHealthReport,
+        isMedicineImage: review.isMedicineImage,
         confidence: review.confidence,
         reason: review.reason,
         documentType: review.documentType,
+        medicineName: review.medicineName,
       },
     });
   } catch (err) {

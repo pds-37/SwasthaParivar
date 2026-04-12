@@ -2,7 +2,17 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowLeft, Paperclip, Plus, Send, Sparkles, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Paperclip,
+  Plus,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 
 import api from "../lib/api";
 import { Button } from "../components/ui";
@@ -10,6 +20,7 @@ import { useAIChat } from "../hooks/useAIChat";
 import notify from "../lib/notify";
 import { saveReminderDraft } from "../lib/reminderDraft";
 import { useFamilyStore } from "../store/family-store";
+import { useUIStore } from "../store/ui-store";
 import "./AIChat.css";
 
 const MEDICATION_KEYWORDS = [
@@ -157,6 +168,7 @@ const getConversationTitle = (messages = [], fallbackLabel = "New chat") => {
 const AIChat = () => {
   const navigate = useNavigate();
   const { members: userFamily, selectedMember, setSelectedMember, refreshMembers } = useFamilyStore();
+  const { sidebarCollapsed } = useUIStore();
   const contexts = useMemo(
     () => [
       { key: "family", label: "All family", memberValue: "All family", memberId: null },
@@ -175,6 +187,7 @@ const AIChat = () => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(true);
+  const [desktopRailCollapsed, setDesktopRailCollapsed] = useState(false);
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [pendingReminderSuggestion, setPendingReminderSuggestion] = useState(null);
   const listRef = useRef(null);
@@ -193,6 +206,14 @@ const AIChat = () => {
     if (!selectedMember?._id) return;
     setSelectedContext(selectedMember._id);
   }, [selectedMember?._id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (sidebarCollapsed && window.matchMedia("(min-width: 64rem)").matches) {
+      setDesktopRailCollapsed(true);
+    }
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (contexts.some((context) => context.key === selectedContext)) return;
@@ -429,9 +450,12 @@ const AIChat = () => {
       });
 
       const replyText =
-        response?.isHealthReport === false
-          ? response?.reason || "Please upload a genuine health report."
-          : response?.reply || "Attachment reviewed successfully.";
+        response?.attachmentType === "medicine"
+          ? response?.reply ||
+            `I found a medicine image${response?.medicineName ? ` for ${response.medicineName}` : ""}, but I could not build the full summary.`
+          : response?.attachmentType === "report"
+            ? response?.reply || "Health report reviewed successfully."
+            : response?.reason || "Please upload a medicine image or a genuine health report.";
 
       const updatedMessages = [...nextMessages, createAiMessage(replyText)];
       setMessages(updatedMessages);
@@ -451,8 +475,11 @@ const AIChat = () => {
 
   return (
     <div className="ai-chat-page">
-      <div className="app-shell ai-chat-shell">
-        <aside className={`ai-chat-sidebar ${mobileHistoryOpen ? "is-open" : ""}`}>
+      <div className={`app-shell ai-chat-shell ${desktopRailCollapsed ? "is-rail-collapsed" : ""}`}>
+        <aside
+          className={`ai-chat-sidebar ${mobileHistoryOpen ? "is-open" : ""} ${desktopRailCollapsed ? "is-collapsed" : ""}`}
+          aria-hidden={desktopRailCollapsed || undefined}
+        >
           <div className="ai-chat-sidebar__head">
             <div className="ai-chat-sidebar__title-block">
               <span className="eyebrow">
@@ -503,17 +530,42 @@ const AIChat = () => {
         <section className="ai-chat-main">
           <div className="ai-chat-main__top">
             <div className="ai-chat-main__intro">
+              <button
+                type="button"
+                className="icon-btn ai-chat-history-toggle"
+                onClick={() => setDesktopRailCollapsed((currentValue) => !currentValue)}
+                aria-label={desktopRailCollapsed ? "Show conversations" : "Hide conversations"}
+              >
+                {desktopRailCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+              </button>
+
               <button type="button" className="icon-btn ai-chat-back" onClick={() => setMobileHistoryOpen(true)}>
                 <ArrowLeft size={18} />
               </button>
 
               <div>
+                <div className="ai-chat-main__eyebrow-row">
+                  <span className="eyebrow">
+                    <Sparkles size={16} />
+                    Premium AI workspace
+                  </span>
+                  <span className="ai-chat-main__safety-pill">
+                    <ShieldCheck size={14} />
+                    Health-only guidance
+                  </span>
+                </div>
                 <h2 className="ai-chat-main__title">Family AI advisor</h2>
-                <p className="ai-chat-main__subtitle">Health-only guidance for symptoms, medicines, reports, and reminders</p>
+                <p className="ai-chat-main__subtitle">
+                  Health-only guidance for symptoms, medicines, reports, and reminders
+                </p>
               </div>
             </div>
 
             <div className="ai-chat-main__context">
+              <Button variant="secondary" size="sm" leftIcon={<Plus size={16} />} onClick={startNewChat}>
+                New chat
+              </Button>
+
               <div className="badge badge--primary">
                 <UserRound size={14} />
                 Context: talking about {contextLabel}
@@ -619,7 +671,7 @@ const AIChat = () => {
                 <img src={attachmentPreview.preview} alt={attachmentPreview.fileName} loading="lazy" />
                 <div>
                   <strong>{attachmentPreview.fileName}</strong>
-                  <p>Ready to send to the AI for review.</p>
+                  <p>Ready for medicine or report review.</p>
                 </div>
                 <Button size="sm" onClick={sendAttachment}>
                   Send attachment
@@ -646,7 +698,7 @@ const AIChat = () => {
                 className="ai-chat-composer__input"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Ask about symptoms, medicines, reports, vitals, or reminders"
+                placeholder="Ask about symptoms, medicines, reports, medicine photos, vitals, or reminders"
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();

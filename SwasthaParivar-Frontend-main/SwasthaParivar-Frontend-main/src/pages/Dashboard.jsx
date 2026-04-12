@@ -146,6 +146,33 @@ const Dashboard = () => {
     return [...overdueReminders, ...staleProfiles].slice(0, 4);
   }, [members, reminders]);
 
+  const profilesWithFreshContext = useMemo(
+    () => members.filter((member) => Boolean(getMemberSnapshot(member).latestDate)).length,
+    [members]
+  );
+
+  const careRailTone = healthAlerts.length > 0 ? "watch" : remindersToday.length > 0 ? "focus" : "steady";
+  const careRailTitle =
+    healthAlerts.length > 0
+      ? "Household attention is needed"
+      : remindersToday.length > 0
+        ? "Care flow is active today"
+        : "Household care is looking steady";
+  const careRailSummary =
+    healthAlerts.length > 0
+      ? `${healthAlerts.length} health alert${healthAlerts.length === 1 ? "" : "s"} need a closer look.`
+      : remindersToday.length > 0
+        ? `${remindersToday.length} reminder${remindersToday.length === 1 ? "" : "s"} are lined up for today.`
+        : "No urgent gaps are showing right now, so this is a good moment to review upcoming care.";
+  const nextReminderLabel = upcomingReminders[0]?.nextRunAt
+    ? new Date(upcomingReminders[0].nextRunAt).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "No reminder queued";
+
   const addMember = async (form) => {
     try {
       const createdMember = await createMember({
@@ -370,7 +397,45 @@ const Dashboard = () => {
           </section>
 
           <section className="dashboard-side-column">
-            <article className="dashboard-panel card">
+            <article className={`dashboard-rail-hero dashboard-rail-hero--${careRailTone}`}>
+              <div className="dashboard-rail-hero__glow" aria-hidden="true" />
+              <div className="dashboard-rail-hero__copy">
+                <span className="dashboard-rail-hero__eyebrow">
+                  <Sparkles size={14} />
+                  Premium care rail
+                </span>
+                <h2 className="text-h4">{careRailTitle}</h2>
+                <p>{careRailSummary}</p>
+              </div>
+
+              <div className="dashboard-rail-hero__metrics">
+                <article>
+                  <span>Profiles ready</span>
+                  <strong>
+                    {profilesWithFreshContext}/{members.length || 0}
+                  </strong>
+                </article>
+                <article>
+                  <span>Next reminder</span>
+                  <strong>{nextReminderLabel}</strong>
+                </article>
+                <article>
+                  <span>AI context</span>
+                  <strong>{selectedMember?.name || "Whole family"}</strong>
+                </article>
+              </div>
+
+              <div className="dashboard-rail-hero__actions">
+                <Button leftIcon={<BrainCircuit size={16} />} onClick={() => navigate("/ai-chat")}>
+                  Open AI advisor
+                </Button>
+                <Button variant="secondary" leftIcon={<Bell size={16} />} onClick={() => navigate("/reminders")}>
+                  Review reminders
+                </Button>
+              </div>
+            </article>
+
+            <article className="dashboard-panel dashboard-panel--premium card">
               <div className="section-header">
                 <div>
                   <h2 className="text-h4">Upcoming reminders</h2>
@@ -415,7 +480,7 @@ const Dashboard = () => {
               )}
             </article>
 
-            <article className="dashboard-panel card">
+            <article className="dashboard-panel dashboard-panel--premium card">
               <div className="section-header">
                 <div>
                   <h2 className="text-h4">Health alerts</h2>
