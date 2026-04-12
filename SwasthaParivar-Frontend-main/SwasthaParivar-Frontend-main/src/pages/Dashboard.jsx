@@ -275,7 +275,7 @@ const Dashboard = () => {
         </section>
 
         <section className="dashboard-section">
-          <div className="section-header">
+          <div className="section-header dashboard-section__heading dashboard-section__heading--inset">
             <div>
               <h2 className="text-h3">Family members</h2>
               <p className="text-body-sm muted-copy">Quickly jump into each profile, record, or reminder flow.</p>
@@ -334,7 +334,7 @@ const Dashboard = () => {
         </section>
 
         <section className="dashboard-section">
-          <div className="section-header">
+          <div className="section-header dashboard-section__heading dashboard-section__heading--inset">
             <div>
               <h2 className="text-h3">Quick actions</h2>
               <p className="text-body-sm muted-copy">The tasks families use every day, kept one tap away.</p>
