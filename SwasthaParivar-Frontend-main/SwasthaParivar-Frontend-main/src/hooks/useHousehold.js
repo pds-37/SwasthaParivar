@@ -4,10 +4,15 @@ import useSWR from "swr";
 import api from "../lib/api";
 import { apiRetryConfig } from "../lib/swr";
 
+const HOUSEHOLD_BOOTSTRAP_ENABLED = false;
 const fetchHousehold = () => api.get("/households/me");
 
 export const useHousehold = () => {
-  const swr = useSWR("household", fetchHousehold, apiRetryConfig);
+  const swr = useSWR(
+    HOUSEHOLD_BOOTSTRAP_ENABLED ? "household" : null,
+    fetchHousehold,
+    apiRetryConfig
+  );
 
   const household = useMemo(() => swr.data?.household || null, [swr.data]);
   const selfMember = useMemo(() => swr.data?.selfMember || null, [swr.data]);
@@ -22,13 +27,17 @@ export const useHousehold = () => {
 
   const createInvite = async (payload) => {
     const created = await api.post("/households/invitations", payload);
-    await swr.mutate();
+    if (HOUSEHOLD_BOOTSTRAP_ENABLED) {
+      await swr.mutate();
+    }
     return created;
   };
 
   const acceptInvite = async (code) => {
     const accepted = await api.post("/households/invitations/accept", { code });
-    await swr.mutate();
+    if (HOUSEHOLD_BOOTSTRAP_ENABLED) {
+      await swr.mutate();
+    }
     return accepted;
   };
 

@@ -85,7 +85,7 @@ const AddMemberModal = ({ onClose, onSave }) => {
         <div>
           <p className="member-modal__eyebrow">Household Profile</p>
           <p className="member-modal__copy">
-            Dependents stay caregiver-managed. Adult members join with their own accounts and get their own Self View.
+            Dependents stay caregiver-managed. Adult members join with their own accounts inside the same household.
           </p>
         </div>
       </div>

@@ -13,7 +13,7 @@ const defaultFamilyStore = {
   memberships: [],
   pendingInvites: [],
   selectedMember: null,
-  activeView: "self",
+  activeView: "family",
   loading: false,
   error: null,
   refreshMembers: () => {},
@@ -47,10 +47,7 @@ const familyReducer = (state, action) => {
         selfMember: action.payload.selfMember,
         memberships: action.payload.memberships,
         pendingInvites: action.payload.pendingInvites,
-        selectedMember:
-          state.activeView === "self"
-            ? action.payload.selfMember
-            : state.selectedMember,
+        selectedMember: state.selectedMember,
       };
     case "SET_SELECTED_MEMBER":
       return {
@@ -60,11 +57,8 @@ const familyReducer = (state, action) => {
     case "SET_ACTIVE_VIEW":
       return {
         ...state,
-        activeView: action.payload.view,
-        selectedMember:
-          action.payload.view === "self"
-            ? action.payload.selfMember
-            : state.selectedMember,
+        activeView: "family",
+        selectedMember: state.selectedMember,
       };
     default:
       return state;
@@ -91,10 +85,7 @@ export const FamilyStoreProvider = ({ children }) => {
     memberships: [],
     pendingInvites: [],
     selectedMember: null,
-    activeView:
-      typeof window !== "undefined" && localStorage.getItem("sp_active_view") === "family"
-        ? "family"
-        : "self",
+    activeView: "family",
   });
 
   useEffect(() => {
@@ -115,7 +106,7 @@ export const FamilyStoreProvider = ({ children }) => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    localStorage.setItem("sp_active_view", state.activeView);
+    localStorage.setItem("sp_active_view", "family");
   }, [state.activeView]);
 
   const value = useMemo(
@@ -152,10 +143,10 @@ export const FamilyStoreProvider = ({ children }) => {
         return accepted;
       },
       setSelectedMember: (member) => dispatch({ type: "SET_SELECTED_MEMBER", payload: member }),
-      setActiveView: (view) =>
+      setActiveView: () =>
         dispatch({
           type: "SET_ACTIVE_VIEW",
-          payload: { view, selfMember: state.selfMember },
+          payload: { view: "family", selfMember: null },
         }),
     }),
     [

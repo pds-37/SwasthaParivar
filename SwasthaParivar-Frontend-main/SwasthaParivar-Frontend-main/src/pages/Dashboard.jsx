@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 
 import AddMemberModal from "../components/AddMemberModal";
-import SelfDashboard from "../components/dashboard/SelfDashboard";
 import { useAuth } from "../components/auth-context";
 import { Button, EmptyState, Modal, PullToRefresh, Skeleton } from "../components/ui";
 import { useReminders } from "../hooks/useReminders";
@@ -63,6 +62,7 @@ const FamilyDashboard = () => {
     members,
     selectedMember,
     loading: membersLoading,
+    error: membersError,
     createMember,
     createInvite,
     refreshMembers,
@@ -81,7 +81,12 @@ const FamilyDashboard = () => {
   });
 
   const firstName = user?.fullName?.split(" ")?.[0] || "there";
-  const dashboardHeading = user?.fullName ? `Welcome back, ${firstName}` : "Welcome back";
+  const dashboardHeading =
+    members.length === 0 || membersError
+      ? "Hello, new user"
+      : user?.fullName
+        ? `Welcome back, ${firstName}`
+        : "Welcome back";
 
   const remindersToday = useMemo(
     () =>
@@ -652,14 +657,6 @@ const FamilyDashboard = () => {
   );
 };
 
-const Dashboard = () => {
-  const { activeView } = useFamilyStore();
-
-  if (activeView === "self") {
-    return <SelfDashboard />;
-  }
-
-  return <FamilyDashboard />;
-};
+const Dashboard = () => <FamilyDashboard />;
 
 export default Dashboard;

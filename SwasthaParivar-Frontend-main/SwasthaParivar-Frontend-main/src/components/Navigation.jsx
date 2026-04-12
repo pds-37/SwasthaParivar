@@ -33,35 +33,19 @@ const publicLinks = [
   { href: "#features", label: "Reminders" },
 ];
 
-const buildPrimaryLinks = (activeView) =>
-  activeView === "self"
-    ? [
-        { path: "/dashboard", label: "My Dashboard", icon: Home },
-        { path: "/health", label: "Live Health", icon: HeartPulse },
-        { path: "/reminders", label: "My Reminders", icon: Bell },
-        { path: "/reports", label: "My Reports", icon: FileText },
-        { path: "/ai-chat", label: "AI Coach", icon: MessageSquareText },
-      ]
-    : [
-        { path: "/dashboard", label: "Home", icon: Home },
-        { path: "/family", label: "Family", icon: Users },
-        { path: "/reminders", label: "Reminders", icon: Bell },
-        { path: "/reports", label: "Reports", icon: FileText },
-        { path: "/ai-chat", label: "Family AI", icon: MessageSquareText },
-      ];
+const primaryLinks = [
+  { path: "/dashboard", label: "Home", icon: Home },
+  { path: "/family", label: "Family", icon: Users },
+  { path: "/reminders", label: "Reminders", icon: Bell },
+  { path: "/reports", label: "Reports", icon: FileText },
+  { path: "/ai-chat", label: "Family AI", icon: MessageSquareText },
+];
 
-const buildSecondaryLinks = (activeView) =>
-  activeView === "self"
-    ? [
-        { path: "/family", label: "Family View", icon: Users },
-        { path: "/remedies", label: "Medicines", icon: Leaf },
-        { path: "/settings", label: "Settings", icon: Settings },
-      ]
-    : [
-        { path: "/health", label: "Health", icon: HeartPulse },
-        { path: "/remedies", label: "Remedies", icon: Leaf },
-        { path: "/settings", label: "Settings", icon: Settings },
-      ];
+const secondaryLinks = [
+  { path: "/health", label: "Health", icon: HeartPulse },
+  { path: "/remedies", label: "Remedies", icon: Leaf },
+  { path: "/settings", label: "Settings", icon: Settings },
+];
 
 const Navigation = ({ variant = "app" }) => {
   const { user, logout } = useAuth();
@@ -69,19 +53,13 @@ const Navigation = ({ variant = "app" }) => {
   const {
     members,
     household,
-    selfMember,
     selectedMember,
-    activeView,
     setSelectedMember,
-    setActiveView,
   } = useFamilyStore();
   const { sidebarCollapsed, setSidebarCollapsed } = useUIStore();
   const location = useLocation();
   const isPublic = variant === "public";
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const primaryLinks = useMemo(() => buildPrimaryLinks(activeView), [activeView]);
-  const secondaryLinks = useMemo(() => buildSecondaryLinks(activeView), [activeView]);
-
   useEffect(() => {
     if (isPublic) return undefined;
 
@@ -102,14 +80,8 @@ const Navigation = ({ variant = "app" }) => {
   );
 
   const allAppLinks = [...primaryLinks, ...secondaryLinks];
-  const memberScope =
-    activeView === "self"
-      ? selfMember?._id || "self"
-      : selectedMember?._id || "family";
-  const selectedScopeName =
-    activeView === "self"
-      ? selfMember?.name || "Self view"
-      : selectedMember?.name || household?.name || "All family";
+  const memberScope = selectedMember?._id || "family";
+  const selectedScopeName = selectedMember?.name || household?.name || "All family";
 
   if (isPublic) {
     return (
@@ -164,7 +136,7 @@ const Navigation = ({ variant = "app" }) => {
           </span>
           <span>
             <strong>SwasthaParivar</strong>
-            <small>{activeView === "self" ? "Self View" : selectedScopeName}</small>
+            <small>{selectedScopeName}</small>
           </span>
         </Link>
 
@@ -196,47 +168,25 @@ const Navigation = ({ variant = "app" }) => {
         </div>
 
         <div className="app-sidebar__scope card">
-          <span className="app-sidebar__scope-label">View mode</span>
-          <div className="app-view-switcher" role="tablist" aria-label="Application view">
-            <button
-              type="button"
-              className={activeView === "self" ? "is-active" : ""}
-              onClick={() => setActiveView("self")}
-            >
-              Self View
-            </button>
-            <button
-              type="button"
-              className={activeView === "family" ? "is-active" : ""}
-              onClick={() => setActiveView("family")}
-            >
-              Family View
-            </button>
-          </div>
-          {activeView === "family" ? (
-            <>
-              <select
-                value={memberScope}
-                onChange={(event) =>
-                  setSelectedMember(
-                    event.target.value === "family"
-                      ? null
-                      : members.find((member) => member._id === event.target.value) || null
-                  )
-                }
-              >
-                <option value="family">All family</option>
-                {members.map((member) => (
-                  <option key={member._id} value={member._id}>
-                    {member.name}
-                  </option>
-                ))}
-              </select>
-              <small>Switch focus before asking AI or reviewing reminders.</small>
-            </>
-          ) : (
-            <small>{selfMember?.name ? `${selfMember.name} is the active self profile.` : "Your personal profile is active."}</small>
-          )}
+          <span className="app-sidebar__scope-label">Care scope</span>
+          <select
+            value={memberScope}
+            onChange={(event) =>
+              setSelectedMember(
+                event.target.value === "family"
+                  ? null
+                  : members.find((member) => member._id === event.target.value) || null
+              )
+            }
+          >
+            <option value="family">All family</option>
+            {members.map((member) => (
+              <option key={member._id} value={member._id}>
+                {member.name}
+              </option>
+            ))}
+          </select>
+          <small>Self view is temporarily disabled. Household mode stays active for now.</small>
         </div>
 
         <nav className="app-sidebar__nav" aria-label="Primary application navigation">
@@ -325,7 +275,7 @@ const Navigation = ({ variant = "app" }) => {
           <div className="app-drawer__header">
             <div>
               <strong>SwasthaParivar</strong>
-              <small>{activeView === "self" ? "Personal care navigation" : "Household care navigation"}</small>
+              <small>Household care navigation</small>
             </div>
             <button type="button" className="icon-btn" onClick={() => setDrawerOpen(false)} aria-label="Close navigation">
               <ChevronRight size={18} />
@@ -333,42 +283,24 @@ const Navigation = ({ variant = "app" }) => {
           </div>
 
           <label className="app-drawer__scope">
-            <span>View mode</span>
-            <div className="app-view-switcher" role="tablist" aria-label="Application view">
-              <button
-                type="button"
-                className={activeView === "self" ? "is-active" : ""}
-                onClick={() => setActiveView("self")}
-              >
-                Self View
-              </button>
-              <button
-                type="button"
-                className={activeView === "family" ? "is-active" : ""}
-                onClick={() => setActiveView("family")}
-              >
-                Family View
-              </button>
-            </div>
-            {activeView === "family" ? (
-              <select
-                value={memberScope}
-                onChange={(event) =>
-                  setSelectedMember(
-                    event.target.value === "family"
-                      ? null
-                      : members.find((member) => member._id === event.target.value) || null
-                  )
-                }
-              >
-                <option value="family">All family</option>
-                {members.map((member) => (
-                  <option key={member._id} value={member._id}>
-                    {member.name}
-                  </option>
-                ))}
-              </select>
-            ) : null}
+            <span>Care scope</span>
+            <select
+              value={memberScope}
+              onChange={(event) =>
+                setSelectedMember(
+                  event.target.value === "family"
+                    ? null
+                    : members.find((member) => member._id === event.target.value) || null
+                )
+              }
+            >
+              <option value="family">All family</option>
+              {members.map((member) => (
+                <option key={member._id} value={member._id}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
           </label>
 
           <nav className="app-drawer__links">
