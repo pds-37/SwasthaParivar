@@ -19,6 +19,7 @@ const HEALTH_METRICS = [
   "sleep",
   "steps",
 ];
+const activeProfileStatusFilter = () => mongoose.trusted({ $ne: "archived" });
 
 class HouseholdService {
   normalizeText(value, { maxLength = 120 } = {}) {
@@ -339,7 +340,7 @@ class HouseholdService {
 
     const members = await FamilyMember.find({
       user: normalizedUserId,
-      profileStatus: { $ne: "archived" },
+      profileStatus: activeProfileStatusFilter(),
     })
       .sort({ createdAt: 1 })
       .lean();
@@ -458,7 +459,7 @@ class HouseholdService {
       member = await FamilyMember.findOne({
         user: user._id,
         householdId: household._id,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
         $or: [
           { relation: mongoose.trusted({ $regex: "^self$", $options: "i" }) },
           { name: this.normalizeText(user.fullName, { maxLength: 80 }) },
@@ -558,13 +559,13 @@ class HouseholdService {
 
       return FamilyMember.find({
         householdId: context.household._id,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
       }).sort({ createdAt: 1 });
     } catch (error) {
       this.logHouseholdFallback(userId, error, "listHouseholdMembers");
       return FamilyMember.find({
         user: userId,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
       }).sort({ createdAt: 1 });
     }
   }
@@ -585,14 +586,14 @@ class HouseholdService {
       member = await FamilyMember.findOne({
         _id: memberId,
         householdId: context.household._id,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
       });
     } catch (error) {
       this.logHouseholdFallback(userId, error, "findAccessibleMember");
       member = await FamilyMember.findOne({
         _id: memberId,
         user: userId,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
       });
     }
 
@@ -620,14 +621,14 @@ class HouseholdService {
 
       return FamilyMember.findOne({
         householdId: context.household._id,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
         ...nameFilter,
       });
     } catch (error) {
       this.logHouseholdFallback(userId, error, "findHouseholdMemberByName");
       return FamilyMember.findOne({
         user: userId,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
         ...nameFilter,
       });
     }
@@ -696,7 +697,7 @@ class HouseholdService {
       const [members, memberships, pendingInvites] = await Promise.all([
         FamilyMember.find({
           householdId: context.household._id,
-          profileStatus: { $ne: "archived" },
+          profileStatus: activeProfileStatusFilter(),
         }).sort({ createdAt: 1 }).lean(),
         HouseholdMembership.find({
           householdId: context.household._id,
@@ -803,7 +804,7 @@ class HouseholdService {
       HouseholdMembership.countDocuments({ householdId, status: "active" }),
       FamilyMember.countDocuments({
         householdId,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
         _id: { $ne: selfMemberId },
       }),
     ]);
@@ -816,7 +817,7 @@ class HouseholdService {
       HouseholdMembership.countDocuments({ householdId, status: "active" }),
       FamilyMember.countDocuments({
         householdId,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
       }),
     ]);
 

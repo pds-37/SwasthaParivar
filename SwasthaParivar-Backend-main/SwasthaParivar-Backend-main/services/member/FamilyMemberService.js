@@ -13,6 +13,7 @@ export const HEALTH_METRICS = [
 ];
 
 const ALLOWED_GENDERS = new Set(["male", "female", "other"]);
+const activeProfileStatusFilter = () => mongoose.trusted({ $ne: "archived" });
 
 class FamilyMemberService {
   normalizeText(value, { maxLength = 80 } = {}) {
@@ -273,12 +274,12 @@ class FamilyMemberService {
 
       memberFilter = {
         householdId: householdContext.household._id,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
       };
     } catch {
       memberFilter = {
         user: ownerId,
-        profileStatus: { $ne: "archived" },
+        profileStatus: activeProfileStatusFilter(),
       };
     }
 
@@ -421,12 +422,12 @@ class FamilyMemberService {
         ? {
             _id: memberId,
             householdId: householdContext.household._id,
-            profileStatus: { $ne: "archived" },
+            profileStatus: activeProfileStatusFilter(),
           }
         : {
             _id: memberId,
             user: ownerId,
-            profileStatus: { $ne: "archived" },
+            profileStatus: activeProfileStatusFilter(),
           }
     );
 

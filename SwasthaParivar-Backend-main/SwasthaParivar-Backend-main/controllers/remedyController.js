@@ -4,6 +4,8 @@ import FamilyMember from "../models/familymembermodel.js";
 import householdService from "../services/household/HouseholdService.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 
+const activeProfileStatusFilter = () => mongoose.trusted({ $ne: "archived" });
+
 const TEMPLATE_LIBRARY = [
   {
     match: /(cold|cough|throat|respiratory|congestion|flu)/i,
@@ -229,7 +231,7 @@ async function buildFocusContext(userId, selectedMemberId) {
     const member = await FamilyMember.findOne({
       _id: selectedMemberId,
       ...(householdId ? { householdId } : { user: userId }),
-      profileStatus: { $ne: "archived" },
+      profileStatus: activeProfileStatusFilter(),
     }).lean();
 
     if (member) {
@@ -242,11 +244,11 @@ async function buildFocusContext(userId, selectedMemberId) {
       householdId
         ? {
             householdId,
-            profileStatus: { $ne: "archived" },
+            profileStatus: activeProfileStatusFilter(),
           }
         : {
             user: userId,
-            profileStatus: { $ne: "archived" },
+            profileStatus: activeProfileStatusFilter(),
           }
     ).lean();
   }
