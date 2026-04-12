@@ -86,6 +86,205 @@ class HouseholdService {
     };
   }
 
+  normalizeBoolean(value, fallback = false) {
+    if (typeof value === "boolean") return value;
+    if (value === "true" || value === "1" || value === 1) return true;
+    if (value === "false" || value === "0" || value === 0) return false;
+    return fallback;
+  }
+
+  normalizeInteger(value, { min = 0, max = 120, fallback = 0 } = {}) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.min(max, Math.max(min, Math.round(parsed)));
+  }
+
+  normalizeEnum(value, allowedValues, fallback) {
+    const normalized = String(value || "").trim().toLowerCase();
+    return allowedValues.has(normalized) ? normalized : fallback;
+  }
+
+  normalizeStringList(value, { maxItems = 8, maxLength = 80 } = {}) {
+    const source = Array.isArray(value) ? value : [];
+    const seen = new Set();
+
+    return source.reduce((items, item) => {
+      const normalized = this.normalizeText(item, { maxLength });
+      const key = normalized.toLowerCase();
+
+      if (!normalized || seen.has(key) || items.length >= maxItems) {
+        return items;
+      }
+
+      seen.add(key);
+      items.push(normalized);
+      return items;
+    }, []);
+  }
+
+  normalizeMetricEntry(metric, entry) {
+    if (!entry || typeof entry !== "object") return null;
+
+    const date = new Date(entry.date);
+    if (Number.isNaN(date.getTime())) return null;
+
+    if (metric === "bloodPressure") {
+      const value = this.normalizeText(entry.value, { maxLength: 20 });
+      if (!value) return null;
+
+      return {
+        value,
+        date: date.toISOString(),
+      };
+    }
+
+    const value = Number(entry.value);
+    if (!Number.isFinite(value) || value < 0 || value > 200000) {
+      return null;
+    }
+
+    return {
+      value: Number(value.toFixed(2)),
+      date: date.toISOString(),
+    };
+  }
+
+  normalizeHealthPayload(health) {
+    const normalized = this.buildEmptyHealth();
+
+    for (const metric of HEALTH_METRICS) {
+      const source = Array.isArray(health?.[metric]) ? health[metric] : [];
+      const timeline = new Map();
+
+      source.slice(0, 365).forEach((entry) => {
+        const normalizedEntry = this.normalizeMetricEntry(metric, entry);
+        if (!normalizedEntry) return;
+        timeline.set(normalizedEntry.date, normalizedEntry);
+      });
+
+      normalized[metric] = Array.from(timeline.values()).sort(
+        (left, right) => new Date(left.date) - new Date(right.date)
+      );
+    }
+
+    return normalized;
+  }
+
+  normalizeSharingPreferences(value = {}, profileType = "self") {
+    const defaults = this.getDefaultSharingPreferences(profileType);
+
+    return {
+      visibility: this.normalizeEnum(
+        value?.visibility,
+        new Set(["private", "summary", "full"]),
+        defaults.visibility
+      ),
+      allowFamilySummary: this.normalizeBoolean(
+        value?.allowFamilySummary,
+        defaults.allowFamilySummary
+      ),
+      allowCaregiverDetails: this.normalizeBoolean(
+        value?.allowCaregiverDetails,
+        defaults.allowCaregiverDetails
+      ),
+    };
+  }
+
+  normalizeInviteContact(value = {}) {
+    return {
+      email: this.normalizeEmail(value?.email),
+      phone: this.normalizeText(value?.phone, { maxLength: 40 }),
+    };
+  }
+
+  normalizeBaselinePreferences(value = {}) {
+    return {
+      preferredFormats: this.normalizeStringList(value?.preferredFormats, {
+        maxItems: 8,
+        maxLength: 40,
+      }),
+      avoidedIngredients: this.normalizeStringList(value?.avoidedIngredients, {
+        maxItems: 12,
+        maxLength: 40,
+      }),
+      clinicianName: this.normalizeText(value?.clinicianName, { maxLength: 80 }),
+      notes: this.normalizeText(value?.notes, { maxLength: 300 }),
+    };
+  }
+
+  normalizeEmergencyContact(value = {}) {
+    return {
+      name: this.normalizeText(value?.name, { maxLength: 80 }),
+      phone: this.normalizeText(value?.phone, { maxLength: 40 }),
+      relation: this.normalizeText(value?.relation, { maxLength: 40 }),
+    };
+  }
+
+  buildSelfMemberPayload(member = {}, user, household) {
+    return {
+      householdId: household._id,
+      user: user._id,
+      linkedUserId: user._id,
+      managedByUserId: user._id,
+      name: this.normalizeText(user.fullName || member.name, { maxLength: 80 }) || "Self",
+      age: this.normalizeInteger(member.age, { min: 0, max: 120, fallback: 0 }),
+      gender: this.normalizeEnum(member.gender, new Set(["male", "female", "other"]), "other"),
+      avatar: this.normalizeText(member.avatar, { maxLength: 200 }),
+      relation: "Self",
+      health: this.normalizeHealthPayload(member.health),
+      conditions: this.normalizeStringList(member.conditions, { maxItems: 10, maxLength: 60 }),
+      allergies: this.normalizeStringList(member.allergies, { maxItems: 10, maxLength: 60 }),
+      medications: this.normalizeStringList(member.medications, { maxItems: 12, maxLength: 80 }),
+      pregnancyStatus: this.normalizeEnum(
+        member.pregnancyStatus,
+        new Set(["not_applicable", "not_pregnant", "pregnant", "postpartum"]),
+        "not_applicable"
+      ),
+      childSensitive: this.normalizeBoolean(member.childSensitive, false),
+      careRoles: this.normalizeStringList(member.careRoles, { maxItems: 8, maxLength: 40 }),
+      profileType: "self",
+      profileStatus: "active",
+      sharingPreferences: this.normalizeSharingPreferences(member.sharingPreferences, "self"),
+      connectionStatus: this.normalizeEnum(
+        member.connectionStatus,
+        new Set(["not_connected", "pending", "connected", "revoked", "error"]),
+        "not_connected"
+      ),
+      inviteContact: this.normalizeInviteContact(member.inviteContact),
+      baselinePreferences: this.normalizeBaselinePreferences(member.baselinePreferences),
+      emergencyContact: this.normalizeEmergencyContact(member.emergencyContact),
+    };
+  }
+
+  valuesEqual(left, right) {
+    if (left instanceof mongoose.Types.ObjectId || right instanceof mongoose.Types.ObjectId) {
+      return String(left || "") === String(right || "");
+    }
+
+    return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+  }
+
+  repairSelfMemberRecord(member, user, household) {
+    const nextValues = this.buildSelfMemberPayload(member, user, household);
+    let changed = false;
+
+    Object.entries(nextValues).forEach(([key, value]) => {
+      const currentValue = typeof member.get === "function" ? member.get(key) : member[key];
+      if (this.valuesEqual(currentValue, value)) {
+        return;
+      }
+
+      if (typeof member.set === "function") {
+        member.set(key, value);
+      } else {
+        member[key] = value;
+      }
+      changed = true;
+    });
+
+    return changed;
+  }
+
   buildSafeUser(user, context = {}) {
     return {
       id: user._id,
@@ -182,65 +381,12 @@ class HouseholdService {
 
     if (!member) {
       member = await FamilyMember.create({
-        user: user._id,
-        householdId: household._id,
-        linkedUserId: user._id,
-        managedByUserId: user._id,
-        name: this.normalizeText(user.fullName, { maxLength: 80 }) || "Self",
-        age: 0,
-        gender: "other",
-        relation: "Self",
-        health: this.buildEmptyHealth(),
-        profileType: "self",
-        profileStatus: "active",
-        sharingPreferences: this.getDefaultSharingPreferences("self"),
-        connectionStatus: "not_connected",
+        ...this.buildSelfMemberPayload({}, user, household),
       });
       return member;
     }
 
-    let changed = false;
-    const nextName = this.normalizeText(user.fullName, { maxLength: 80 }) || member.name;
-
-    if (String(member.householdId) !== String(household._id)) {
-      member.householdId = household._id;
-      changed = true;
-    }
-
-    if (String(member.user) !== String(user._id)) {
-      member.user = user._id;
-      changed = true;
-    }
-
-    if (!member.linkedUserId || String(member.linkedUserId) !== String(user._id)) {
-      member.linkedUserId = user._id;
-      changed = true;
-    }
-
-    if (!member.managedByUserId || String(member.managedByUserId) !== String(user._id)) {
-      member.managedByUserId = user._id;
-      changed = true;
-    }
-
-    if (member.profileType !== "self") {
-      member.profileType = "self";
-      changed = true;
-    }
-
-    if (member.profileStatus !== "active") {
-      member.profileStatus = "active";
-      changed = true;
-    }
-
-    if (member.relation !== "Self") {
-      member.relation = "Self";
-      changed = true;
-    }
-
-    if (nextName && member.name !== nextName) {
-      member.name = nextName;
-      changed = true;
-    }
+    const changed = this.repairSelfMemberRecord(member, user, household);
 
     if (changed) {
       await member.save();

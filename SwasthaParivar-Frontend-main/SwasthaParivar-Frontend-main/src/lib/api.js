@@ -107,7 +107,12 @@ apiClient.interceptors.response.use(
     }
 
     if (status >= 500) {
-      notify.error("Server error", "Please try again in a moment.");
+      const serverTitle = status === 503 ? "Server is restarting" : "Server error";
+      const serverDescription =
+        status === 503
+          ? message
+          : "Please try again in a moment.";
+      notify.error(serverTitle, serverDescription);
       captureFrontendError(error, {
         source: "api-interceptor",
         status,

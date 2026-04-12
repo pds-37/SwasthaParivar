@@ -3,13 +3,22 @@ import { toast } from "react-hot-toast";
 import Toast from "./Toast";
 
 const MAX_TOASTS = 3;
-const activeToastIds = [];
+const activeToasts = [];
+
+const buildToastKey = ({ type, title, description }) =>
+  [type, title, description || ""].join("::");
 
 const showToast = ({ type = "info", title, description, duration = 3200 }) => {
-  while (activeToastIds.length >= MAX_TOASTS) {
-    const oldestId = activeToastIds.shift();
-    if (oldestId) {
-      toast.dismiss(oldestId);
+  const toastKey = buildToastKey({ type, title, description });
+  const existingToast = activeToasts.find((entry) => entry.key === toastKey);
+  if (existingToast) {
+    return existingToast.id;
+  }
+
+  while (activeToasts.length >= MAX_TOASTS) {
+    const oldestToast = activeToasts.shift();
+    if (oldestToast?.id) {
+      toast.dismiss(oldestToast.id);
     }
   }
 
@@ -18,7 +27,7 @@ const showToast = ({ type = "info", title, description, duration = 3200 }) => {
     position: typeof window !== "undefined" && window.innerWidth < 768 ? "bottom-center" : "bottom-right",
   });
 
-  activeToastIds.push(id);
+  activeToasts.push({ id, key: toastKey });
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent("swastha:toast", {
@@ -31,8 +40,8 @@ const showToast = ({ type = "info", title, description, duration = 3200 }) => {
   }
 
   setTimeout(() => {
-    const index = activeToastIds.indexOf(id);
-    if (index >= 0) activeToastIds.splice(index, 1);
+    const index = activeToasts.findIndex((entry) => entry.id === id);
+    if (index >= 0) activeToasts.splice(index, 1);
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("swastha:toast", {

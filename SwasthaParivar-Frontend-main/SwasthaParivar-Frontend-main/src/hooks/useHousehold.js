@@ -2,13 +2,12 @@ import { useMemo } from "react";
 import useSWR from "swr";
 
 import api from "../lib/api";
+import { apiRetryConfig } from "../lib/swr";
 
 const fetchHousehold = () => api.get("/households/me");
 
 export const useHousehold = () => {
-  const swr = useSWR("household", fetchHousehold, {
-    revalidateOnFocus: false,
-  });
+  const swr = useSWR("household", fetchHousehold, apiRetryConfig);
 
   const household = useMemo(() => swr.data?.household || null, [swr.data]);
   const selfMember = useMemo(() => swr.data?.selfMember || null, [swr.data]);

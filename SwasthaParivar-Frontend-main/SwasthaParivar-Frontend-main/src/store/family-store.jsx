@@ -130,7 +130,7 @@ export const FamilyStoreProvider = ({ children }) => {
       loading: loading || householdLoading,
       error: error || householdError,
       refreshMembers: async () => {
-        await Promise.all([mutate?.(), mutateHousehold?.()]);
+        await Promise.allSettled([mutate?.(), mutateHousehold?.()]);
       },
       createMember: async (payload) => {
         const created = await createMember(payload);

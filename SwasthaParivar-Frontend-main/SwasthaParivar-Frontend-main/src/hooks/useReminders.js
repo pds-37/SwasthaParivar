@@ -2,13 +2,12 @@ import { useMemo } from "react";
 import useSWR from "swr";
 
 import api from "../lib/api";
+import { apiRetryConfig } from "../lib/swr";
 
 const fetchReminders = () => api.get("/reminders");
 
 export const useReminders = () => {
-  const swr = useSWR("reminders", fetchReminders, {
-    revalidateOnFocus: false,
-  });
+  const swr = useSWR("reminders", fetchReminders, apiRetryConfig);
 
   const reminders = useMemo(() => {
     if (Array.isArray(swr.data)) return swr.data;

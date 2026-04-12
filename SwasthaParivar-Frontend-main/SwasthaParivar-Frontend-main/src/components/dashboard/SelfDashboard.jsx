@@ -48,6 +48,8 @@ const SelfDashboard = () => {
   const {
     household,
     selfMember,
+    loading: membersLoading,
+    error: membersError,
     pendingInvites,
     acceptInvite,
     refreshMembers,
@@ -57,8 +59,11 @@ const SelfDashboard = () => {
   const [inviteCode, setInviteCode] = useState("");
   const [joining, setJoining] = useState(false);
 
-  const loading = remindersLoading || reportsLoading;
+  const loading = membersLoading || remindersLoading || reportsLoading;
   const firstName = user?.fullName?.split(" ")?.[0] || "there";
+  const refreshAll = async () => {
+    await Promise.allSettled([refreshMembers?.(), refreshReminders?.(), refreshReports?.()]);
+  };
 
   const personalReminders = useMemo(
     () =>
@@ -125,6 +130,22 @@ const SelfDashboard = () => {
     );
   }
 
+  if (!selfMember && membersError) {
+    return (
+      <div className="dashboard-page">
+        <div className="dashboard-shell">
+          <EmptyState
+            icon={<HeartPulse size={20} />}
+            heading="We could not load your personal profile"
+            description={membersError.message || "The server is taking longer than expected. Refresh to try again."}
+            ctaLabel="Refresh"
+            onCta={refreshAll}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (!selfMember) {
     return (
       <div className="dashboard-page">
@@ -134,7 +155,7 @@ const SelfDashboard = () => {
             heading="Your profile is still getting ready"
             description="Refresh once and we will rebuild your self profile inside the household."
             ctaLabel="Refresh"
-            onCta={() => refreshMembers?.()}
+            onCta={refreshAll}
           />
         </div>
       </div>
@@ -144,9 +165,7 @@ const SelfDashboard = () => {
   return (
     <div className="dashboard-page">
       <PullToRefresh
-        onRefresh={async () => {
-          await Promise.all([refreshMembers?.(), refreshReminders?.(), refreshReports?.()]);
-        }}
+        onRefresh={refreshAll}
       >
         <div className="dashboard-shell self-dashboard-shell">
           <section className="dashboard-overview self-dashboard-overview">

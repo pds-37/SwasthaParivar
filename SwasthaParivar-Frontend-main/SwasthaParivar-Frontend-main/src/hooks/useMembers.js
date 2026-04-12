@@ -2,13 +2,12 @@ import { useMemo } from "react";
 import useSWR from "swr";
 
 import api from "../lib/api";
+import { apiRetryConfig } from "../lib/swr";
 
 const fetchMembers = () => api.get("/members");
 
 export const useMembers = () => {
-  const swr = useSWR("members", fetchMembers, {
-    revalidateOnFocus: false,
-  });
+  const swr = useSWR("members", fetchMembers, apiRetryConfig);
 
   const members = useMemo(() => {
     if (Array.isArray(swr.data)) return swr.data;
