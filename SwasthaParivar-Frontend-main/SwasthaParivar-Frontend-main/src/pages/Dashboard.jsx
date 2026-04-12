@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import AddMemberModal from "../components/AddMemberModal";
+import SelfDashboard from "../components/dashboard/SelfDashboard";
 import { useAuth } from "../components/auth-context";
 import { Button, EmptyState, Modal, PullToRefresh, Skeleton } from "../components/ui";
 import { useReminders } from "../hooks/useReminders";
@@ -55,14 +56,22 @@ const getMemberSnapshot = (member = {}) => {
   };
 };
 
-const Dashboard = () => {
+const FamilyDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { members, selectedMember, loading: membersLoading, createMember, refreshMembers } = useFamilyStore();
+  const {
+    members,
+    selectedMember,
+    loading: membersLoading,
+    createMember,
+    createInvite,
+    refreshMembers,
+  } = useFamilyStore();
   const { reminders, loading: remindersLoading, mutate: refreshReminders } = useReminders();
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAlerts, setShowAlerts] = useState(false);
   const [pendingMedicationPrompt, setPendingMedicationPrompt] = useState(null);
+  const [createdInvite, setCreatedInvite] = useState(null);
   const loading = membersLoading || remindersLoading;
 
   const today = new Date().toLocaleDateString("en-IN", {
@@ -175,6 +184,19 @@ const Dashboard = () => {
 
   const addMember = async (form) => {
     try {
+      if (form.mode === "adult_invite" || form.mode === "link_existing") {
+        const invite = await createInvite({
+          inviteType: form.mode,
+          email: form.email,
+          name: form.name,
+          relation: form.relation,
+        });
+        setShowAddMember(false);
+        setCreatedInvite(invite);
+        notify.success("Invite created");
+        return;
+      }
+
       const createdMember = await createMember({
         name: form.name,
         relation: form.relation,
@@ -195,7 +217,7 @@ const Dashboard = () => {
         });
       }
     } catch {
-      notify.error("Could not add family member");
+      notify.error(form.mode === "dependent" ? "Could not add family member" : "Could not create invite");
     }
   };
 
@@ -528,6 +550,33 @@ const Dashboard = () => {
       {showAddMember ? <AddMemberModal onClose={() => setShowAddMember(false)} onSave={addMember} /> : null}
 
       <Modal
+        open={Boolean(createdInvite)}
+        onClose={() => setCreatedInvite(null)}
+        title="Invite ready"
+        description="Share this code with the family member so they can join the same household from their own account."
+        footer={
+          <Button variant="secondary" onClick={() => setCreatedInvite(null)}>
+            Close
+          </Button>
+        }
+      >
+        {createdInvite ? (
+          <div className="dashboard-stack">
+            <article className="dashboard-mini-row">
+              <div className="dashboard-mini-row__meta">
+                <span className="avatar avatar--sm">{createdInvite.email?.charAt(0)?.toUpperCase() || "I"}</span>
+                <div>
+                  <strong>{createdInvite.email}</strong>
+                  <p>{createdInvite.inviteType === "link_existing" ? "Link existing app user" : "Invite adult family member"}</p>
+                </div>
+              </div>
+              <span>{createdInvite.code}</span>
+            </article>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
         open={showAlerts}
         onClose={() => setShowAlerts(false)}
         title="Household health alerts"
@@ -601,6 +650,16 @@ const Dashboard = () => {
       </Modal>
     </div>
   );
+};
+
+const Dashboard = () => {
+  const { activeView } = useFamilyStore();
+
+  if (activeView === "self") {
+    return <SelfDashboard />;
+  }
+
+  return <FamilyDashboard />;
 };
 
 export default Dashboard;

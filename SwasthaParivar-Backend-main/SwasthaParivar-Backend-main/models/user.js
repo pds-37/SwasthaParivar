@@ -45,6 +45,17 @@ const userSchema = new mongoose.Schema({
     select: false,
   },
   pushSubscription: { type: mongoose.Schema.Types.Mixed, default: null },
+  activeHouseholdId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Household",
+    default: null,
+    index: true,
+  },
+  primaryMemberProfileId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "FamilyMember",
+    default: null,
+  },
 }, { timestamps: true });
 
 export default mongoose.models.User || mongoose.model("User", userSchema);

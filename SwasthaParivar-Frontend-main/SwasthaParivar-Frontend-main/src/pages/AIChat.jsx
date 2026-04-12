@@ -167,22 +167,43 @@ const getConversationTitle = (messages = [], fallbackLabel = "New chat") => {
 
 const AIChat = () => {
   const navigate = useNavigate();
-  const { members: userFamily, selectedMember, setSelectedMember, refreshMembers } = useFamilyStore();
+  const {
+    members: userFamily,
+    selfMember,
+    selectedMember,
+    activeView,
+    setSelectedMember,
+    refreshMembers,
+  } = useFamilyStore();
   const { sidebarCollapsed } = useUIStore();
   const contexts = useMemo(
-    () => [
-      { key: "family", label: "All family", memberValue: "All family", memberId: null },
-      ...userFamily.map((member) => ({
-        key: member._id || member.name,
-        label: member.name,
-        memberValue: member.name,
-        memberId: member._id,
-      })),
-    ],
-    [userFamily]
+    () =>
+      activeView === "self"
+        ? (selfMember
+            ? [
+                {
+                  key: selfMember._id || "self",
+                  label: selfMember.name || "Self",
+                  memberValue: selfMember.name || "Self",
+                  memberId: selfMember._id,
+                },
+              ]
+            : [{ key: "self", label: "Self", memberValue: "Self", memberId: null }])
+        : [
+            { key: "family", label: "All family", memberValue: "All family", memberId: null },
+            ...userFamily.map((member) => ({
+              key: member._id || member.name,
+              label: member.name,
+              memberValue: member.name,
+              memberId: member._id,
+            })),
+          ],
+    [activeView, selfMember, userFamily]
   );
 
-  const [selectedContext, setSelectedContext] = useState(() => selectedMember?._id || "family");
+  const [selectedContext, setSelectedContext] = useState(() =>
+    activeView === "self" ? selfMember?._id || "self" : selectedMember?._id || "family"
+  );
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -203,9 +224,15 @@ const AIChat = () => {
   const hasMessages = messages.length > 0;
 
   useEffect(() => {
+    if (activeView === "self" && selfMember?._id) {
+      setSelectedContext(selfMember._id);
+      setSelectedMember(selfMember);
+      return;
+    }
+
     if (!selectedMember?._id) return;
     setSelectedContext(selectedMember._id);
-  }, [selectedMember?._id]);
+  }, [activeView, selectedMember?._id, selfMember, setSelectedMember]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -556,7 +583,9 @@ const AIChat = () => {
                 </div>
                 <h2 className="ai-chat-main__title">Family AI advisor</h2>
                 <p className="ai-chat-main__subtitle">
-                  Health-only guidance for symptoms, medicines, reports, and reminders
+                  {activeView === "self"
+                    ? "Your personal AI coach for symptoms, medicines, reports, and reminders"
+                    : "Health-only guidance for symptoms, medicines, reports, and reminders"}
                 </p>
               </div>
             </div>

@@ -1,16 +1,14 @@
 import SymptomEpisode from "../models/symptomepisode.js";
-import FamilyMember from "../models/familymembermodel.js";
+import householdService from "../services/household/HouseholdService.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 
 export const createSymptomEpisode = async (req, res) => {
   try {
-    const member = await FamilyMember.findOne({
-      _id: req.body.memberId,
-      user: req.userId,
-    });
+    const householdContext = await householdService.ensureUserHouseholdContext(req.userId);
+    const memberResult = await householdService.findAccessibleMember(req.userId, req.body.memberId);
 
-    if (!member) {
+    if (memberResult.error || !memberResult.member) {
       return sendError(res, {
         status: 404,
         code: "MEMBER_NOT_FOUND",
@@ -20,6 +18,7 @@ export const createSymptomEpisode = async (req, res) => {
 
     const episode = await SymptomEpisode.create({
       ownerId: req.userId,
+      householdId: householdContext?.household?._id || null,
       memberId: req.body.memberId,
       symptoms: req.body.symptoms,
       severity: req.body.severity,
@@ -43,9 +42,13 @@ export const createSymptomEpisode = async (req, res) => {
 
 export const listSymptomEpisodes = async (req, res) => {
   try {
+    const householdContext = await householdService.ensureUserHouseholdContext(req.userId);
     const pagination = parsePagination(req.query);
     const filter = {
-      ownerId: req.userId,
+      $or: [
+        { householdId: householdContext?.household?._id || null },
+        { ownerId: req.userId },
+      ],
       ...(req.query.memberId ? { memberId: req.query.memberId } : {}),
     };
 

@@ -24,6 +24,12 @@ const symptomEpisodeSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
+  householdId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Household",
+    default: null,
+    index: true,
+  },
   memberId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "FamilyMember",

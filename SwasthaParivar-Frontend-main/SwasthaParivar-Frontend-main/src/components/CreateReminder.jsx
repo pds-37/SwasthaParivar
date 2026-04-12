@@ -5,6 +5,7 @@ import api from "../lib/api";
 import { buildGoogleCalendarUrl } from "../lib/googleCalendar";
 import notify from "../lib/notify";
 import { clearReminderDraft, readReminderDraft, toLocalDateTimeValue } from "../lib/reminderDraft";
+import { useFamilyStore } from "../store/family-store";
 import { Button, Checkbox, Input, Select, Textarea } from "./ui";
 import "./CreateReminder.css";
 
@@ -76,33 +77,17 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
   );
   const [syncToCalendar, setSyncToCalendar] = useState(Boolean(existing?.meta?.syncToCalendar));
   const [selectedMembers, setSelectedMembers] = useState(existing?.memberId ? [existing.memberId] : []);
-  const [members, setMembers] = useState([]);
   const [reportPreview, setReportPreview] = useState(existing?.meta?.reportPreview || "");
   const [reportSummary, setReportSummary] = useState(existing?.meta?.reportSummary || "");
   const [reportFileName, setReportFileName] = useState(existing?.meta?.reportFileName || "");
   const [reportBusy, setReportBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadMembers = async () => {
-      try {
-        const response = await api.get("/members");
-        if (!cancelled) {
-          setMembers(Array.isArray(response) ? response : response?.members || []);
-        }
-      } catch {
-        if (!cancelled) setMembers([]);
-      }
-    };
-
-    loadMembers();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { members: householdMembers, selfMember, activeView } = useFamilyStore();
+  const members = useMemo(
+    () => (activeView === "self" ? (selfMember ? [selfMember] : []) : householdMembers),
+    [activeView, householdMembers, selfMember]
+  );
 
   useEffect(() => {
     if (existing) return;
@@ -118,6 +103,12 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
     if (Array.isArray(draft.selectedMembers)) setSelectedMembers(draft.selectedMembers);
   }, [existing]);
 
+  useEffect(() => {
+    if (activeView === "self" && selfMember?._id) {
+      setSelectedMembers([selfMember._id]);
+    }
+  }, [activeView, selfMember?._id]);
+
   const selectedMemberNames = useMemo(
     () =>
       members
@@ -128,6 +119,10 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
   );
 
   const toggleMember = (memberId) => {
+    if (activeView === "self") {
+      return;
+    }
+
     setSelectedMembers((previous) =>
       previous.includes(memberId)
         ? previous.filter((item) => item !== memberId)
@@ -284,7 +279,7 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
         />
 
         <div className="create-reminder-form__field create-reminder-form__field--wide">
-          <span className="label-md">Family members</span>
+          <span className="label-md">{activeView === "self" ? "Self profile" : "Family members"}</span>
           <div className="create-reminder-members">
             {members.map((member) => (
               <button
@@ -292,6 +287,7 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
                 type="button"
                 className={`create-reminder-member ${selectedMembers.includes(member._id) ? "is-active" : ""}`}
                 onClick={() => toggleMember(member._id)}
+                disabled={activeView === "self"}
               >
                 <span className="avatar avatar--sm">{member.name?.charAt(0) || "U"}</span>
                 <span>{member.name}</span>

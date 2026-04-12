@@ -110,6 +110,11 @@
   font-size: 0.92rem;
 }
 
+.member-modal__choices {
+  display: grid;
+  gap: 12px;
+}
+
 .member-modal__hint {
   display: inline-flex;
   align-items: center;

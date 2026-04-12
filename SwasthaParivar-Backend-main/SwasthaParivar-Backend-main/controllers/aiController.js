@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 import Reminder from "../models/remindermodel.js";
-import FamilyMember from "../models/familymembermodel.js";
 import AIInsight from "../models/aiinsightmodel.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { triageHealthAttachment } from "../services/ai/reportReviewService.js";
+import householdService from "../services/household/HouseholdService.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 import { logger } from "../utils/logger.js";
@@ -337,7 +337,10 @@ async function buildConversationContext(userId, selectedMember) {
   }
 
   if (["family", "whole family", "all", "household"].includes(lowered)) {
-    const members = await FamilyMember.find({ user: userId }).lean();
+    const householdMembers = await householdService.listHouseholdMembers(userId);
+    const members = householdMembers.map((member) =>
+      typeof member.toObject === "function" ? member.toObject() : member
+    );
 
     if (!members.length) {
       return {
@@ -355,10 +358,8 @@ async function buildConversationContext(userId, selectedMember) {
     };
   }
 
-  const member = await FamilyMember.findOne({
-    user: userId,
-    name: mongoose.trusted({ $regex: `^${escapeRegex(normalized)}$`, $options: "i" }),
-  }).lean();
+  const memberDoc = await householdService.findHouseholdMemberByName(userId, normalized);
+  const member = memberDoc?.toObject ? memberDoc.toObject() : memberDoc;
 
   if (!member) {
     return {
@@ -453,6 +454,13 @@ Latest user message:
 ${message}
 `;
 }
+
+const buildReminderScope = (householdId, userId) => ({
+  deletedAt: null,
+  $or: householdId
+    ? [{ householdId }, { ownerId: userId, householdId: null }]
+    : [{ ownerId: userId }],
+});
 
 export const chatWithAI = async (req, res) => {
   try {
@@ -653,10 +661,7 @@ User: "${message}"
     parsed.memberName || (selectedMember && selectedMember !== "Self" ? selectedMember : "");
 
   if (resolvedMemberName) {
-    const member = await FamilyMember.findOne({
-      user: userId,
-      name: mongoose.trusted({ $regex: `^${escapeRegex(resolvedMemberName)}$`, $options: "i" }),
-    });
+    const member = await householdService.findHouseholdMemberByName(userId, resolvedMemberName);
 
     if (member) {
       memberId = member._id;
@@ -664,9 +669,11 @@ User: "${message}"
   }
 
   const nextRunAt = new Date(`${parsed.date}T${parsed.time}:00`);
+  const householdContext = await householdService.ensureUserHouseholdContext(userId);
 
   const reminder = await Reminder.create({
     ownerId: userId,
+    householdId: householdContext?.household?._id || null,
     memberId,
     title: parsed.title,
     description: parsed.description || "",
@@ -717,17 +724,21 @@ User: "${message}"
 
   const cleanTitle = parsed.title.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
   const keyword = cleanTitle.split(" ").slice(-1)[0];
+  const householdContext = await householdService.ensureUserHouseholdContext(userId);
 
   const reminder = await Reminder.findOne({
-    ownerId: userId,
-    deletedAt: null,
-    $or: mongoose.trusted([
-      { title: { $regex: cleanTitle, $options: "i" } },
-      { title: { $regex: keyword, $options: "i" } },
-      ...cleanTitle.split(" ").filter(Boolean).map((word) => ({
-        title: { $regex: word, $options: "i" },
-      })),
-    ]),
+    $and: [
+      buildReminderScope(householdContext?.household?._id || null, userId),
+      {
+        $or: mongoose.trusted([
+          { title: { $regex: cleanTitle, $options: "i" } },
+          { title: { $regex: keyword, $options: "i" } },
+          ...cleanTitle.split(" ").filter(Boolean).map((word) => ({
+            title: { $regex: word, $options: "i" },
+          })),
+        ]),
+      },
+    ],
   });
 
   if (!reminder) {
@@ -784,10 +795,10 @@ User: "${message}"
       message: "Title missing for update",
     });
   }
+  const householdContext = await householdService.ensureUserHouseholdContext(userId);
 
   const reminder = await Reminder.findOne({
-    ownerId: userId,
-    deletedAt: null,
+    ...buildReminderScope(householdContext?.household?._id || null, userId),
     title: mongoose.trusted({ $regex: parsed.title, $options: "i" }),
   });
 

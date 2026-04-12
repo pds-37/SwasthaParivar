@@ -10,12 +10,26 @@ import "./FamilyMembers.css";
 
 const FamilyMembers = () => {
   const navigate = useNavigate();
-  const { members, loading, createMember, refreshMembers } = useFamilyStore();
+  const { members, loading, createMember, createInvite, refreshMembers } = useFamilyStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [pendingMedicationPrompt, setPendingMedicationPrompt] = useState(null);
+  const [createdInvite, setCreatedInvite] = useState(null);
 
   const addMember = async (form) => {
     try {
+      if (form.mode === "adult_invite" || form.mode === "link_existing") {
+        const invite = await createInvite({
+          inviteType: form.mode,
+          email: form.email,
+          name: form.name,
+          relation: form.relation,
+        });
+        setShowAddModal(false);
+        setCreatedInvite(invite);
+        notify.success("Invite created");
+        return;
+      }
+
       const createdMember = await createMember({
         name: form.name,
         age: Number(form.age),
@@ -36,7 +50,7 @@ const FamilyMembers = () => {
         });
       }
     } catch {
-      notify.error("Could not add member");
+      notify.error(form.mode === "dependent" ? "Could not add member" : "Could not create invite");
     }
   };
 
@@ -127,6 +141,34 @@ const FamilyMembers = () => {
       </Button>
 
       {showAddModal ? <AddMemberModal onClose={() => setShowAddModal(false)} onSave={addMember} /> : null}
+
+      <Modal
+        open={Boolean(createdInvite)}
+        onClose={() => setCreatedInvite(null)}
+        title="Invite ready"
+        description="Share this household code so the person can join from their own login."
+        footer={
+          <Button variant="secondary" onClick={() => setCreatedInvite(null)}>
+            Close
+          </Button>
+        }
+      >
+        {createdInvite ? (
+          <div>
+            <p className="text-body-md">
+              <strong>{createdInvite.email}</strong>
+            </p>
+            <p className="text-body-sm muted-copy">
+              {createdInvite.inviteType === "link_existing"
+                ? "Link existing app user"
+                : "Invite adult family member"}
+            </p>
+            <p className="text-body-md">
+              Invite code: <strong>{createdInvite.code}</strong>
+            </p>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         open={Boolean(pendingMedicationPrompt)}

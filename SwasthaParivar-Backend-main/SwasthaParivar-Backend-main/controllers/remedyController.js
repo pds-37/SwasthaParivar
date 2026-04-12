@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import FamilyMember from "../models/familymembermodel.js";
+import householdService from "../services/household/HouseholdService.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 
 const TEMPLATE_LIBRARY = [
@@ -214,6 +215,8 @@ function buildMemberSignal(member) {
 
 async function buildFocusContext(userId, selectedMemberId) {
   let members = [];
+  const householdContext = await householdService.ensureUserHouseholdContext(userId);
+  const householdId = householdContext?.household?._id || null;
 
   if (
     selectedMemberId &&
@@ -222,7 +225,8 @@ async function buildFocusContext(userId, selectedMemberId) {
   ) {
     const member = await FamilyMember.findOne({
       _id: selectedMemberId,
-      user: userId,
+      householdId,
+      profileStatus: { $ne: "archived" },
     }).lean();
 
     if (member) {
@@ -231,7 +235,10 @@ async function buildFocusContext(userId, selectedMemberId) {
   }
 
   if (members.length === 0) {
-    members = await FamilyMember.find({ user: userId }).lean();
+    members = await FamilyMember.find({
+      householdId,
+      profileStatus: { $ne: "archived" },
+    }).lean();
   }
 
   const signals = members.map(buildMemberSignal);

@@ -8,6 +8,12 @@ const reportSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    householdId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Household",
+      default: null,
+      index: true,
+    },
     memberId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "FamilyMember",
@@ -60,5 +66,6 @@ const reportSchema = new mongoose.Schema(
 );
 
 reportSchema.index({ ownerId: 1, createdAt: -1 });
+reportSchema.index({ householdId: 1, createdAt: -1 });
 
 export default mongoose.models.Report || mongoose.model("Report", reportSchema);

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import FamilyMember from "../../models/familymembermodel.js";
+import householdService from "../household/HouseholdService.js";
 import { buildPaginationMeta, parsePagination } from "../../utils/pagination.js";
 
 export const HEALTH_METRICS = [
@@ -238,31 +239,47 @@ class FamilyMemberService {
       allergies: Array.isArray(plainMember.allergies) ? plainMember.allergies : [],
       medications: Array.isArray(plainMember.medications) ? plainMember.medications : [],
       childSensitive: Boolean(plainMember.childSensitive),
+      profileType: plainMember.profileType || "dependent",
+      profileStatus: plainMember.profileStatus || "active",
+      linkedUserId: plainMember.linkedUserId || null,
+      managedByUserId: plainMember.managedByUserId || null,
+      householdId: plainMember.householdId || null,
+      connectionStatus: plainMember.connectionStatus || "not_connected",
+      sharingPreferences: plainMember.sharingPreferences || {
+        visibility: "summary",
+        allowFamilySummary: true,
+        allowCaregiverDetails: false,
+      },
     };
   }
 
   async findOwnedMember(ownerId, memberId) {
-    if (!this.ensureValidMemberId(memberId)) {
-      return { error: "Invalid member id", status: 400 };
-    }
-
-    const member = await FamilyMember.findOne({ _id: memberId, user: ownerId });
-
-    if (!member) {
-      return { error: "Member not found", status: 404 };
-    }
-
-    return { member };
+    return householdService.findAccessibleMember(ownerId, memberId);
   }
 
   async list(ownerId, query = {}) {
     const pagination = parsePagination(query);
+    const householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+
+    if (!householdContext) {
+      return {
+        status: 404,
+        error: { code: "HOUSEHOLD_NOT_FOUND", message: "Household not found" },
+      };
+    }
+
     const [members, total] = await Promise.all([
-      FamilyMember.find({ user: ownerId })
+      FamilyMember.find({
+        householdId: householdContext.household._id,
+        profileStatus: { $ne: "archived" },
+      })
         .sort({ createdAt: -1 })
         .skip(pagination.skip)
         .limit(pagination.limit),
-      FamilyMember.countDocuments({ user: ownerId }),
+      FamilyMember.countDocuments({
+        householdId: householdContext.household._id,
+        profileStatus: { $ne: "archived" },
+      }),
     ]);
 
     return {
@@ -278,10 +295,25 @@ class FamilyMemberService {
       return { status: 400, error: { code: "VALIDATION_ERROR", message: sanitized.error } };
     }
 
+    const householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+    if (!householdContext) {
+      return {
+        status: 404,
+        error: { code: "HOUSEHOLD_NOT_FOUND", message: "Household not found" },
+      };
+    }
+
     const member = await FamilyMember.create({
       user: ownerId,
+      householdId: householdContext.household._id,
+      managedByUserId: ownerId,
+      linkedUserId: null,
       ...sanitized.data,
       health: this.getEmptyHealth(),
+      profileType: "dependent",
+      profileStatus: "active",
+      sharingPreferences: householdService.getDefaultSharingPreferences("dependent"),
+      connectionStatus: "not_connected",
     });
 
     return {
@@ -366,18 +398,40 @@ class FamilyMemberService {
       return { status: 400, error: { code: "INVALID_MEMBER_ID", message: "Invalid member id" } };
     }
 
-    const member = await FamilyMember.findOneAndDelete({
+    const householdContext = await householdService.ensureUserHouseholdContext(ownerId);
+    if (!householdContext) {
+      return {
+        status: 404,
+        error: { code: "HOUSEHOLD_NOT_FOUND", message: "Household not found" },
+      };
+    }
+
+    const member = await FamilyMember.findOne({
       _id: memberId,
-      user: ownerId,
+      householdId: householdContext.household._id,
+      profileStatus: { $ne: "archived" },
     });
 
     if (!member) {
       return { status: 404, error: { code: "MEMBER_NOT_FOUND", message: "Member not found" } };
     }
 
+    if (member.profileType === "self" || member.linkedUserId) {
+      return {
+        status: 409,
+        error: {
+          code: "LINKED_MEMBER_DELETE_BLOCKED",
+          message: "Linked user profiles cannot be deleted from family management",
+        },
+      };
+    }
+
+    member.profileStatus = "archived";
+    await member.save();
+
     return {
       status: 200,
-      data: { id: memberId, deleted: true },
+      data: { id: memberId, deleted: true, archived: true },
     };
   }
 }

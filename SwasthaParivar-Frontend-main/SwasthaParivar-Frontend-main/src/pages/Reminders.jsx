@@ -41,7 +41,7 @@ const isSameDay = (first, second) =>
   new Date(first).toDateString() === new Date(second).toDateString();
 
 const Reminders = () => {
-  const { members, loading: membersLoading } = useFamilyStore();
+  const { members, selfMember, activeView, loading: membersLoading } = useFamilyStore();
   const { reminders: rawReminders, loading: remindersLoading, deleteReminder, mutate } = useReminders();
   const [viewMode, setViewMode] = useState("calendar");
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -50,11 +50,17 @@ const Reminders = () => {
   const loading = membersLoading || remindersLoading;
   const reminders = useMemo(() => {
     const byId = new Map(members.map((member) => [member._id, member]));
-    return rawReminders.map((reminder) => ({
+    const decorated = rawReminders.map((reminder) => ({
       ...reminder,
       memberName: byId.get(reminder.memberId)?.name || reminder.memberName || "Family member",
     }));
-  }, [members, rawReminders]);
+
+    if (activeView === "self" && selfMember?._id) {
+      return decorated.filter((reminder) => reminder.memberId === selfMember._id);
+    }
+
+    return decorated;
+  }, [activeView, members, rawReminders, selfMember?._id]);
 
   const overdue = useMemo(
     () =>
@@ -100,7 +106,9 @@ const Reminders = () => {
             </span>
             <h1 className="text-h2">Stay ahead of household care with a calmer reminder timeline.</h1>
             <p className="text-body-md">
-              Switch between calendar and list views, keep overdue tasks visible, and create one reminder for one or many family members.
+              {activeView === "self"
+                ? "See only your own reminders, follow-ups, and medicine tasks from Self View."
+                : "Switch between calendar and list views, keep overdue tasks visible, and create one reminder for one or many family members."}
             </p>
           </div>
 
@@ -200,7 +208,9 @@ const Reminders = () => {
                 <p className="text-body-sm muted-copy">
                   {viewMode === "calendar"
                     ? "Reminders scheduled for the selected day."
-                    : "Every scheduled care reminder across your household."}
+                    : activeView === "self"
+                      ? "Every scheduled reminder attached to your own profile."
+                      : "Every scheduled care reminder across your household."}
                 </p>
               </div>
             </div>

@@ -13,6 +13,13 @@ const reminderSchema = new mongoose.Schema({
     required: true,
   },
 
+  householdId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Household",
+    default: null,
+    index: true,
+  },
+
   title: { type: String, required: true },
   description: { type: String, default: "" },
 
@@ -48,6 +55,7 @@ const reminderSchema = new mongoose.Schema({
 
 // Index for fast upcoming queries
 reminderSchema.index({ ownerId: 1, active: 1, deletedAt: 1, nextRunAt: 1 });
+reminderSchema.index({ householdId: 1, active: 1, deletedAt: 1, nextRunAt: 1 });
 
 // ⭐ FIX OverwriteModelError
 export default mongoose.models.Reminder ||

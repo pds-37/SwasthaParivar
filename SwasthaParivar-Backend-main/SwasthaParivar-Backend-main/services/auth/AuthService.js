@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import User from "../../models/user.js";
 import appConfig from "../../config/AppConfig.js";
+import householdService from "../household/HouseholdService.js";
 
 class AuthService {
   isGoogleAuthConfigured() {
@@ -44,15 +45,6 @@ class AuthService {
       audience: "swasthaparivar-client",
       jwtid: crypto.randomUUID(),
     });
-  }
-
-  toSafeUser(user) {
-    return {
-      id: user._id,
-      email: user.email,
-      fullName: user.fullName,
-      avatarUrl: user.avatarUrl || null,
-    };
   }
 
   hashToken(token) {
@@ -136,11 +128,12 @@ class AuthService {
     const accessToken = this.issueAccessToken(user._id);
     const refreshToken = this.issueRefreshToken(user._id);
     await this.persistRefreshToken(user._id, refreshToken);
+    const householdContext = await householdService.ensureUserHouseholdContext(user);
 
     return {
       accessToken,
       refreshToken,
-      user: this.toSafeUser(user),
+      user: householdContext?.safeUser || householdService.buildSafeUser(user),
     };
   }
 

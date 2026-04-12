@@ -141,7 +141,7 @@ class AuthController {
     return sendSuccess(res, {
       status: 200,
       data: {
-        user: req.user,
+        user: req.safeUser || req.user,
       },
     });
   }

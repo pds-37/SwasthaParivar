@@ -1,19 +1,28 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 
+import { useHousehold } from "../hooks/useHousehold";
 import { useMembers } from "../hooks/useMembers";
 
 const FamilyStoreContext = createContext(null);
 
 const defaultFamilyStore = {
   members: [],
+  household: null,
+  selfMember: null,
+  memberships: [],
+  pendingInvites: [],
   selectedMember: null,
+  activeView: "self",
   loading: false,
   error: null,
   refreshMembers: () => {},
   createMember: async () => null,
   deleteMember: async () => null,
+  createInvite: async () => null,
+  acceptInvite: async () => null,
   setSelectedMember: () => {},
+  setActiveView: () => {},
 };
 
 const familyReducer = (state, action) => {
@@ -22,15 +31,40 @@ const familyReducer = (state, action) => {
       return {
         ...state,
         members: action.payload,
+        selfMember:
+          state.selfMember && action.payload.some((member) => member._id === state.selfMember._id)
+            ? action.payload.find((member) => member._id === state.selfMember._id)
+            : state.selfMember,
         selectedMember:
           state.selectedMember && action.payload.some((member) => member._id === state.selectedMember._id)
             ? action.payload.find((member) => member._id === state.selectedMember._id)
+            : state.selectedMember,
+      };
+    case "SET_HOUSEHOLD":
+      return {
+        ...state,
+        household: action.payload.household,
+        selfMember: action.payload.selfMember,
+        memberships: action.payload.memberships,
+        pendingInvites: action.payload.pendingInvites,
+        selectedMember:
+          state.activeView === "self"
+            ? action.payload.selfMember
             : state.selectedMember,
       };
     case "SET_SELECTED_MEMBER":
       return {
         ...state,
         selectedMember: action.payload,
+      };
+    case "SET_ACTIVE_VIEW":
+      return {
+        ...state,
+        activeView: action.payload.view,
+        selectedMember:
+          action.payload.view === "self"
+            ? action.payload.selfMember
+            : state.selectedMember,
       };
     default:
       return state;
@@ -39,27 +73,110 @@ const familyReducer = (state, action) => {
 
 export const FamilyStoreProvider = ({ children }) => {
   const { members, loading, error, mutate, createMember, deleteMember } = useMembers();
+  const {
+    household,
+    selfMember,
+    memberships,
+    pendingInvites,
+    loading: householdLoading,
+    error: householdError,
+    mutate: mutateHousehold,
+    createInvite,
+    acceptInvite,
+  } = useHousehold();
   const [state, dispatch] = useReducer(familyReducer, {
     members: [],
+    household: null,
+    selfMember: null,
+    memberships: [],
+    pendingInvites: [],
     selectedMember: null,
+    activeView:
+      typeof window !== "undefined" && localStorage.getItem("sp_active_view") === "family"
+        ? "family"
+        : "self",
   });
 
   useEffect(() => {
     dispatch({ type: "SET_MEMBERS", payload: members });
   }, [members]);
 
+  useEffect(() => {
+    dispatch({
+      type: "SET_HOUSEHOLD",
+      payload: {
+        household,
+        selfMember,
+        memberships,
+        pendingInvites,
+      },
+    });
+  }, [household, memberships, pendingInvites, selfMember]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("sp_active_view", state.activeView);
+  }, [state.activeView]);
+
   const value = useMemo(
     () => ({
       members: state.members,
+      household: state.household,
+      selfMember: state.selfMember,
+      memberships: state.memberships,
+      pendingInvites: state.pendingInvites,
       selectedMember: state.selectedMember,
-      loading,
-      error,
-      refreshMembers: mutate,
+      activeView: state.activeView,
+      loading: loading || householdLoading,
+      error: error || householdError,
+      refreshMembers: async () => {
+        await Promise.all([mutate?.(), mutateHousehold?.()]);
+      },
+      createMember: async (payload) => {
+        const created = await createMember(payload);
+        await mutateHousehold?.();
+        return created;
+      },
+      deleteMember: async (memberId) => {
+        await deleteMember(memberId);
+        await mutateHousehold?.();
+      },
+      createInvite: async (payload) => {
+        const invite = await createInvite(payload);
+        await mutateHousehold?.();
+        return invite;
+      },
+      acceptInvite: async (code) => {
+        const accepted = await acceptInvite(code);
+        await Promise.all([mutate?.(), mutateHousehold?.()]);
+        return accepted;
+      },
+      setSelectedMember: (member) => dispatch({ type: "SET_SELECTED_MEMBER", payload: member }),
+      setActiveView: (view) =>
+        dispatch({
+          type: "SET_ACTIVE_VIEW",
+          payload: { view, selfMember: state.selfMember },
+        }),
+    }),
+    [
+      acceptInvite,
+      createInvite,
       createMember,
       deleteMember,
-      setSelectedMember: (member) => dispatch({ type: "SET_SELECTED_MEMBER", payload: member }),
-    }),
-    [createMember, deleteMember, error, loading, mutate, state.members, state.selectedMember]
+      error,
+      householdError,
+      householdLoading,
+      loading,
+      mutate,
+      mutateHousehold,
+      state.activeView,
+      state.household,
+      state.members,
+      state.memberships,
+      state.pendingInvites,
+      state.selectedMember,
+      state.selfMember,
+    ]
   );
 
   return <FamilyStoreContext.Provider value={value}>{children}</FamilyStoreContext.Provider>;

@@ -25,6 +25,12 @@ const UploadReportModal = ({ members, onClose, onUploaded }) => {
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState({});
 
+  React.useEffect(() => {
+    if (members.length === 1 && members[0]?._id) {
+      setMemberId(members[0]._id);
+    }
+  }, [members]);
+
   const handleFileChange = (nextFile) => {
     setFile(nextFile || null);
     setErrors((previous) => ({ ...previous, file: "" }));
@@ -167,7 +173,7 @@ const UploadReportModal = ({ members, onClose, onUploaded }) => {
 };
 
 const Reports = () => {
-  const { members, loading: membersLoading } = useFamilyStore();
+  const { members, selfMember, activeView, loading: membersLoading } = useFamilyStore();
   const { reports, loading: reportsLoading, mutate, uploadReport } = useReports();
   const [showUpload, setShowUpload] = useState(false);
   const [memberFilter, setMemberFilter] = useState("all");
@@ -175,6 +181,10 @@ const Reports = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const loading = membersLoading || reportsLoading;
+  const availableMembers = useMemo(
+    () => (activeView === "self" ? (selfMember ? [selfMember] : []) : members),
+    [activeView, members, selfMember]
+  );
 
   const reportsWithMembers = useMemo(() => {
     const memberMap = new Map(members.map((member) => [member._id, member.name]));
@@ -188,14 +198,26 @@ const Reports = () => {
     () =>
       reportsWithMembers.filter((report) => {
         const createdAt = new Date(report.createdAt);
-        if (memberFilter !== "all" && report.memberId !== memberFilter) return false;
+        const effectiveMemberFilter =
+          activeView === "self" && selfMember?._id ? selfMember._id : memberFilter;
+
+        if (effectiveMemberFilter !== "all" && report.memberId !== effectiveMemberFilter) return false;
         if (typeFilter !== "all" && report.reportType !== typeFilter) return false;
         if (startDate && createdAt < new Date(startDate)) return false;
         if (endDate && createdAt > new Date(`${endDate}T23:59`)) return false;
         return true;
       }),
-    [endDate, memberFilter, reportsWithMembers, startDate, typeFilter]
+    [activeView, endDate, memberFilter, reportsWithMembers, selfMember?._id, startDate, typeFilter]
   );
+
+  React.useEffect(() => {
+    if (activeView === "self" && selfMember?._id) {
+      setMemberFilter(selfMember._id);
+      return;
+    }
+
+    setMemberFilter("all");
+  }, [activeView, selfMember?._id]);
 
   const handleUploaded = async (formData) => {
     await uploadReport(formData);
@@ -215,7 +237,9 @@ const Reports = () => {
               </span>
               <h1 className="text-h2">Keep every family report easy to find and easy to understand.</h1>
               <p className="text-body-md">
-                Upload reports, attach them to the right member, and review AI-generated summaries without losing the original context.
+                {activeView === "self"
+                  ? "Upload and review only your own reports, summaries, and documents from Self View."
+                  : "Upload reports, attach them to the right member, and review AI-generated summaries without losing the original context."}
               </p>
             </div>
 
@@ -225,9 +249,14 @@ const Reports = () => {
           </section>
 
           <section className="reports-filters card">
-            <Select label="Member" value={memberFilter} onChange={(event) => setMemberFilter(event.target.value)}>
+            <Select
+              label="Member"
+              value={memberFilter}
+              onChange={(event) => setMemberFilter(event.target.value)}
+              disabled={activeView === "self"}
+            >
               <option value="all">All members</option>
-              {members.map((member) => (
+              {availableMembers.map((member) => (
                 <option key={member._id} value={member._id}>
                   {member.name}
                 </option>
@@ -316,7 +345,7 @@ const Reports = () => {
         </div>
       </PullToRefresh>
 
-      {showUpload ? <UploadReportModal members={members} onClose={() => setShowUpload(false)} onUploaded={handleUploaded} /> : null}
+      {showUpload ? <UploadReportModal members={availableMembers} onClose={() => setShowUpload(false)} onUploaded={handleUploaded} /> : null}
     </div>
   );
 };

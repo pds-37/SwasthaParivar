@@ -27,8 +27,46 @@ const emergencyContactSchema = new mongoose.Schema({
   relation: { type: String, default: "" },
 }, { _id: false });
 
+const sharingPreferencesSchema = new mongoose.Schema({
+  visibility: {
+    type: String,
+    enum: ["private", "summary", "full"],
+    default: "summary",
+  },
+  allowFamilySummary: {
+    type: Boolean,
+    default: true,
+  },
+  allowCaregiverDetails: {
+    type: Boolean,
+    default: false,
+  },
+}, { _id: false });
+
+const inviteContactSchema = new mongoose.Schema({
+  email: { type: String, default: "", trim: true, lowercase: true },
+  phone: { type: String, default: "", trim: true },
+}, { _id: false });
+
 const familyMemberSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  householdId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Household",
+    required: true,
+    index: true,
+  },
+  linkedUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+    index: true,
+  },
+  managedByUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
   name: {
     type: String,
     required: true,
@@ -54,11 +92,32 @@ const familyMemberSchema = new mongoose.Schema({
   },
   childSensitive: { type: Boolean, default: false },
   careRoles: [{ type: String }],
+  profileType: {
+    type: String,
+    enum: ["self", "adult", "dependent"],
+    default: "dependent",
+    index: true,
+  },
+  profileStatus: {
+    type: String,
+    enum: ["active", "invited", "archived"],
+    default: "active",
+    index: true,
+  },
+  sharingPreferences: { type: sharingPreferencesSchema, default: () => ({}) },
+  connectionStatus: {
+    type: String,
+    enum: ["not_connected", "pending", "connected", "revoked", "error"],
+    default: "not_connected",
+  },
+  inviteContact: { type: inviteContactSchema, default: () => ({}) },
   baselinePreferences: { type: baselinePreferencesSchema, default: () => ({}) },
   emergencyContact: { type: emergencyContactSchema, default: () => ({}) },
 }, { timestamps: true });
 
 familyMemberSchema.index({ user: 1, createdAt: -1 });
+familyMemberSchema.index({ householdId: 1, createdAt: -1 });
+familyMemberSchema.index({ linkedUserId: 1, profileType: 1 });
 
 export default mongoose.models.FamilyMember ||
   mongoose.model("FamilyMember", familyMemberSchema);

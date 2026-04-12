@@ -1,5 +1,5 @@
 import Report from "../models/reportmodel.js";
-import FamilyMember from "../models/familymembermodel.js";
+import householdService from "../services/household/HouseholdService.js";
 import { reviewHealthAttachment } from "../services/ai/reportReviewService.js";
 import {
   MAX_UPLOAD_BYTES,
@@ -41,7 +41,13 @@ const serializeReport = (req, report) => {
 export const listReports = async (req, res) => {
   try {
     const pagination = parsePagination(req.query);
-    const filter = { ownerId: req.userId };
+    const householdContext = await householdService.ensureUserHouseholdContext(req.userId);
+    const filter = {
+      $or: [
+        { householdId: householdContext?.household?._id || null },
+        { ownerId: req.userId },
+      ],
+    };
 
     if (req.query.memberId) {
       filter.memberId = req.query.memberId;
@@ -76,6 +82,8 @@ export const listReports = async (req, res) => {
 
 export const uploadReport = async (req, res) => {
   try {
+    const householdContext = await householdService.ensureUserHouseholdContext(req.userId);
+
     if (!req.file) {
       return sendError(res, {
         status: 400,
@@ -109,17 +117,16 @@ export const uploadReport = async (req, res) => {
       });
     }
 
-    const member = await FamilyMember.findOne({
-      _id: req.body.memberId,
-      user: req.userId,
-    }).select("name");
-    if (!member) {
+    const memberResult = await householdService.findAccessibleMember(req.userId, req.body.memberId);
+    if (memberResult.error || !memberResult.member) {
       return sendError(res, {
         status: 404,
         code: "MEMBER_NOT_FOUND",
         message: "Selected family member was not found",
       });
     }
+
+    const member = memberResult.member;
 
     const review = await reviewHealthAttachment({
       base64Data: req.file.buffer.toString("base64"),
@@ -139,6 +146,7 @@ export const uploadReport = async (req, res) => {
 
     const report = await Report.create({
       ownerId: req.userId,
+      householdId: householdContext?.household?._id || null,
       memberId: req.body.memberId,
       reportType: req.body.reportType,
       notes: req.body.notes || "",
@@ -166,9 +174,13 @@ export const uploadReport = async (req, res) => {
 
 export const downloadReport = async (req, res) => {
   try {
+    const householdContext = await householdService.ensureUserHouseholdContext(req.userId);
     const report = await Report.findOne({
       _id: req.params.id,
-      ownerId: req.userId,
+      $or: [
+        { householdId: householdContext?.household?._id || null },
+        { ownerId: req.userId },
+      ],
     }).select("+fileBuffer");
 
     if (!report) {

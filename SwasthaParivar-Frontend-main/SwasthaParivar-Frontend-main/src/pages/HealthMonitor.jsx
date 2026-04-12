@@ -5,6 +5,7 @@ import { Activity, Heart, Moon, Plus, Scale, Syringe, Waves, Footprints } from "
 import api from "../lib/api";
 import notify from "../lib/notify";
 import { Button, EmptyState, Input, Modal, Select, Skeleton } from "../components/ui";
+import { useFamilyStore } from "../store/family-store";
 import "./HealthMonitor.css";
 
 const metrics = [
@@ -22,6 +23,7 @@ const getDefaultValues = () =>
 const HealthMonitor = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { selfMember, activeView } = useFamilyStore();
   const [members, setMembers] = useState([]);
   const [selectedId, setSelectedId] = useState(id || "");
   const [member, setMember] = useState(null);
@@ -29,6 +31,12 @@ const HealthMonitor = () => {
   const [showModal, setShowModal] = useState(false);
   const [formDate, setFormDate] = useState(new Date().toISOString().slice(0, 16));
   const [formValues, setFormValues] = useState(getDefaultValues());
+
+  useEffect(() => {
+    if (activeView === "self" && selfMember?._id) {
+      setSelectedId(selfMember._id);
+    }
+  }, [activeView, selfMember?._id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,13 +186,20 @@ const HealthMonitor = () => {
             </span>
             <h1 className="text-h2">Track health snapshots member by member.</h1>
             <p className="text-body-md">
-              Save vitals over time so reminders, records, and future AI guidance stay grounded in real household data.
+              {activeView === "self"
+                ? "Save your own vitals over time so reminders, reports, and AI guidance stay grounded in your data."
+                : "Save vitals over time so reminders, records, and future AI guidance stay grounded in real household data."}
             </p>
           </div>
 
           <div className="health-header__actions">
-            <Select value={selectedId} onChange={(event) => setSelectedId(event.target.value)} label="Member">
-              {members.map((entry) => (
+            <Select
+              value={selectedId}
+              onChange={(event) => setSelectedId(event.target.value)}
+              label={activeView === "self" ? "Profile" : "Member"}
+              disabled={activeView === "self"}
+            >
+              {(activeView === "self" && selfMember ? [selfMember] : members).map((entry) => (
                 <option key={entry._id} value={entry._id}>
                   {entry.name}
                 </option>
