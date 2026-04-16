@@ -322,6 +322,11 @@ export default function Remedies() {
   const [generatedRemedy, setGeneratedRemedy] = useState(null);
   const [generatedError, setGeneratedError] = useState("");
 
+  const resetGeneratedState = () => {
+    setGeneratedRemedy(null);
+    setGeneratedError("");
+  };
+
   useEffect(() => {
     localStorage.setItem("remedy_favs", JSON.stringify(favorites));
   }, [favorites]);
@@ -383,6 +388,28 @@ export default function Remedies() {
     setFavorites((previous) =>
       previous.includes(id) ? previous.filter((value) => value !== id) : [...previous, id]
     );
+  };
+
+  const handleFocusChange = (event) => {
+    setSelectedMemberId(event.target.value);
+    resetGeneratedState();
+  };
+
+  const handleQueryChange = (event) => {
+    const nextQuery = event.target.value;
+    setQuery(nextQuery);
+
+    if (nextQuery.trim()) {
+      setActiveTag("All");
+    }
+
+    resetGeneratedState();
+  };
+
+  const handleTagSelect = (tag) => {
+    setActiveTag(tag);
+    setQuery("");
+    resetGeneratedState();
   };
 
   const handleGenerateRemedy = async () => {
@@ -464,7 +491,7 @@ export default function Remedies() {
             <span>Focus</span>
             <select
               value={selectedMemberId}
-              onChange={(event) => setSelectedMemberId(event.target.value)}
+              onChange={handleFocusChange}
             >
               <option value="family">Whole Family</option>
               {members.map((member) => (
@@ -482,7 +509,7 @@ export default function Remedies() {
               <input
                 placeholder="Try cough, digestion, sleep, sore throat..."
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={handleQueryChange}
               />
             </div>
           </label>
@@ -519,7 +546,7 @@ export default function Remedies() {
           <button
             key={tag}
             className={`tag-pill ${activeTag === tag ? "active" : ""}`}
-            onClick={() => setActiveTag(tag)}
+            onClick={() => handleTagSelect(tag)}
           >
             {tag}
           </button>
