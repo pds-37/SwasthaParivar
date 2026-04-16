@@ -253,6 +253,66 @@
   color: var(--color-text-secondary);
 }
 
+.landing-howto {
+  margin-top: var(--space-12);
+}
+
+.landing-howto__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin-top: var(--space-8);
+}
+
+.landing-howto__card {
+  padding: var(--space-6);
+}
+
+.landing-howto__step {
+  display: inline-flex;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.landing-howto__card h3 {
+  margin: var(--space-5) 0 var(--space-3);
+}
+
+.landing-howto__card p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.landing-howto__note {
+  margin-top: var(--space-6);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 14%, var(--color-border-subtle));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-surface-overlay) 92%, transparent),
+      color-mix(in srgb, var(--color-surface) 96%, transparent)
+    );
+  color: var(--color-text-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.landing-howto__note svg {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+  color: var(--color-primary-strong);
+}
+
 .landing-cta {
   margin-top: var(--space-12);
   padding: var(--space-9);
@@ -315,6 +375,7 @@
 @media (max-width: 64rem) {
   .landing-hero,
   .landing-feature-grid,
+  .landing-howto__grid,
   .landing-footer {
     grid-template-columns: 1fr;
   }

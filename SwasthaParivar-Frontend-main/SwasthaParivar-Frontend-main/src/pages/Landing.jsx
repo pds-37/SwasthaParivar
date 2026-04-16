@@ -5,12 +5,14 @@ import {
   ArrowRight,
   Bell,
   BrainCircuit,
+  CircleHelp,
   HeartPulse,
   Shield,
   Sparkles,
   Stethoscope,
 } from "lucide-react";
 import Navigation from "../components/Navigation";
+import { howToUseNote, howToUseSteps } from "../lib/howToUse";
 import { Button } from "../components/ui";
 import "./Landing.css";
 
@@ -132,6 +134,32 @@ const Landing = () => {
                 <p className="text-body-sm">{feature.text}</p>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section className="landing-howto" id="how-to-use">
+          <div className="landing-section-head">
+            <span className="eyebrow">How to use</span>
+            <h2 className="text-h2">A simple care flow your family can follow every day.</h2>
+            <p className="text-body-md">
+              SwasthaParivar works best when you keep care context updated, switch to the right family
+              member, and use remedies and AI as guided support instead of guesswork.
+            </p>
+          </div>
+
+          <div className="landing-howto__grid">
+            {howToUseSteps.map((step, index) => (
+              <article key={step.title} className="landing-howto__card card card-hover">
+                <span className="landing-howto__step">Step {index + 1}</span>
+                <h3 className="text-h4">{step.title}</h3>
+                <p className="text-body-sm">{step.text}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="landing-howto__note">
+            <CircleHelp size={18} />
+            <span>{howToUseNote}</span>
           </div>
         </section>
 

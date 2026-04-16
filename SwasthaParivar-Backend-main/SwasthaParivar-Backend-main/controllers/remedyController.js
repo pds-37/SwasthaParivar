@@ -120,6 +120,50 @@ const TEMPLATE_LIBRARY = [
     colorFrom: "#56bdd6",
     colorTo: "#327fcb",
   },
+  {
+    match: /(weight loss|lose weight|fat loss|slimming|metabolic|slow metabolism|belly fat)/i,
+    name: "Cumin Lemon Metabolic Water",
+    description:
+      "A light kitchen remedy for sluggish digestion, post-meal heaviness, and gentle metabolic support during weight-balance routines.",
+    symptoms: "Weight balance, sluggish digestion, post-meal heaviness",
+    ingredients: ["Cumin seeds", "Warm water", "Lemon"],
+    steps: [
+      "Lightly crush the cumin seeds and simmer them in water for 6 to 8 minutes.",
+      "Let the drink cool slightly, then add a squeeze of lemon.",
+      "Sip it warm after meals or in the morning if it feels comfortable.",
+    ],
+    rating: 4.7,
+    tags: ["Metabolic", "Digestion", "Detox"],
+    timeMins: 8,
+    difficulty: "Easy",
+    ayurveda:
+      "Cumin and lemon can help support Agni and reduce digestive heaviness when paired with balanced meals and movement.",
+    bestFor: ["Metabolic support", "Digestive lightness", "Weight-balance routines"],
+    colorFrom: "#f0ab3d",
+    colorTo: "#d08a16",
+  },
+  {
+    match: /(zinc deficiency|low zinc|zinc deficient|hair fall|hair loss|weak roots|skin dullness)/i,
+    name: "Curry Leaf Sesame Nourish Drink",
+    description:
+      "A nourishment-focused drink that supports hair, skin, and daily food-based wellness when the body feels undernourished.",
+    symptoms: "Low nourishment, hair fall, weak roots, skin dullness",
+    ingredients: ["Curry leaves", "Black sesame seeds", "Warm water", "Fresh ginger"],
+    steps: [
+      "Wash the curry leaves and lightly crush them with a small piece of ginger.",
+      "Blend or simmer them with warm water and a spoon of black sesame seeds.",
+      "Strain if needed and drink fresh in small portions.",
+    ],
+    rating: 4.8,
+    tags: ["Hair", "Skin", "Immunity"],
+    timeMins: 10,
+    difficulty: "Easy",
+    ayurveda:
+      "Curry leaves and black sesame are traditionally used to support nourishment, hair strength, and tissue rebuilding.",
+    bestFor: ["Hair nourishment", "Skin support", "Daily nourishment"],
+    colorFrom: "#1f9c90",
+    colorTo: "#0d6a65",
+  },
 ];
 
 function getModel() {

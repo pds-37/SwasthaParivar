@@ -60,6 +60,79 @@ const PRIORITY_TAGS = [
   "Throat",
 ];
 
+const QUERY_STOP_WORDS = new Set([
+  "and",
+  "for",
+  "the",
+  "with",
+  "from",
+  "into",
+  "your",
+  "home",
+  "best",
+  "good",
+  "mild",
+  "daily",
+  "care",
+  "support",
+  "issue",
+  "problem",
+  "remedy",
+  "remedies",
+]);
+
+const QUERY_INTENT_RULES = [
+  {
+    pattern: /\b(immunity|immune|low immunity|frequent cold|seasonal weakness)\b/i,
+    priorityTags: ["Immunity"],
+    tags: ["Immunity", "Cold", "Cough"],
+    keywords: ["immunity", "cold", "seasonal", "low energy"],
+    reason: "Supports everyday immune resilience",
+  },
+  {
+    pattern: /\b(weight loss|lose weight|fat loss|slimming|slow metabolism|belly fat)\b/i,
+    priorityTags: ["Metabolic"],
+    tags: ["Metabolic", "Hydration"],
+    keywords: ["metabolic", "detox", "digestion", "sluggishness"],
+    reason: "Supports metabolic balance goals",
+  },
+  {
+    pattern: /\b(weight gain|gain weight|underweight|low weight)\b/i,
+    priorityTags: ["Immunity", "Metabolic"],
+    tags: ["Immunity", "Digestion", "Metabolic"],
+    keywords: ["low energy", "fatigue", "digestion"],
+    reason: "Supports nourishment and energy balance",
+  },
+  {
+    pattern: /\b(zinc deficiency|low zinc|zinc deficient)\b/i,
+    priorityTags: ["Hair", "Immunity"],
+    tags: ["Hair", "Skin", "Immunity"],
+    keywords: ["hair", "skin", "weak roots", "glow", "low nourishment"],
+    reason: "Supports hair, skin, and immunity nourishment",
+  },
+  {
+    pattern: /\b(iron deficiency|anemi[ae]|low iron)\b/i,
+    priorityTags: ["Immunity", "Metabolic"],
+    tags: ["Immunity", "Metabolic", "Hair"],
+    keywords: ["fatigue", "low energy", "hair"],
+    reason: "Supports energy and nourishment recovery",
+  },
+  {
+    pattern: /\b(hair fall|hair loss|hair thinning|weak roots)\b/i,
+    priorityTags: ["Hair"],
+    tags: ["Hair", "Immunity", "Skin"],
+    keywords: ["hair", "weak roots"],
+    reason: "Supports hair-strength goals",
+  },
+  {
+    pattern: /\b(skin|glow|dull skin|acne|rash)\b/i,
+    priorityTags: ["Skin"],
+    tags: ["Skin", "Hydration", "Detox"],
+    keywords: ["skin", "glow", "irritation"],
+    reason: "Supports skin comfort and glow",
+  },
+];
+
 const unique = (items) => Array.from(new Set(items.filter(Boolean)));
 
 const titleCase = (value = "") =>
@@ -68,6 +141,49 @@ const titleCase = (value = "") =>
     .filter(Boolean)
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join(" ");
+
+const tokenizeQuery = (value = "") =>
+  unique(
+    String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((token) => token.length > 2 && !QUERY_STOP_WORDS.has(token))
+  );
+
+const resolveQueryIntent = (query = "") => {
+  const normalized = String(query || "").trim().toLowerCase();
+  const tags = [];
+  const priorityTags = [];
+  const keywords = [];
+  const reasons = [];
+  const tokens = tokenizeQuery(normalized);
+
+  QUERY_INTENT_RULES.forEach((rule) => {
+    if (!rule.pattern.test(normalized)) return;
+    tags.push(...rule.tags);
+    priorityTags.push(...(rule.priorityTags || rule.tags.slice(0, 1)));
+    keywords.push(...(rule.keywords || []));
+    reasons.push(rule.reason);
+  });
+
+  PRIORITY_TAGS.filter((tag) => tag !== "All").forEach((tag) => {
+    const normalizedTag = tag.toLowerCase();
+    if (normalized.includes(normalizedTag) || tokens.includes(normalizedTag)) {
+      tags.push(tag);
+      reasons.push(`${tag} support matches the search focus`);
+    }
+  });
+
+  return {
+    query: normalized,
+    tokens,
+    priorityTags: unique(priorityTags.map(titleCase)),
+    tags: unique(tags.map(titleCase)),
+    keywords: unique(keywords),
+    reasons: unique(reasons),
+  };
+};
 
 const getLatestEntry = (entries = []) =>
   entries
@@ -236,14 +352,17 @@ export const getAllRemedyTags = (remedies = [], contextTags = []) => {
 
 export const getRemedyInsight = (remedy, context, query = "") => {
   const queryText = query.trim().toLowerCase();
+  const queryIntent = resolveQueryIntent(queryText);
   const tags = (remedy.tags || []).map(titleCase);
   const tagSet = new Set(tags);
   const ingredientsText = (remedy.ingredients || []).join(" ").toLowerCase();
   const symptomsText = String(remedy.symptoms || "").toLowerCase();
   const nameText = String(remedy.name || "").toLowerCase();
+  const searchableText = `${nameText} ${symptomsText} ${ingredientsText} ${tags.join(" ").toLowerCase()}`;
   const reasons = [];
   const warnings = [];
   let score = Number(remedy.rating || 0);
+  let queryMatchScore = 0;
 
   context.recommendedTags.forEach((tag) => {
     if (tagSet.has(titleCase(tag))) {
@@ -253,10 +372,47 @@ export const getRemedyInsight = (remedy, context, query = "") => {
   });
 
   if (queryText) {
-    if (nameText.includes(queryText)) score += 5;
-    if (symptomsText.includes(queryText)) score += 3;
-    if (ingredientsText.includes(queryText)) score += 2;
+    if (nameText.includes(queryText)) {
+      score += 7;
+      queryMatchScore += 7;
+    }
+    if (symptomsText.includes(queryText)) {
+      score += 5;
+      queryMatchScore += 5;
+    }
+    if (ingredientsText.includes(queryText)) {
+      score += 3;
+      queryMatchScore += 3;
+    }
   }
+
+  queryIntent.tokens.forEach((token) => {
+    if (!searchableText.includes(token)) return;
+    score += 2;
+    queryMatchScore += 2;
+  });
+
+  queryIntent.tags.forEach((tag) => {
+    if (!tagSet.has(titleCase(tag))) return;
+    score += 6;
+    queryMatchScore += 6;
+    reasons.push(
+      queryIntent.reasons[0] || `${tag} support matches the current search`
+    );
+  });
+
+  queryIntent.priorityTags.forEach((tag) => {
+    if (!tagSet.has(titleCase(tag))) return;
+    score += 5;
+    queryMatchScore += 5;
+    reasons.push(`${tag} is the closest match for this search`);
+  });
+
+  queryIntent.keywords.forEach((keyword) => {
+    if (!searchableText.includes(keyword.toLowerCase())) return;
+    score += 2;
+    queryMatchScore += 2;
+  });
 
   SAFETY_RULES.forEach((rule) => {
     if (context.flags[rule.key] && rule.matches.test(ingredientsText)) {
@@ -275,6 +431,7 @@ export const getRemedyInsight = (remedy, context, query = "") => {
 
   return {
     score,
+    queryMatchScore,
     reasons: unique(reasons).slice(0, 3),
     warnings: unique([...warnings, ...(remedy.warnings || [])]),
   };
@@ -293,12 +450,7 @@ export const buildCatalog = (remedies, context, query = "", activeTag = "All") =
       };
     })
     .filter((remedy) => {
-      const matchesQuery =
-        !normalizedQuery ||
-        remedy.name.toLowerCase().includes(normalizedQuery) ||
-        String(remedy.symptoms || "").toLowerCase().includes(normalizedQuery) ||
-        remedy.tags.join(" ").toLowerCase().includes(normalizedQuery) ||
-        remedy.ingredients.join(" ").toLowerCase().includes(normalizedQuery);
+      const matchesQuery = !normalizedQuery || remedy.insight.queryMatchScore > 0;
 
       const matchesTag =
         activeTag === "All" ||

@@ -5,6 +5,7 @@ import {
   BellRing,
   ChevronLeft,
   ChevronRight,
+  CircleHelp,
   FileText,
   HeartPulse,
   Home,
@@ -19,16 +20,18 @@ import {
 } from "lucide-react";
 
 import { subscribePush } from "../hooks/usePush";
+import { howToUseNote, howToUseSteps } from "../lib/howToUse";
 import { useFamilyStore } from "../store/family-store";
 import { useUIStore } from "../store/ui-store";
 import { useThemeMode } from "../theme/theme-context";
 import { useAuth } from "./auth-context";
-import { Button } from "./ui";
+import { Button, Modal } from "./ui";
 import "./Navigation.css";
 
 const publicLinks = [
   { href: "#home", label: "Home" },
   { href: "#features", label: "Features" },
+  { href: "#how-to-use", label: "How to use" },
   { href: "#features", label: "Family AI" },
   { href: "#features", label: "Reminders" },
 ];
@@ -60,6 +63,7 @@ const Navigation = ({ variant = "app" }) => {
   const location = useLocation();
   const isPublic = variant === "public";
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   useEffect(() => {
     if (isPublic) return undefined;
 
@@ -239,6 +243,19 @@ const Navigation = ({ variant = "app" }) => {
 
         <div className="app-sidebar__footer">
           <Button
+            variant="ghost"
+            size="sm"
+            fullWidth={!sidebarCollapsed}
+            leftIcon={<CircleHelp size={16} />}
+            onClick={() => setGuideOpen(true)}
+            className="app-sidebar__help-btn"
+            aria-label="How to use"
+            title="How to use"
+          >
+            {sidebarCollapsed ? null : "How to use"}
+          </Button>
+
+          <Button
             variant="secondary"
             size="sm"
             fullWidth={!sidebarCollapsed}
@@ -325,6 +342,17 @@ const Navigation = ({ variant = "app" }) => {
           </nav>
 
           <div className="app-drawer__footer">
+            <Button
+              variant="ghost"
+              leftIcon={<CircleHelp size={16} />}
+              onClick={() => {
+                setGuideOpen(true);
+                setDrawerOpen(false);
+              }}
+              fullWidth
+            >
+              How to use
+            </Button>
             <Button variant="secondary" leftIcon={<BellRing size={16} />} onClick={subscribePush} fullWidth>
               Enable notifications
             </Button>
@@ -364,6 +392,30 @@ const Navigation = ({ variant = "app" }) => {
           );
         })}
       </nav>
+
+      <Modal
+        open={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        title="How to use SwasthaParivar"
+        description="A quick guide to getting the most useful reminders, reports, remedies, and AI support."
+        size="md"
+      >
+        <div className="app-guide">
+          <div className="app-guide__grid">
+            {howToUseSteps.map((step, index) => (
+              <article key={step.title} className="app-guide__card card">
+                <span className="app-guide__step">Step {index + 1}</span>
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+              </article>
+            ))}
+          </div>
+          <div className="app-guide__note">
+            <CircleHelp size={16} />
+            <span>{howToUseNote}</span>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };
