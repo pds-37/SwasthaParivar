@@ -27,6 +27,11 @@ import "./remedies.css";
 const createGradient = (from = "var(--color-primary-strong)", to = "var(--color-primary)") =>
   `linear-gradient(135deg, ${from}, ${to})`;
 
+const uniqueTextList = (items = []) => Array.from(new Set(items.filter(Boolean)));
+
+const toTitleCase = (value = "") =>
+  String(value || "").replace(/\b\w/g, (character) => character.toUpperCase());
+
 const normalizeGeneratedRemedy = (payload, seedText) => ({
   id: payload?.id || `ai-${Date.now()}`,
   name: payload?.name || `Custom ${seedText} Remedy`,
@@ -47,8 +52,41 @@ const normalizeGeneratedRemedy = (payload, seedText) => ({
   bestFor: Array.isArray(payload?.bestFor) ? payload.bestFor : [],
   colorFrom: payload?.colorFrom || "var(--color-primary-strong)",
   colorTo: payload?.colorTo || "var(--color-primary)",
-  source: "ai",
+  source: payload?.source || "ai",
 });
+
+const buildLocalGeneratedRemedy = ({ seedText, context, activeTag }) => {
+  const localMatches = buildCatalog(REMEDIES_DATA, context, seedText, activeTag || "All");
+  const baseRemedy =
+    localMatches[0] ||
+    buildCatalog(REMEDIES_DATA, context, seedText, "All")[0] ||
+    REMEDIES_DATA[0];
+
+  return {
+    ...baseRemedy,
+    id: `local-${Date.now()}`,
+    name: baseRemedy?.name || `${toTitleCase(seedText)} Support Remedy`,
+    description:
+      baseRemedy?.description ||
+      `A conservative locally selected remedy for ${seedText}, adjusted for ${context.focusLabel.toLowerCase()}.`,
+    symptoms: baseRemedy?.symptoms || seedText,
+    tags: uniqueTextList([...(baseRemedy?.tags || []), toTitleCase(seedText)]).slice(0, 4),
+    warnings: uniqueTextList([
+      ...(baseRemedy?.warnings || []),
+      "Live remedy generation is unavailable right now, so this fallback was built from the local remedy library.",
+      "Get medical advice if symptoms are severe, unusual, or getting worse.",
+    ]),
+    bestFor: uniqueTextList([
+      ...(Array.isArray(baseRemedy?.bestFor) ? baseRemedy.bestFor : []),
+      toTitleCase(seedText),
+      context.focusLabel,
+    ]).slice(0, 4),
+    ayurveda:
+      baseRemedy?.ayurveda ||
+      "This fallback keeps the recommendation practical and conservative when live AI generation is unavailable.",
+    source: "local-fallback",
+  };
+};
 
 const shareRemedy = async (remedy) => {
   const text = [
@@ -357,20 +395,39 @@ export default function Remedies() {
         query: suggestedSeed,
         memberId: selectedMemberId,
       });
+      const remedyPayload =
+        response?.remedy || buildLocalGeneratedRemedy({ seedText: suggestedSeed, context, activeTag });
 
-      const normalized = normalizeGeneratedRemedy(response?.remedy, suggestedSeed);
+      const normalized = normalizeGeneratedRemedy(remedyPayload, suggestedSeed);
       setGeneratedRemedy({
         ...normalized,
         insight: {
           score: 999,
-          reasons: response?.remedy?.bestFor?.length
-            ? response.remedy.bestFor.slice(0, 3)
+          reasons: remedyPayload?.bestFor?.length
+            ? remedyPayload.bestFor.slice(0, 3)
             : [`Created for ${context.focusLabel.toLowerCase()}`],
-          warnings: response?.remedy?.warnings || [],
+          warnings: remedyPayload?.warnings || [],
         },
       });
     } catch (error) {
       console.error("Failed to generate custom remedy", error);
+      const fallback = buildLocalGeneratedRemedy({
+        seedText: suggestedSeed,
+        context,
+        activeTag,
+      });
+      const normalized = normalizeGeneratedRemedy(fallback, suggestedSeed);
+
+      setGeneratedRemedy({
+        ...normalized,
+        insight: {
+          score: 998,
+          reasons: fallback.bestFor?.length
+            ? fallback.bestFor.slice(0, 3)
+            : [`Selected locally for ${context.focusLabel.toLowerCase()}`],
+          warnings: fallback.warnings || [],
+        },
+      });
       setGeneratedError(error.message || "Could not generate a custom remedy right now.");
     } finally {
       setAiBusy(false);
@@ -478,14 +535,17 @@ export default function Remedies() {
               <p>Using Gemini to craft a personalized Ayurvedic remedy for "{suggestedSeed}".</p>
             </div>
           ) : generatedRemedy ? (
-            <RemedyCard
-              remedy={generatedRemedy}
-              onOpen={setOpenRecipe}
-              onShare={shareRemedy}
-              onToggleFavorite={handleToggleFavorite}
-              favorite={favorites.includes(generatedRemedy.id)}
-              focusLabel={cardFocusLabel}
-            />
+            <>
+              {generatedError ? <div className="warning-callout">{generatedError}</div> : null}
+              <RemedyCard
+                remedy={generatedRemedy}
+                onOpen={setOpenRecipe}
+                onShare={shareRemedy}
+                onToggleFavorite={handleToggleFavorite}
+                favorite={favorites.includes(generatedRemedy.id)}
+                focusLabel={cardFocusLabel}
+              />
+            </>
           ) : (
             <div className="generator-state">
               <div className="generator-orb">

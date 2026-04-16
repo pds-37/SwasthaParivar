@@ -66,6 +66,36 @@ const SUGGESTED_PROMPTS = [
   "How should I prepare for a blood test tomorrow morning?",
 ];
 
+const HEALTH_FALLBACK_KEYWORDS = [
+  "health",
+  "symptom",
+  "symptoms",
+  "fever",
+  "cough",
+  "cold",
+  "pain",
+  "headache",
+  "throat",
+  "diarrhea",
+  "vomiting",
+  "nausea",
+  "rash",
+  "allergy",
+  "medicine",
+  "medicines",
+  "medication",
+  "doctor",
+  "report",
+  "blood",
+  "pressure",
+  "sugar",
+  "sleep",
+  "hydration",
+  "remedy",
+  "remedies",
+  "reminder",
+];
+
 const CHAT_HISTORY_LIMIT = 8;
 const CHAT_HISTORY_TEXT_MAX = 2000;
 
@@ -111,6 +141,107 @@ const findMatches = (text, keywords) => {
 
 const toDisplayLabel = (value = "") =>
   value.replace(/\b\w/g, (character) => character.toUpperCase());
+
+const isLikelyHealthMessage = (text = "") => {
+  const normalized = String(text || "").trim().toLowerCase();
+  return HEALTH_FALLBACK_KEYWORDS.some((keyword) => normalized.includes(keyword));
+};
+
+const buildClientHealthFallbackReply = (message = "", focusLabel = "your family") => {
+  const normalized = String(message || "").trim().toLowerCase();
+
+  if (!normalized) {
+    return "Please ask a health-related question about symptoms, medicines, reports, or reminders.";
+  }
+
+  if (!isLikelyHealthMessage(normalized)) {
+    return "I can help with family health topics like symptoms, medicines, reports, remedies, and reminders. Please ask a health-related question and mention who it is about.";
+  }
+
+  const response = {
+    summary: `Here is a careful health-support answer for ${focusLabel}.`,
+    doNow: [
+      "Encourage rest, hydration, and light food if the person feels unwell.",
+      "Track symptoms for the next 12 to 24 hours and note whether they improve or worsen.",
+    ],
+    watchOuts: [
+      "Do not start new medicines unless you already know they are safe for this person.",
+    ],
+    doctor: [
+      "Seek medical help sooner if symptoms are severe, unusual, or getting worse.",
+    ],
+  };
+
+  if (/(acidity|acid reflux|heartburn|indigestion|gas|bloating)/i.test(normalized)) {
+    response.summary = `This sounds like mild acidity or indigestion for ${focusLabel}.`;
+    response.doNow = [
+      "Sip water slowly and stay upright after meals.",
+      "Keep the next meal light and avoid oily, spicy, or very late-night food.",
+      "A short gentle walk can help if the person feels comfortable.",
+    ];
+    response.watchOuts = [
+      "Avoid lying flat right after eating.",
+      "Avoid repeated trigger foods if they usually worsen symptoms.",
+    ];
+    response.doctor = [
+      "Get urgent medical care for chest pain, vomiting blood, black stools, trouble swallowing, or severe persistent pain.",
+      "Arrange a medical review if this is happening often or disturbing sleep.",
+    ];
+  } else if (/(fever|temperature|viral)/i.test(normalized)) {
+    response.summary = `This sounds like a fever-related concern for ${focusLabel}.`;
+    response.doNow = [
+      "Encourage fluids, rest, and light food.",
+      "Check temperature and note any worsening symptoms.",
+      "Use only medicines already known to be safe for that person.",
+    ];
+    response.watchOuts = [
+      "Watch for dehydration, unusual sleepiness, confusion, or reduced urination.",
+    ];
+    response.doctor = [
+      "Get urgent help for breathing trouble, severe weakness, seizures, dehydration, or fever that is very high or persistent.",
+    ];
+  } else if (/(cough|cold|sore throat|congestion)/i.test(normalized)) {
+    response.summary = `This sounds like a mild upper-respiratory issue for ${focusLabel}.`;
+    response.doNow = [
+      "Encourage fluids, warm drinks, and rest.",
+      "Steam inhalation may help some adults if done carefully.",
+      "Honey can soothe the throat for adults and children over 1 year old.",
+    ];
+    response.watchOuts = [
+      "Avoid smoke exposure and very cold drinks if they worsen symptoms.",
+    ];
+    response.doctor = [
+      "Get medical help for breathing difficulty, chest pain, blue lips, wheezing, or symptoms that keep worsening.",
+    ];
+  } else if (/(medicine|medicines|medication|tablet|dose|dosage)/i.test(normalized)) {
+    response.summary = `This looks like a medicine-safety question for ${focusLabel}.`;
+    response.doNow = [
+      "Double-check the medicine name, dose, age, allergies, and current medicines before taking it.",
+      "Use the prescription label or pharmacist instructions if available.",
+    ];
+    response.watchOuts = [
+      "Do not guess the dose for children, pregnancy, or older adults.",
+      "Avoid combining medicines unless you know they are safe together.",
+    ];
+    response.doctor = [
+      "Contact a pharmacist or doctor if the medicine, dose, or timing is unclear.",
+    ];
+  }
+
+  return [
+    "Summary:",
+    response.summary,
+    "",
+    "What to do now:",
+    ...response.doNow.map((item) => `- ${item}`),
+    "",
+    "Watch-outs:",
+    ...response.watchOuts.map((item) => `- ${item}`),
+    "",
+    "When to contact a doctor:",
+    ...response.doctor.map((item) => `- ${item}`),
+  ].join("\n");
+};
 
 const safeReadConversation = (key) => {
   try {
@@ -186,16 +317,24 @@ const AIChat = () => {
                   label: selfMember.name || "Self",
                   memberValue: selfMember.name || "Self",
                   memberId: selfMember._id,
+                  requestValue: "Self",
                 },
               ]
-            : [{ key: "self", label: "Self", memberValue: "Self", memberId: null }])
+            : [{ key: "self", label: "Self", memberValue: "Self", memberId: null, requestValue: "Self" }])
         : [
-            { key: "family", label: "All family", memberValue: "All family", memberId: null },
+            {
+              key: "family",
+              label: "All family",
+              memberValue: "All family",
+              memberId: null,
+              requestValue: "family",
+            },
             ...userFamily.map((member) => ({
               key: member._id || member.name,
               label: member.name,
               memberValue: member.name,
               memberId: member._id,
+              requestValue: member.name,
             })),
           ],
     [activeView, selfMember, userFamily]
@@ -216,6 +355,8 @@ const AIChat = () => {
   const currentContext = contexts.find((item) => item.key === selectedContext) || contexts[0];
   const contextLabel = currentContext?.label || "All family";
   const memberValue = currentContext?.memberValue || "All family";
+  const requestMemberValue =
+    currentContext?.requestValue || (activeView === "self" ? "Self" : "family");
   const activeMember = useMemo(
     () => userFamily.find((member) => member._id === currentContext?.memberId) || null,
     [currentContext?.memberId, userFamily]
@@ -420,27 +561,27 @@ const AIChat = () => {
     setInput("");
     setLoading(true);
     setMobileHistoryOpen(false);
-    persistConversation(history);
 
     try {
       const response = await api.post("/ai/chat", {
         message: trimmed,
-        member: memberValue,
+        member: requestMemberValue,
         history: serializeHistoryForRequest(history),
       });
+      const replyText =
+        String(response?.reply || response?.text || "").trim() ||
+        buildClientHealthFallbackReply(trimmed, contextLabel);
 
       const nextMessages = [
         ...history,
-        createAiMessage(response?.reply || response?.text || "No response from AI.", {
+        createAiMessage(replyText, {
           disableActions: Boolean(response?.outOfScope),
         }),
       ];
       setMessages(nextMessages);
       persistConversation(nextMessages);
-    } catch (error) {
-      const fallbackMessage =
-        error?.message ||
-        "I could not reach the server right now. Please try again in a moment.";
+    } catch {
+      const fallbackMessage = buildClientHealthFallbackReply(trimmed, contextLabel);
       const nextMessages = [
         ...history,
         createAiMessage(fallbackMessage),
@@ -465,7 +606,6 @@ const AIChat = () => {
       },
     ];
     setMessages(nextMessages);
-    persistConversation(nextMessages);
     setLoading(true);
 
     try {

@@ -3,8 +3,11 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import FamilyMember from "../models/familymembermodel.js";
 import householdService from "../services/household/HouseholdService.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
+import { logger } from "../utils/logger.js";
 
 const activeProfileStatusFilter = () => mongoose.trusted({ $ne: "archived" });
+const JSON_FENCE_PATTERN = /```json|```/gi;
+const MODEL_CANDIDATES = ["gemini-2.5-flash", "gemini-1.5-flash"];
 
 const TEMPLATE_LIBRARY = [
   {
@@ -124,12 +127,17 @@ function getModel() {
     throw new Error("GEMINI_API_KEY is not configured");
   }
 
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  return genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 }
 
 function parseJsonResponse(rawText) {
-  return JSON.parse(String(rawText || "").replace(/```json|```/g, "").trim());
+  return JSON.parse(String(rawText || "").replace(JSON_FENCE_PATTERN, "").trim());
+}
+
+function getCandidateModels() {
+  return [process.env.GEMINI_MODEL, ...MODEL_CANDIDATES].filter(
+    (value, index, array) => value && array.indexOf(value) === index
+  );
 }
 
 function getLatestEntry(entries = []) {
@@ -374,8 +382,6 @@ function buildFallbackRemedy(query, context) {
 }
 
 async function generateWithGemini(query, context) {
-  const model = getModel();
-
   const prompt = `
 You are generating one Ayurvedic-inspired home remedy for a family wellness app.
 
@@ -417,30 +423,54 @@ Return this exact shape:
   "colorTo": "#0d6a65"
 }
 `;
+  const genAI = getModel();
+  let lastError = null;
 
-  const result = await model.generateContent([{ text: prompt }]);
-  const parsed = parseJsonResponse(result.response.text());
+  for (const modelName of getCandidateModels()) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent([{ text: prompt }]);
+      const text = result?.response?.text?.()?.trim();
 
-  return applySafetyAdjustments(
-    {
-      name: parsed?.name || "Custom Remedy",
-      description: parsed?.description || `A tailored remedy for ${query}.`,
-      symptoms: parsed?.symptoms || query,
-      ingredients: Array.isArray(parsed?.ingredients) ? parsed.ingredients : [],
-      steps: Array.isArray(parsed?.steps) ? parsed.steps : [],
-      rating: Number(parsed?.rating || 4.8),
-      tags: Array.isArray(parsed?.tags) ? parsed.tags : [query],
-      timeMins: Number(parsed?.timeMins || 10),
-      difficulty: parsed?.difficulty || "Easy",
-      ayurveda: parsed?.ayurveda || "",
-      warnings: Array.isArray(parsed?.warnings) ? parsed.warnings : [],
-      bestFor: Array.isArray(parsed?.bestFor) ? parsed.bestFor : [],
-      colorFrom: parsed?.colorFrom || "#1f9c90",
-      colorTo: parsed?.colorTo || "#0d6a65",
-      source: "gemini",
-    },
-    context
-  );
+      if (!text) {
+        throw new Error(`Empty remedy response from ${modelName}`);
+      }
+
+      const parsed = parseJsonResponse(text);
+
+      return applySafetyAdjustments(
+        {
+          name: parsed?.name || "Custom Remedy",
+          description: parsed?.description || `A tailored remedy for ${query}.`,
+          symptoms: parsed?.symptoms || query,
+          ingredients: Array.isArray(parsed?.ingredients) ? parsed.ingredients : [],
+          steps: Array.isArray(parsed?.steps) ? parsed.steps : [],
+          rating: Number(parsed?.rating || 4.8),
+          tags: Array.isArray(parsed?.tags) ? parsed.tags : [query],
+          timeMins: Number(parsed?.timeMins || 10),
+          difficulty: parsed?.difficulty || "Easy",
+          ayurveda: parsed?.ayurveda || "",
+          warnings: Array.isArray(parsed?.warnings) ? parsed.warnings : [],
+          bestFor: Array.isArray(parsed?.bestFor) ? parsed.bestFor : [],
+          colorFrom: parsed?.colorFrom || "#1f9c90",
+          colorTo: parsed?.colorTo || "#0d6a65",
+          source: "gemini",
+        },
+        context
+      );
+    } catch (error) {
+      lastError = error;
+      logger.warn({
+        route: "remedy-generate",
+        model: modelName,
+        error: {
+          message: error?.message || "Gemini remedy generation failed",
+        },
+      });
+    }
+  }
+
+  throw lastError || new Error("No Gemini model succeeded for remedy generation");
 }
 
 export const generateRemedy = async (req, res) => {
