@@ -314,7 +314,7 @@
 }
 
 .landing-cta {
-  margin-top: var(--space-12);
+  margin-top: var(--space-9);
   padding: var(--space-9);
   display: flex;
   align-items: center;

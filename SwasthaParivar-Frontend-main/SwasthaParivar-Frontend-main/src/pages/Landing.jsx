@@ -165,7 +165,7 @@ const Landing = () => {
 
         <section className="landing-cta">
           <div>
-            <span className="eyebrow">Built for Indian families</span>
+            <span className="eyebrow">Built for families</span>
             <h2 className="text-h2">Ready to turn care chaos into one clear family system?</h2>
             <p className="text-body-md">
               Start with reminders, records, and AI guidance now, then grow into the full care

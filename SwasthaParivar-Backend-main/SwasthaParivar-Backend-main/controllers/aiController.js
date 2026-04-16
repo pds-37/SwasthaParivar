@@ -26,6 +26,11 @@ const SYMPTOM_KEYWORDS = [
   "dizziness",
   "wheezing",
   "breathlessness",
+  "hair loss",
+  "hair fall",
+  "alopecia",
+  "dandruff",
+  "scalp",
 ];
 
 const REMEDY_KEYWORDS = [
@@ -106,6 +111,13 @@ const HEALTH_SCOPE_KEYWORDS = [
   "diet",
   "exercise",
   "wellness",
+  "hair",
+  "hair loss",
+  "hair fall",
+  "alopecia",
+  "dandruff",
+  "scalp",
+  "itchy scalp",
   "mental health",
   "stress",
   "anxiety",
@@ -130,6 +142,7 @@ const HEALTH_SCOPE_PATTERNS = [
   /\b(remind|schedule|reschedule|update|delete|cancel)\b.*\b(medicine|medication|tablet|dose|doctor|checkup|vaccine|vaccination|report|health|follow[- ]?up|water|hydration|sleep)\b/i,
   /\b(upload|review|summari[sz]e|analy[sz]e)\b.*\b(report|scan|prescription|lab|document)\b/i,
   /\b(acidity|digestion|bloating|fatigue|wheezing|breathlessness|period cramps|menstrual|pcos|diabetes|hypertension|asthma)\b/i,
+  /\b(hair loss|hair fall|alopecia|dandruff|itchy scalp|scalp problem|thinning hair)\b/i,
 ];
 
 function getModel() {
@@ -302,6 +315,20 @@ function buildRuleBasedHealthReply(message, context = {}) {
     ];
     response.doctor = [
       "Get medical help for breathing difficulty, chest pain, blue lips, wheezing, or symptoms that keep worsening.",
+    ];
+  } else if (/(hair loss|hair fall|alopecia|dandruff|itchy scalp|thinning hair)/i.test(normalized)) {
+    response.summary = `This sounds like a hair or scalp concern for ${focusLabel}.`;
+    response.doNow = [
+      "Check for recent stress, illness, rapid weight change, poor sleep, or diet changes that may be contributing.",
+      "Use gentle hair care, avoid harsh heat or tight hairstyles, and keep the scalp clean.",
+      "Support recovery with balanced meals that include enough protein, iron, and overall nutrition.",
+    ];
+    response.watchOuts = [
+      "Avoid starting supplements or medicated products blindly without checking the likely cause first.",
+      "Watch for patchy bald spots, scalp redness, severe itching, flakes, or rapid worsening.",
+    ];
+    response.doctor = [
+      "Arrange a medical review if hair loss is sudden, patchy, persistent, or associated with fatigue, weight change, or menstrual/hormonal issues.",
     ];
   }
 

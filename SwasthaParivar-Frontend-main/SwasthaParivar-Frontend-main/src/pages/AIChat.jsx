@@ -57,6 +57,11 @@ const SYMPTOM_KEYWORDS = [
   "congestion",
   "dizziness",
   "wheezing",
+  "hair loss",
+  "hair fall",
+  "alopecia",
+  "dandruff",
+  "scalp",
 ];
 
 const SUGGESTED_PROMPTS = [
@@ -91,6 +96,12 @@ const HEALTH_FALLBACK_KEYWORDS = [
   "sugar",
   "sleep",
   "hydration",
+  "hair",
+  "hair loss",
+  "hair fall",
+  "alopecia",
+  "dandruff",
+  "scalp",
   "remedy",
   "remedies",
   "reminder",
@@ -225,6 +236,20 @@ const buildClientHealthFallbackReply = (message = "", focusLabel = "your family"
     ];
     response.doctor = [
       "Contact a pharmacist or doctor if the medicine, dose, or timing is unclear.",
+    ];
+  } else if (/(hair loss|hair fall|alopecia|dandruff|itchy scalp|thinning hair)/i.test(normalized)) {
+    response.summary = `This sounds like a hair or scalp concern for ${focusLabel}.`;
+    response.doNow = [
+      "Check for recent stress, illness, rapid weight change, poor sleep, or diet changes that may be contributing.",
+      "Use gentle hair care, avoid harsh heat or tight hairstyles, and keep the scalp clean.",
+      "Support recovery with balanced meals that include enough protein and iron-rich foods.",
+    ];
+    response.watchOuts = [
+      "Avoid starting random supplements or medicated products without understanding the cause.",
+      "Watch for patchy bald spots, scalp redness, severe itching, or rapid worsening.",
+    ];
+    response.doctor = [
+      "Arrange a medical review if hair loss is sudden, patchy, persistent, or happening with fatigue, weight change, or hormonal symptoms.",
     ];
   }
 
