@@ -194,7 +194,7 @@ const Landing = () => {
           <a href="https://x.com" target="_blank" rel="noreferrer">
             X
           </a>
-          <a href="https://www.linkedin.com" target="_blank" rel="noreferrer">
+          <a href="https://www.linkedin.com/in/priyanshu-tiwari-pds37/" target="_blank" rel="noreferrer">
             LinkedIn
           </a>
           <span>Copyright 2026 SwasthaParivar</span>
