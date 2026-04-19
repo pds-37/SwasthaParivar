@@ -32,7 +32,7 @@ const AppLoader = () => {
     <div className="app-loader-container">
       <div className="app-loader-content">
         <div className="app-loader-logo-wrapper">
-          <img src="/icon-health.svg" alt="SwasthaParivar Logo" className="app-loader-logo" />
+          <img src="/Swastha%20Parivar%20logo.png" alt="SwasthaParivar Logo" className="app-loader-logo" />
         </div>
         <h2 className="app-loader-title">SwasthaParivar</h2>
         
