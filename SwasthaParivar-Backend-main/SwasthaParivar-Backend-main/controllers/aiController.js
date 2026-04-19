@@ -580,7 +580,14 @@ export const chatWithAI = async (req, res) => {
       });
     }
 
-    if (!isHealthScopeQuery(message)) {
+    const hasHistory = Array.isArray(history) && history.length > 0;
+    const isHealthQuery = isHealthScopeQuery(message);
+    
+    // Allow short conversational answers (like "yes", "recurring issue", "3 days") mid-conversation
+    // Longer irrelevant queries will still be blocked by the keyword filter.
+    const isShortFollowUp = hasHistory && message.split(/\s+/).length <= 8;
+
+    if (!isHealthQuery && !isShortFollowUp) {
       return sendSuccess(res, {
         data: {
           reply: buildOutOfScopeReply(),
