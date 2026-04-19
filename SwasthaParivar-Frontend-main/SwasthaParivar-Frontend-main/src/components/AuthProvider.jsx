@@ -2,6 +2,7 @@ import React, { useEffect, useReducer } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { AuthContext } from "./auth-context";
+import AppLoader from "./AppLoader";
 
 const parseStoredUser = () => {
   const storedUser = localStorage.getItem("user");
@@ -151,7 +152,7 @@ export const AuthProvider = ({ children }) => {
         logout,
       }}
     >
-      {!state.loading && children}
+      {state.loading ? <AppLoader /> : children}
     </AuthContext.Provider>
   );
 };

@@ -1,0 +1,114 @@
+.app-loader-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--gradient-page);
+  color: var(--color-text-primary);
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.app-loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-6);
+  max-width: 24rem;
+}
+
+.app-loader-logo-wrapper {
+  width: 5rem;
+  height: 5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.app-loader-logo {
+  width: 3rem;
+  height: 3rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+.app-loader-title {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  margin: 0 0 var(--space-8);
+  background: linear-gradient(135deg, var(--color-primary-strong) 0%, var(--color-brand-gradient-start) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+.app-loader-spinner-container {
+  margin-bottom: var(--space-6);
+}
+
+.app-loader-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary-strong);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.app-loader-message {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.app-loader-message.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.app-loader-message p {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.app-loader-submessage {
+  font-size: var(--text-xs);
+  color: var(--color-text-disabled);
+  line-height: 1.4;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--color-focus-ring);
+  }
+  50% {
+    box-shadow: 0 0 0 15px rgba(21, 140, 131, 0);
+  }
+}

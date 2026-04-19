@@ -143,6 +143,9 @@ const HEALTH_SCOPE_PATTERNS = [
   /\b(upload|review|summari[sz]e|analy[sz]e)\b.*\b(report|scan|prescription|lab|document)\b/i,
   /\b(acidity|digestion|bloating|fatigue|wheezing|breathlessness|period cramps|menstrual|pcos|diabetes|hypertension|asthma)\b/i,
   /\b(hair loss|hair fall|alopecia|dandruff|itchy scalp|scalp problem|thinning hair)\b/i,
+  /\b(issue|problem|concern|trouble|suffering|dealing)\b.*\b(health|symptom|fever|cough|cold|pain|headache|throat|rash|allergy|medicine|report|sleep|hair|scalp|weight|digestion|bloating|fatigue)\b/i,
+  /\b(help|suggest|solution|advice|guidance)\b.*\b(hair|hair loss|hair fall|scalp|fever|cough|cold|pain|medicine|report|sleep|weight)\b/i,
+  /\b(losing hair|thinning hair|hair thinning|itchy scalp|scalp itching)\b/i,
 ];
 
 function getModel() {
