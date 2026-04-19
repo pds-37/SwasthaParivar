@@ -25,9 +25,9 @@ const AppLoader = () => {
         </div>
 
         <div className={`app-loader-message ${showSlowMessage ? "visible" : ""}`}>
-          <p>Waking up the server...</p>
+          <p>Preparing your experience...</p>
           <span className="app-loader-submessage">
-            This might take up to 50 seconds on the first load. Thank you for your patience!
+            We're warming up our secure servers for your first visit. Just a moment!
           </span>
         </div>
       </div>
