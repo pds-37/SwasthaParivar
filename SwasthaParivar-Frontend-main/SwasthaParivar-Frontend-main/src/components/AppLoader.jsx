@@ -1,10 +1,26 @@
 import React, { useState, useEffect } from "react";
 import "./AppLoader.css";
 
+const quotes = [
+  "Preparing a healthier experience for you...",
+  "Your wellness space is getting ready...",
+  "Care is on its way...",
+  "Setting up something good for your health...",
+  "A moment for your well-being...",
+  "Getting everything ready for you and your family...",
+  "Bringing you closer to better health...",
+  "Almost ready to care for you...",
+  "Your journey to wellness begins in a moment...",
+  "Loading a better, healthier experience..."
+];
+
 const AppLoader = () => {
   const [showSlowMessage, setShowSlowMessage] = useState(false);
+  const [quote, setQuote] = useState("");
 
   useEffect(() => {
+    setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+
     // If loading takes more than 3 seconds, assume the backend is waking up from sleep
     const timer = setTimeout(() => {
       setShowSlowMessage(true);
@@ -25,7 +41,7 @@ const AppLoader = () => {
         </div>
 
         <div className={`app-loader-message ${showSlowMessage ? "visible" : ""}`}>
-          <p>Preparing your experience...</p>
+          <p>{quote}</p>
           <span className="app-loader-submessage">
             We're warming up our secure servers for your first visit. Just a moment!
           </span>
