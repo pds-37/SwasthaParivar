@@ -3,30 +3,33 @@ import useSWR from "swr";
 
 import api from "../lib/api";
 
-export const useAIChat = (memberContext) => {
-  const swr = useSWR(
-    memberContext ? `ai-memory-${memberContext}` : null,
-    () => api.get(`/ai/memory?member=${encodeURIComponent(memberContext)}`),
-    { revalidateOnFocus: false }
-  );
+export const useAIChat = () => {
+  const swr = useSWR("/ai/memory", () => api.get("/ai/memory"));
 
-  const messages = useMemo(() => {
-    if (Array.isArray(swr.data?.messages)) return swr.data.messages;
-    if (Array.isArray(swr.data?.data?.messages)) return swr.data.data.messages;
+  const threads = useMemo(() => {
+    if (Array.isArray(swr.data?.threads)) return swr.data.threads;
+    if (Array.isArray(swr.data?.data?.threads)) return swr.data.data.threads;
     return [];
   }, [swr.data]);
 
   const saveMemory = async (payload) => {
-    await api.post("/ai/memory", payload);
+    const res = await api.post("/ai/memory", payload);
+    swr.mutate();
+    return res;
+  };
+
+  const deleteThread = async (id) => {
+    await api.delete(`/ai/memory/${id}`);
     swr.mutate();
   };
 
   return {
-    messages,
+    threads,
     loading: swr.isLoading,
     error: swr.error,
     mutate: swr.mutate,
     saveMemory,
+    deleteThread,
   };
 };
 

@@ -30,6 +30,8 @@ export const aiMemoryQuerySchema = z.object({
 });
 
 export const aiMemoryBodySchema = z.object({
+  threadId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid thread ID").optional(),
+  title: z.string().trim().max(120).optional(),
   member: z.string().trim().min(1).max(120),
   messages: z.array(
     z.object({

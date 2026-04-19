@@ -11,6 +11,7 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
+  Trash2,
   UserRound,
 } from "lucide-react";
 
@@ -386,7 +387,9 @@ const AIChat = () => {
     () => userFamily.find((member) => member._id === currentContext?.memberId) || null,
     [currentContext?.memberId, userFamily]
   );
-  const { messages: remoteMessages, saveMemory } = useAIChat(memberValue);
+  
+  const { threads, saveMemory, deleteThread } = useAIChat();
+  const [activeThreadId, setActiveThreadId] = useState(null);
   const hasMessages = messages.length > 0;
 
   useEffect(() => {
@@ -414,60 +417,60 @@ const AIChat = () => {
   }, [contexts, selectedContext]);
 
   useEffect(() => {
-    if (remoteMessages.length > 0) {
-      setMessages(remoteMessages);
-      return;
+    if (activeThreadId && threads) {
+      const thread = threads.find((t) => t._id === activeThreadId);
+      if (thread) {
+        setMessages(thread.messages || []);
+        const contextKey = contexts.find((c) => c.memberValue === thread.member)?.key || "family";
+        setSelectedContext(contextKey);
+      }
     }
-
-    const cached = safeReadConversation(`aichat_mem_${memberValue}`);
-    setMessages(cached.length ? cached : buildDefaultConversation());
-  }, [memberValue, remoteMessages]);
-
-  useEffect(() => {
-    localStorage.setItem(`aichat_mem_${memberValue}`, JSON.stringify(messages));
-  }, [memberValue, messages]);
+  }, [activeThreadId, threads, contexts]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
-  const conversationHistory = contexts
-    .map((context) => {
-      const parsed = safeReadConversation(`aichat_mem_${context.memberValue}`);
-      const lastMessage = parsed[parsed.length - 1];
-      const userMessageCount = parsed.filter((message) => message?.sender === "user").length;
+  const conversationHistory = (threads || [])
+    .map((thread) => {
+      const lastMessage = thread.messages?.[thread.messages.length - 1];
+      const userMessageCount = thread.messages?.filter((m) => m?.sender === "user").length || 0;
 
       return {
-        ...context,
-        title: getConversationTitle(parsed, `New ${context.label.toLowerCase()} chat`),
-        updatedLabel: formatConversationTime(lastMessage?.ts || 0),
+        _id: thread._id,
+        title: thread.title || "New chat",
+        member: thread.member,
+        updatedLabel: formatConversationTime(thread.updatedAt ? new Date(thread.updatedAt).getTime() : (lastMessage?.ts || 0)),
         messageCount: userMessageCount,
-        ts: lastMessage?.ts || 0,
+        ts: thread.updatedAt ? new Date(thread.updatedAt).getTime() : (lastMessage?.ts || 0),
       };
     })
-    .sort((first, second) =>
-      first.key === selectedContext ? -1 : second.key === selectedContext ? 1 : second.ts - first.ts
-    );
+    .sort((a, b) => b.ts - a.ts);
 
   const persistConversation = async (nextMessages) => {
     try {
-      await saveMemory({
+      const derivedTitle = getConversationTitle(nextMessages, `New ${contextLabel.toLowerCase()} chat`);
+      const res = await saveMemory({
+        threadId: activeThreadId,
         member: memberValue,
+        title: derivedTitle,
         messages: nextMessages,
       });
+      if (!activeThreadId && res?.data?.threadId) {
+        setActiveThreadId(res.data.threadId);
+      }
     } catch {
-      // local cache stays as the fallback source
+      // API call failed
     }
   };
 
-  const startNewChat = async () => {
-    const nextMessages = buildDefaultConversation();
-    setMessages(nextMessages);
+  const startNewChat = () => {
+    setActiveThreadId(null);
+    setMessages([]);
     setInput("");
     setAttachmentPreview(null);
     setPendingReminderSuggestion(null);
     setMobileHistoryOpen(false);
-    await persistConversation(nextMessages);
   };
 
   const buildAiActions = (text) => {
@@ -689,32 +692,41 @@ const AIChat = () => {
 
           <div className="ai-chat-history">
             {conversationHistory.map((conversation) => (
-              <button
-                key={conversation.key}
-                type="button"
-                className={`ai-chat-history__item ${selectedContext === conversation.key ? "is-active" : ""}`}
-                onClick={() => {
-                  setSelectedContext(conversation.key);
-                  setSelectedMember(
-                    conversation.memberId
-                      ? userFamily.find((member) => member._id === conversation.memberId) || null
-                      : null
-                  );
-                  setMobileHistoryOpen(false);
-                }}
-              >
-                <span className="avatar avatar--sm">{conversation.label.charAt(0)}</span>
-                <div className="ai-chat-history__content">
-                  <div className="ai-chat-history__item-head">
-                    <strong>{conversation.title}</strong>
-                    <small>{conversation.updatedLabel}</small>
+              <div key={conversation._id} className={`ai-chat-history__item-wrap ${activeThreadId === conversation._id ? "is-active" : ""}`}>
+                <button
+                  type="button"
+                  className="ai-chat-history__item"
+                  onClick={() => {
+                    setActiveThreadId(conversation._id);
+                    setMobileHistoryOpen(false);
+                  }}
+                >
+                  <span className="avatar avatar--sm">{conversation.member.charAt(0)}</span>
+                  <div className="ai-chat-history__content">
+                    <div className="ai-chat-history__item-head">
+                      <strong>{conversation.title}</strong>
+                      <small>{conversation.updatedLabel}</small>
+                    </div>
+                    <div className="ai-chat-history__item-meta">
+                      <span>{conversation.member}</span>
+                      <span>{conversation.messageCount} question{conversation.messageCount === 1 ? "" : "s"}</span>
+                    </div>
                   </div>
-                  <div className="ai-chat-history__item-meta">
-                    <span>{conversation.label}</span>
-                    <span>{conversation.messageCount} question{conversation.messageCount === 1 ? "" : "s"}</span>
-                  </div>
-                </div>
-              </button>
+                </button>
+                <button 
+                  className="ai-chat-history__delete" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm("Delete this chat?")) {
+                      deleteThread(conversation._id);
+                      if (activeThreadId === conversation._id) startNewChat();
+                    }
+                  }}
+                  aria-label="Delete chat"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             ))}
           </div>
         </aside>

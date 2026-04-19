@@ -13,6 +13,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 import REMEDIES_DATA from "../data/remedies.js";
 import api from "../lib/api";
@@ -472,21 +473,30 @@ export default function Remedies() {
   return (
     <div className="remedies-page">
       <section className="remedies-hero">
-        <div className="hero-copy">
+        <motion.div 
+          className="hero-copy"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
           <div className="hero-kicker">
             <Leaf size={18} />
             Remedies
             <span className="hero-badge">Care Edition</span>
           </div>
-          <h1>Remedies ranked by safety, memory, and family context.</h1>
+          <h1>Safe, context-aware family remedies.</h1>
           <p>
-            Search symptoms, explore recommendations shaped by your family&apos;s
-            latest health patterns, and generate a custom Ayurvedic option with
-            built-in care context when you need something more specific.
+            Find trusted Ayurvedic remedies tailored to your family's health history, 
+            or let AI craft a custom solution for your exact symptoms.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="hero-panel">
+        <motion.div 
+          className="hero-panel"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
           <label className="hero-field">
             <span>Focus</span>
             <select
@@ -518,17 +528,22 @@ export default function Remedies() {
             {aiBusy ? <Loader2 className="spin" size={16} /> : <Sparkles size={16} />}
             Generate New Remedy
           </button>
-        </div>
+        </motion.div>
       </section>
 
-      <section className="context-strip">
+      <motion.section 
+        className="context-strip"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+      >
         <div className="context-card">
           <div className="context-card__icon">
             <Users size={18} />
           </div>
           <div>
             <strong>{focusMembersLabel}</strong>
-            <p>Recommendations are ranked using safety signals, history, and saved family health data.</p>
+            <p>Filtered by health history & safety</p>
           </div>
         </div>
 
@@ -536,10 +551,10 @@ export default function Remedies() {
           {context.summaryPills.length > 0 ? (
             context.summaryPills.map((pill) => <span key={pill}>{pill}</span>)
           ) : (
-            <span>No major risk flags yet. Showing balanced preventive remedies.</span>
+            <span className="safe-pill"><Sparkles size={14} style={{ display: "inline-block", verticalAlign: "text-bottom", marginRight: "4px" }} /> No active risk flags</span>
           )}
         </div>
-      </section>
+      </motion.section>
 
       <section className="tag-strip">
         {tagOptions.map((tag) => (

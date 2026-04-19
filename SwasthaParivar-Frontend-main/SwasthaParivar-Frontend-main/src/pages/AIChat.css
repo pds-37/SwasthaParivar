@@ -117,6 +117,40 @@
   box-shadow: var(--shadow-sm);
 }
 
+.ai-chat-history__item-wrap {
+  position: relative;
+  display: flex;
+}
+
+.ai-chat-history__delete {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  cursor: pointer;
+}
+
+.ai-chat-history__item-wrap:hover .ai-chat-history__delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ai-chat-history__delete:hover {
+  background: color-mix(in srgb, var(--color-danger) 20%, transparent);
+}
+
 .ai-chat-history__item.is-active {
   border-color: var(--color-primary-soft-strong);
   background: color-mix(in srgb, var(--color-primary-soft) 70%, var(--color-surface-overlay));

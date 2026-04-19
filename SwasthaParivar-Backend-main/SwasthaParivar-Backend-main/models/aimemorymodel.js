@@ -37,6 +37,10 @@ const aiMemorySchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    title: {
+      type: String,
+      default: "New chat",
+    },
     messages: {
       type: [messageSchema],
       default: [],
@@ -45,7 +49,8 @@ const aiMemorySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-aiMemorySchema.index({ ownerId: 1, member: 1 }, { unique: true });
+// Index allows finding all threads for a specific member efficiently
+aiMemorySchema.index({ ownerId: 1, member: 1 });
 
 export default mongoose.models.AIMemory ||
   mongoose.model("AIMemory", aiMemorySchema);
