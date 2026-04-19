@@ -93,7 +93,7 @@ const Navigation = ({ variant = "app" }) => {
         <div className="public-nav__inner">
           <Link className="public-nav__brand" to="/">
             <span className="public-nav__mark" style={{ overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src="/Swastha%20Parivar%20logo.png" alt="SwasthaParivar Logo" style={{ width: "24px", height: "24px", objectFit: "contain" }} />
+              <img src="/swastha_parivar_fast.svg" alt="SwasthaParivar Logo" style={{ width: "24px", height: "24px", objectFit: "contain" }} />
             </span>
             <span>
               <strong>SwasthaParivar</strong>
@@ -136,7 +136,7 @@ const Navigation = ({ variant = "app" }) => {
 
         <Link className="mobile-app-header__brand" to="/dashboard">
           <span className="mobile-app-header__mark" style={{ overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img src="/Swastha%20Parivar%20logo.png" alt="SwasthaParivar Logo" style={{ width: "20px", height: "20px", objectFit: "contain" }} />
+            <img src="/swastha_parivar_fast.svg" alt="SwasthaParivar Logo" style={{ width: "20px", height: "20px", objectFit: "contain" }} />
           </span>
           <span>
             <strong>SwasthaParivar</strong>
@@ -153,7 +153,7 @@ const Navigation = ({ variant = "app" }) => {
         <div className="app-sidebar__header">
           <Link className="app-sidebar__brand" to="/dashboard">
             <span className="app-sidebar__mark" style={{ overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: "2px" }}>
-              <img src="/Swastha%20Parivar%20logo.png" alt="SwasthaParivar Logo" style={{ width: "24px", height: "24px", objectFit: "contain" }} />
+              <img src="/swastha_parivar_fast.svg" alt="SwasthaParivar Logo" style={{ width: "24px", height: "24px", objectFit: "contain" }} />
             </span>
             <span className="app-sidebar__brand-copy">
               <strong>SwasthaParivar</strong>
