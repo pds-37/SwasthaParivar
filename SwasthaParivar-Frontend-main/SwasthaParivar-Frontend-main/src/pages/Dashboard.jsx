@@ -12,6 +12,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 import AddMemberModal from "../components/AddMemberModal";
 import { useAuth } from "../components/auth-context";
@@ -261,7 +262,12 @@ const FamilyDashboard = () => {
       >
         <div className="dashboard-shell">
         <section className="dashboard-overview">
-          <div className="dashboard-overview__copy">
+          <motion.div 
+            className="dashboard-overview__copy"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
             <span className="eyebrow">
               <Sparkles size={16} />
               Care snapshot
@@ -269,32 +275,70 @@ const FamilyDashboard = () => {
             <h1 className="text-h1">{dashboardHeading}</h1>
             <p className="text-body-lg">{dashboardSubheading}</p>
 
-            <div className="dashboard-summary-pills">
+            <motion.div 
+              className="dashboard-summary-pills"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+            >
               <span className="badge badge--primary">{members.length} family profiles</span>
               <span className="badge badge--success">{upcomingReminders.length} upcoming tasks</span>
               <button type="button" className="dashboard-summary-pill" onClick={() => setShowAlerts(true)}>
                 <TriangleAlert size={14} />
                 {healthAlerts.length} health alerts
               </button>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           <div className="dashboard-overview__visual">
-            <div className="dashboard-orbit dashboard-orbit--one" />
-            <div className="dashboard-orbit dashboard-orbit--two" />
-            <div className="dashboard-overview__core card">
+            <motion.div 
+              className="dashboard-orbit dashboard-orbit--one" 
+              initial={{ rotateX: 70, rotateZ: 0 }}
+              animate={{ rotateX: 70, rotateZ: 360 }}
+              transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+            />
+            <motion.div 
+              className="dashboard-orbit dashboard-orbit--two" 
+              initial={{ rotateX: 70, rotateZ: 0 }}
+              animate={{ rotateX: 70, rotateZ: -360 }}
+              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+            />
+            <motion.div 
+              className="dashboard-overview__core card"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
+            >
               <span>Family care brain</span>
               <strong>{members.length || 0}</strong>
               <small>active household profiles</small>
-            </div>
-            <div className="dashboard-overview__node dashboard-overview__node--left">
+            </motion.div>
+            <motion.div 
+              className="dashboard-overview__node dashboard-overview__node--left"
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1, y: [0, -8, 0] }}
+              transition={{ 
+                x: { delay: 0.4, type: "spring" }, 
+                opacity: { delay: 0.4 }, 
+                y: { delay: 0.8, duration: 4, repeat: Infinity, ease: "easeInOut" } 
+              }}
+            >
               <span>Reports</span>
               <strong>{recentActivity.filter((item) => item.type === "Health record").length}</strong>
-            </div>
-            <div className="dashboard-overview__node dashboard-overview__node--right">
+            </motion.div>
+            <motion.div 
+              className="dashboard-overview__node dashboard-overview__node--right"
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1, y: [0, -8, 0] }}
+              transition={{ 
+                x: { delay: 0.5, type: "spring" }, 
+                opacity: { delay: 0.5 }, 
+                y: { delay: 1, duration: 4.5, repeat: Infinity, ease: "easeInOut" } 
+              }}
+            >
               <span>Today</span>
               <strong>{remindersToday.length}</strong>
-            </div>
+            </motion.div>
           </div>
         </section>
 
