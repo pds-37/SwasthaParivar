@@ -3,8 +3,8 @@ self.addEventListener("push", (event) => {
 
   self.registration.showNotification(data.title, {
     body: data.body,
-    icon: "/Swastha%20Parivar%20logo.png",
-    badge: "/Swastha%20Parivar%20logo.png",
+    icon: "/swastha_parivar_fast.svg",
+    badge: "/swastha_parivar_fast.svg",
     vibrate: [200, 100, 200],
   });
 });
