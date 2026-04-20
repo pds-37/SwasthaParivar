@@ -19,7 +19,7 @@ const HEALTH_METRICS = [
   "sleep",
   "steps",
 ];
-const activeProfileStatusFilter = () => mongoose.trusted({ $ne: "archived" });
+const activeProfileStatusFilter = () => ({ $ne: "archived" });
 
 class HouseholdService {
   normalizeText(value, { maxLength = 120 } = {}) {
@@ -461,7 +461,9 @@ class HouseholdService {
         householdId: household._id,
         profileStatus: activeProfileStatusFilter(),
         $or: [
-          { relation: mongoose.trusted({ $regex: "^self$", $options: "i" }) },
+          { relation: "self" },
+          { relation: "Self" },
+          { relation: "SELF" },
           { name: this.normalizeText(user.fullName, { maxLength: 80 }) },
         ],
       }).sort({ createdAt: 1 });

@@ -13,7 +13,7 @@ export const HEALTH_METRICS = [
 ];
 
 const ALLOWED_GENDERS = new Set(["male", "female", "other"]);
-const activeProfileStatusFilter = () => mongoose.trusted({ $ne: "archived" });
+const activeProfileStatusFilter = () => ({ $ne: "archived" });
 
 class FamilyMemberService {
   normalizeText(value, { maxLength = 80 } = {}) {

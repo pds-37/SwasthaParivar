@@ -5,7 +5,7 @@ import householdService from "../services/household/HouseholdService.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { logger } from "../utils/logger.js";
 
-const activeProfileStatusFilter = () => mongoose.trusted({ $ne: "archived" });
+const activeProfileStatusFilter = () => ({ $ne: "archived" });
 const JSON_FENCE_PATTERN = /```json|```/gi;
 const MODEL_CANDIDATES = ["gemini-2.5-flash", "gemini-1.5-flash"];
 

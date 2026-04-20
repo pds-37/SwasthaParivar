@@ -7,7 +7,7 @@ export async function connectDB(uri) {
   }
 
   try {
-    mongoose.set("sanitizeFilter", true);
+    mongoose.set("sanitizeFilter", false);
     mongoose.set("strictQuery", true);
 
     await mongoose.connect(uri, {
