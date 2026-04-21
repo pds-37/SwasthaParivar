@@ -89,6 +89,12 @@ const HealthMonitor = () => {
   }, [selectedId]);
 
   useEffect(() => {
+    if (id && id !== selectedId) {
+      setSelectedId(id);
+    }
+  }, [id, selectedId]);
+
+  useEffect(() => {
     if (selectedId && id !== selectedId) {
       navigate(`/health/${selectedId}`, { replace: true });
     }
@@ -199,9 +205,9 @@ const HealthMonitor = () => {
               label={activeView === "self" ? "Profile" : "Member"}
               disabled={activeView === "self"}
             >
-              {(activeView === "self" && selfMember ? [selfMember] : members).map((entry) => (
-                <option key={entry._id} value={entry._id}>
-                  {entry.name}
+              {(activeView === "self" && selfMember ? [selfMember] : (Array.isArray(members) ? members : [])).map((entry) => (
+                <option key={entry?._id} value={entry?._id}>
+                  {entry?.name}
                 </option>
               ))}
             </Select>

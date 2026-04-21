@@ -1,5 +1,5 @@
 import React from "react";
-import { CalendarPlus, Clock3, Repeat, Trash2 } from "lucide-react";
+import { CalendarPlus, Clock3, Pill, Repeat, Stethoscope, Syringe, Trash2, Bell } from "lucide-react";
 
 import { buildGoogleCalendarUrl } from "../lib/googleCalendar";
 import { Button } from "./ui";
@@ -17,7 +17,12 @@ const ReminderCard = ({ reminder, onDelete, onEdit }) => {
     <article className={`reminder-card card ${status === "missed" ? "is-overdue" : ""}`}>
       <div className="reminder-card__top">
         <div className="reminder-card__identity">
-          <span className="avatar avatar--md">{(reminder.memberName || "F").charAt(0)}</span>
+          <span className="avatar avatar--md">
+            {reminder.category === "medicine" ? <Pill size={18} /> : 
+             reminder.category === "vaccination" ? <Syringe size={18} /> :
+             reminder.category === "checkup" ? <Stethoscope size={18} /> :
+             <Bell size={18} />}
+          </span>
           <div>
             <strong>{reminder.title}</strong>
             <span>{reminder.memberName || "Family member"}</span>

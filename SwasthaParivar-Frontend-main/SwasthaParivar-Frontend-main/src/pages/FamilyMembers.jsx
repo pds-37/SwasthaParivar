@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Users } from "lucide-react";
+import { Activity, Pill, Plus, ShieldAlert, Users } from "lucide-react";
 import AddMemberModal from "../components/AddMemberModal";
 import notify from "../lib/notify";
 import { saveReminderDraft } from "../lib/reminderDraft";
@@ -108,14 +108,17 @@ const FamilyMembers = () => {
 
                 <div className="family-card__counts">
                   <div>
+                    <Activity size={16} />
                     <strong>{member.conditions?.length || 0}</strong>
                     <span>conditions</span>
                   </div>
                   <div>
+                    <Pill size={16} />
                     <strong>{member.medications?.length || 0}</strong>
                     <span>medications</span>
                   </div>
                   <div>
+                    <ShieldAlert size={16} />
                     <strong>{member.allergies?.length || 0}</strong>
                     <span>allergies</span>
                   </div>
