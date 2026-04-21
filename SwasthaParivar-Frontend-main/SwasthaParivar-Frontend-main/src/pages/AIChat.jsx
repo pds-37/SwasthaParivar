@@ -596,9 +596,17 @@ const AIChat = () => {
         member: requestMemberValue,
         history: serializeHistoryForRequest(history),
       });
-      const replyText =
+
+      let replyText =
         String(response?.reply || response?.text || "").trim() ||
         buildClientHealthFallbackReply(trimmed, contextLabel);
+
+      // If the backend flagged this as a fallback response, prepend a notice
+      if (response?.quotaExceeded) {
+        replyText = `> ⚠️ *AI quota temporarily exceeded. Showing pre-built guidance below. For personalized answers, please try again later.*\n\n${replyText}`;
+      } else if (response?.fallback) {
+        replyText = `> ℹ️ *AI service is temporarily unavailable. Showing pre-built guidance below.*\n\n${replyText}`;
+      }
 
       const nextMessages = [
         ...history,
@@ -609,7 +617,7 @@ const AIChat = () => {
       setMessages(nextMessages);
       persistConversation(nextMessages);
     } catch {
-      const fallbackMessage = buildClientHealthFallbackReply(trimmed, contextLabel);
+      const fallbackMessage = `> ℹ️ *Could not reach the AI service right now. Here is pre-built guidance:*\n\n${buildClientHealthFallbackReply(trimmed, contextLabel)}`;
       const nextMessages = [
         ...history,
         createAiMessage(fallbackMessage),

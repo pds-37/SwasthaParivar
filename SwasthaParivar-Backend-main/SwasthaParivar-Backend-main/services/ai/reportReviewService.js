@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "../../utils/logger.js";
 
 const SUPPORTED_REVIEW_MIME_TYPES = ["application/pdf"];
-const MODEL_CANDIDATES = ["gemini-2.5-flash", "gemini-1.5-flash"];
+const MODEL_CANDIDATES = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
 const JSON_FENCE_PATTERN = /```json|```/gi;
 const ATTACHMENT_TYPES = ["report", "medicine", "other"];
 

@@ -7,7 +7,7 @@ import { logger } from "../utils/logger.js";
 
 const activeProfileStatusFilter = () => ({ $ne: "archived" });
 const JSON_FENCE_PATTERN = /```json|```/gi;
-const MODEL_CANDIDATES = ["gemini-2.5-flash", "gemini-1.5-flash"];
+const MODEL_CANDIDATES = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
 
 const TEMPLATE_LIBRARY = [
   {

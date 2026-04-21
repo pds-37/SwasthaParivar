@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
-  BrainCircuit,
+  Brain,
   CalendarClock,
   ChevronRight,
   FileText,
@@ -240,7 +240,7 @@ const FamilyDashboard = () => {
       onClick: () => navigate("/reports"),
     },
     {
-      icon: BrainCircuit,
+      icon: Brain,
       label: "Ask AI",
       description: "Get context-aware family care guidance.",
       onClick: () => navigate("/ai-chat"),
@@ -418,7 +418,7 @@ const FamilyDashboard = () => {
                 onClick={action.onClick}
               >
                 <span className="dashboard-action-tile__icon">
-                  <action.icon size={20} />
+                  <action.icon size={24} />
                 </span>
                 <strong>{action.label}</strong>
                 <span>{action.description}</span>

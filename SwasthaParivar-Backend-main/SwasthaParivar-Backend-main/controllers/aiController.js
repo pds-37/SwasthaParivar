@@ -134,6 +134,14 @@ const HEALTH_SCOPE_KEYWORDS = [
   "remedy",
   "remedies",
   "reminder",
+  "hi",
+  "hello",
+  "hey",
+  "thanks",
+  "thank you",
+  "ok",
+  "okay",
+  "help",
 ];
 
 const HEALTH_SCOPE_PATTERNS = [
@@ -146,6 +154,7 @@ const HEALTH_SCOPE_PATTERNS = [
   /\b(issue|problem|concern|trouble|suffering|dealing)\b.*\b(health|symptom|fever|cough|cold|pain|headache|throat|rash|allergy|medicine|report|sleep|hair|scalp|weight|digestion|bloating|fatigue)\b/i,
   /\b(help|suggest|solution|advice|guidance)\b.*\b(hair|hair loss|hair fall|scalp|fever|cough|cold|pain|medicine|report|sleep|weight)\b/i,
   /\b(losing hair|thinning hair|hair thinning|itchy scalp|scalp itching)\b/i,
+  /^(hi|hello|hey|greetings|good morning|good afternoon|good evening|thanks|thank you|ok|okay)$/i,
 ];
 
 function getModel() {
@@ -159,41 +168,110 @@ function getModel() {
 function getCandidateModels() {
   return [
     process.env.GEMINI_MODEL,
+    "gemini-flash-latest",
     "gemini-2.5-flash",
-    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-pro-latest",
   ].filter((value, index, array) => value && array.indexOf(value) === index);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function tryGenerateOnce(genAI, modelName, formattedParts) {
+  const model = genAI.getGenerativeModel({ model: modelName });
+  const result = await model.generateContent(formattedParts);
+  const text = result?.response?.text?.()?.trim();
+  if (!text) {
+    throw new Error(`Empty AI response from ${modelName}`);
+  }
+  return text;
 }
 
 async function generateWithGemini(parts, { mode = "text" } = {}) {
   const genAI = getModel();
   const models = getCandidateModels();
   let lastError = null;
+  let isQuotaExhausted = false;
+
+  const formattedParts = typeof parts === "string" ? [{ text: parts }] : parts;
+
+  logger.info({
+    route: "ai",
+    mode,
+    attemptingModels: models,
+  });
 
   for (const modelName of models) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent(parts);
-      const text = result?.response?.text?.()?.trim();
+    // Try up to 2 attempts per model with backoff for 429
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const text = await tryGenerateOnce(genAI, modelName, formattedParts);
 
-      if (!text) {
-        throw new Error(`Empty AI response from ${modelName}`);
+        logger.info({
+          route: "ai",
+          mode,
+          model: modelName,
+          attempt,
+          success: true,
+        });
+
+        return text;
+      } catch (error) {
+        lastError = error;
+        const status = error?.status || error?.httpStatusCode;
+        const is429 = status === 429 || /quota|rate.limit|too many/i.test(error?.message || "");
+        const is404 = status === 404 || /not found/i.test(error?.message || "");
+
+        logger.warn({
+          route: "ai",
+          mode,
+          model: modelName,
+          attempt,
+          error: {
+            message: error?.message || "Gemini generation failed",
+            status,
+          },
+        });
+
+        if (is404) {
+          // Model doesn't exist, skip to next model immediately
+          break;
+        }
+
+        if (is429) {
+          isQuotaExhausted = true;
+          if (attempt === 0) {
+            // Wait before retry — extract delay from error or default to 5s
+            const retryMatch = String(error?.message || "").match(/retry in (\d+)/i);
+            const waitMs = retryMatch ? Math.min(Number(retryMatch[1]) * 1000, 15000) : 5000;
+            logger.info({ route: "ai", model: modelName, waitMs }, "Waiting before retry");
+            await sleep(waitMs);
+            continue;
+          }
+          // Second attempt also 429 — move to next model
+          break;
+        }
+
+        // Other errors — don't retry, move to next model
+        break;
       }
-
-      return text;
-    } catch (error) {
-      lastError = error;
-      logger.warn({
-        route: "ai",
-        mode,
-        model: modelName,
-        error: {
-          message: error?.message || "Gemini generation failed",
-        },
-      });
     }
   }
 
-  throw lastError || new Error("No Gemini model succeeded");
+  logger.error({
+    route: "ai",
+    mode,
+    allModelsFailed: true,
+    isQuotaExhausted,
+    lastErrorMessage: lastError?.message,
+  });
+
+  const finalError = lastError || new Error("No Gemini model succeeded");
+  finalError.isQuotaExhausted = isQuotaExhausted;
+  throw finalError;
 }
 
 function parseJsonResponse(rawText) {
@@ -278,7 +356,249 @@ function buildRuleBasedHealthReply(message, context = {}) {
     ],
   };
 
-  if (/(acidity|acid reflux|heartburn|indigestion|gas|bloating)/i.test(normalized)) {
+  const hasAcidity = /(acidity|acid reflux|heartburn|indigestion|gas|bloating)/i.test(normalized);
+  const hasFever = /(fever|temperature|viral)/i.test(normalized);
+  const hasRespiratory = /(cough|cold|sore throat|congestion)/i.test(normalized);
+  const hasDizziness = /(dizz|dazz|vertigo|faint|lightheaded)/i.test(normalized);
+  const hasHair = /(hair loss|hair fall|alopecia|dandruff|itchy scalp|thinning hair)/i.test(normalized);
+  const hasMedicine = /(paracetamol|ibuprofen|cetirizine|azithromycin|amoxicillin|omeprazole|pantoprazole|metformin|medicine|medication|tablet|capsule|syrup|dose|dosage|safe to take|can i take|should i take)/i.test(normalized);
+  const hasChild = /(child|children|baby|infant|toddler|kid|under \d|newborn|pediatric)/i.test(normalized);
+  const hasPain = /(pain|ache|cramp|sprain|strain|sore|hurt|injury|back pain|stomach pain|chest pain|joint pain|knee pain|muscle)/i.test(normalized);
+  const hasAllergy = /(allergy|allergies|allergic|hives|swelling|itching|itchy|rash|reaction)/i.test(normalized);
+  const hasDengue = /(dengue|malaria|typhoid|chikungunya)/i.test(normalized);
+  const hasDiabetes = /(diabetes|diabetic|blood sugar|sugar level|insulin|glucose|hba1c)/i.test(normalized);
+  const hasBP = /(blood pressure|bp|hypertension|hypotension)/i.test(normalized);
+  const hasSleep = /(sleep|insomnia|can't sleep|sleeping|sleepless|restless)/i.test(normalized);
+  const hasMental = /(stress|anxiety|anxious|depression|depressed|mental health|panic|overwhelm|worried|burnout)/i.test(normalized);
+  const hasPregnancy = /(pregnant|pregnancy|prenatal|expecting|trimester|morning sickness)/i.test(normalized);
+  const hasVomit = /(vomit|vomiting|nausea|throwing up)/i.test(normalized);
+  const hasDiarrhea = /(diarrhea|diarrhoea|loose motion|loose stool|dehydration)/i.test(normalized);
+  const hasHeadache = /(headache|migraine|head pain|head ache)/i.test(normalized);
+  const hasDead = /(am i dead|i'm dead|dying|gonna die|going to die)/i.test(normalized);
+
+  // Handle absurd/panic queries gracefully
+  if (hasDead) {
+    response.summary = `I understand you may be feeling very unwell or anxious, ${focusLabel}. Let me help.`;
+    response.doNow = [
+      "Take a deep breath. If you are reading this, you are alive and can get help.",
+      "If you feel severe symptoms like chest pain, difficulty breathing, or loss of consciousness, call emergency services immediately.",
+      "Sit or lie down in a safe, comfortable place and ask someone nearby to stay with you.",
+    ];
+    response.watchOuts = [
+      "Sudden severe symptoms like chest tightness, numbness on one side, or difficulty speaking need immediate emergency care.",
+    ];
+    response.doctor = [
+      "Call emergency services (112 in India) right away if you feel you are in a medical emergency.",
+      "If you are feeling emotionally overwhelmed, reach out to a mental health helpline (iCall: 9152987821, Vandrevala Foundation: 1860-2662-345).",
+    ];
+  } else if (hasMedicine && hasChild) {
+    response.summary = `This is a medicine-safety question involving a child for ${focusLabel}. Extra caution is needed.`;
+    response.doNow = [
+      "Never give adult medicines to children without confirming the pediatric dose with a doctor or pharmacist.",
+      "Paracetamol is generally considered safe for children when given in the correct weight-based dose, but always verify.",
+      "Avoid aspirin for children unless specifically prescribed by a doctor (risk of Reye's syndrome).",
+    ];
+    response.watchOuts = [
+      "Many common adult medicines are not safe for children under 5, including certain cough syrups and painkillers.",
+      "Always check the child's weight, age, allergies, and existing conditions before giving any medicine.",
+    ];
+    response.doctor = [
+      "Consult a pediatrician before starting any new medicine for a child, especially for infants under 1 year.",
+      "Seek immediate help if the child shows signs of allergic reaction, difficulty breathing, or unusual drowsiness after taking medicine.",
+    ];
+  } else if (hasMedicine) {
+    response.summary = `This is a medicine-related question for ${focusLabel}. Safety checks are important.`;
+    response.doNow = [
+      "Always verify the medicine name, correct dose, person's age, allergies, and current medications before taking anything.",
+      "Follow the prescription label or pharmacist instructions if available.",
+      "Take medicines with water unless the label says otherwise, and note the timing (before/after meals).",
+    ];
+    response.watchOuts = [
+      "Do not combine medicines without checking for interactions, especially blood thinners, diabetes medicines, or BP medicines.",
+      "Stop and seek help if you notice side effects like rash, swelling, dizziness, or stomach bleeding.",
+    ];
+    response.doctor = [
+      "Contact a doctor or pharmacist if the medicine, dose, or timing is unclear.",
+      "Seek urgent help for signs of allergic reaction: swelling of face/throat, difficulty breathing, or widespread rash.",
+    ];
+  } else if (hasDengue) {
+    response.summary = `This sounds like a question about dengue or a mosquito-borne illness for ${focusLabel}.`;
+    response.doNow = [
+      "Common dengue symptoms include high fever, severe headache, pain behind the eyes, joint/muscle pain, fatigue, nausea, and skin rash.",
+      "Rest, hydrate well with ORS, coconut water, or plain fluids. Eat light, nutritious food.",
+      "Use paracetamol for fever if appropriate. Avoid ibuprofen and aspirin as they can increase bleeding risk in dengue.",
+    ];
+    response.watchOuts = [
+      "Watch for warning signs: severe abdominal pain, persistent vomiting, bleeding gums/nose, blood in stool/urine, rapid breathing, or fatigue/restlessness.",
+      "Platelet count can drop rapidly — monitor with blood tests as advised by a doctor.",
+    ];
+    response.doctor = [
+      "See a doctor immediately if warning signs appear. Dengue can become life-threatening (dengue hemorrhagic fever).",
+      "Get a blood test (CBC with platelet count, NS1 antigen) if dengue is suspected.",
+    ];
+  } else if (hasPregnancy) {
+    response.summary = `This is a pregnancy-related question for ${focusLabel}. Extra caution is essential.`;
+    response.doNow = [
+      "Many medicines, supplements, and even some home remedies are not safe during pregnancy. Always check with your OB-GYN first.",
+      "Stay well-hydrated, eat balanced meals with iron and folic acid, and get adequate rest.",
+      "Keep up with scheduled prenatal checkups and ultrasounds.",
+    ];
+    response.watchOuts = [
+      "Avoid self-medicating during pregnancy, even with common medicines like ibuprofen or certain antibiotics.",
+      "Watch for warning signs: heavy bleeding, severe abdominal pain, severe headache with vision changes, or sudden swelling.",
+    ];
+    response.doctor = [
+      "Contact your doctor immediately for bleeding, reduced fetal movement, severe pain, or high fever during pregnancy.",
+    ];
+  } else if (hasAllergy) {
+    response.summary = `This sounds like an allergy or allergic reaction concern for ${focusLabel}.`;
+    response.doNow = [
+      "Identify and avoid the suspected trigger (food, medicine, dust, pollen, etc.).",
+      "For mild reactions (itching, mild rash), a known-safe antihistamine like cetirizine may help. Check dose and allergies first.",
+      "Apply a cold compress to itchy or swollen areas for relief.",
+    ];
+    response.watchOuts = [
+      "Watch for signs of severe allergic reaction (anaphylaxis): swelling of face/lips/throat, difficulty breathing, rapid heartbeat, or dizziness.",
+    ];
+    response.doctor = [
+      "Seek emergency help immediately if there is throat swelling, difficulty breathing, or the person feels faint — this could be anaphylaxis.",
+      "See a doctor if the rash spreads, does not improve in 24-48 hours, or is accompanied by fever.",
+    ];
+  } else if (hasMental) {
+    response.summary = `This sounds like a mental health or emotional wellness concern for ${focusLabel}.`;
+    response.doNow = [
+      "Acknowledge the feelings — stress and anxiety are real and valid health concerns.",
+      "Try grounding techniques: slow deep breathing (4 seconds in, hold 4, out 6), or name 5 things you can see around you.",
+      "Take a break from screens, step outside if possible, and drink some water.",
+    ];
+    response.watchOuts = [
+      "Persistent anxiety, sleep disruption, loss of appetite, or feelings of hopelessness lasting more than 2 weeks need professional attention.",
+      "Avoid using alcohol, smoking, or excessive caffeine as coping mechanisms.",
+    ];
+    response.doctor = [
+      "Reach out to a mental health professional if symptoms persist or affect daily life.",
+      "Helplines: iCall (9152987821), Vandrevala Foundation (1860-2662-345), NIMHANS (080-46110007).",
+    ];
+  } else if (hasDiabetes) {
+    response.summary = `This is a diabetes or blood sugar-related question for ${focusLabel}.`;
+    response.doNow = [
+      "Monitor blood sugar regularly, especially fasting and post-meal readings.",
+      "Maintain a balanced diet with low glycemic index foods, fiber, and adequate protein. Avoid sugary drinks and refined carbs.",
+      "Take prescribed diabetes medicines (metformin, insulin, etc.) on time as directed.",
+    ];
+    response.watchOuts = [
+      "Watch for signs of low blood sugar (hypoglycemia): shakiness, sweating, confusion, rapid heartbeat — treat with glucose/sugar immediately.",
+      "Watch for signs of high blood sugar: excessive thirst, frequent urination, blurred vision, fatigue.",
+    ];
+    response.doctor = [
+      "See a doctor if blood sugar readings are consistently above 200 mg/dL or below 70 mg/dL.",
+      "Get HbA1c tested every 3 months and schedule regular eye, kidney, and foot checkups.",
+    ];
+  } else if (hasBP) {
+    response.summary = `This is a blood pressure-related question for ${focusLabel}.`;
+    response.doNow = [
+      "Monitor BP regularly at the same time each day, sitting quietly for 5 minutes before measuring.",
+      "Reduce salt intake, eat potassium-rich foods (bananas, spinach), stay active, and manage stress.",
+      "Take prescribed BP medicines consistently — do not skip doses or stop without consulting a doctor.",
+    ];
+    response.watchOuts = [
+      "Very high BP (above 180/120) is a hypertensive crisis — seek immediate medical help.",
+      "Sudden severe headache, vision changes, chest pain, or difficulty breathing with high BP is an emergency.",
+    ];
+    response.doctor = [
+      "See a doctor if BP stays above 140/90 despite lifestyle changes, or if you experience persistent dizziness or headaches.",
+    ];
+  } else if (hasSleep) {
+    response.summary = `This sounds like a sleep-related concern for ${focusLabel}.`;
+    response.doNow = [
+      "Maintain a consistent sleep schedule — go to bed and wake up at the same time daily.",
+      "Avoid screens, caffeine, and heavy meals at least 1-2 hours before bedtime.",
+      "Create a dark, cool, quiet sleeping environment. Try relaxation techniques or gentle stretching before bed.",
+    ];
+    response.watchOuts = [
+      "Avoid relying on sleep aids or alcohol for sleep — they reduce sleep quality long-term.",
+      "Persistent insomnia lasting more than 3-4 weeks may indicate an underlying condition (anxiety, sleep apnea, etc.).",
+    ];
+    response.doctor = [
+      "See a doctor if sleeplessness persists despite good sleep habits, or if you experience loud snoring, gasping during sleep, or daytime exhaustion.",
+    ];
+  } else if (hasHeadache) {
+    response.summary = `This sounds like a headache or migraine concern for ${focusLabel}.`;
+    response.doNow = [
+      "Rest in a quiet, dark room and apply a cold or warm compress to the forehead or neck.",
+      "Stay hydrated — dehydration is a common headache trigger.",
+      "Paracetamol may help if it is safe for this person. Avoid overusing painkillers (more than 2-3 times a week).",
+    ];
+    response.watchOuts = [
+      "Watch for the worst headache of your life, headache with fever and stiff neck, or headache after a head injury.",
+    ];
+    response.doctor = [
+      "Seek urgent care for sudden severe headache, headache with confusion/vision changes/weakness, or headache that worsens over days.",
+    ];
+  } else if (hasVomit && hasDiarrhea) {
+    response.summary = `This sounds like a gastrointestinal issue with vomiting and diarrhea for ${focusLabel}.`;
+    response.doNow = [
+      "Focus on rehydration with ORS, coconut water, or small sips of clear fluids every few minutes.",
+      "Avoid solid food until vomiting stops, then start with bland foods (rice, toast, banana).",
+      "Rest and avoid dairy, spicy, or oily food until recovery.",
+    ];
+    response.watchOuts = [
+      "Watch for signs of dehydration: dry mouth, sunken eyes, reduced urination, or lethargy — especially in children and elderly.",
+    ];
+    response.doctor = [
+      "See a doctor urgently if there is blood in vomit or stool, high fever, severe abdominal pain, or inability to keep fluids down for more than 6 hours.",
+    ];
+  } else if (hasVomit) {
+    response.summary = `This sounds like a nausea or vomiting concern for ${focusLabel}.`;
+    response.doNow = [
+      "Sip clear fluids slowly — small amounts frequently rather than large gulps.",
+      "Avoid solid food temporarily. Try bland foods once vomiting settles.",
+      "Rest in a propped-up or side-lying position to prevent aspiration.",
+    ];
+    response.watchOuts = ["Watch for dehydration, blood in vomit, or inability to keep any fluids down."];
+    response.doctor = ["See a doctor if vomiting persists beyond 24 hours, or if accompanied by severe pain, high fever, or blood."];
+  } else if (hasDiarrhea) {
+    response.summary = `This sounds like a diarrhea or loose motion concern for ${focusLabel}.`;
+    response.doNow = [
+      "Start ORS immediately to prevent dehydration. Coconut water and clear soups also help.",
+      "Eat bland, easy-to-digest foods: rice, bananas, toast, boiled potatoes.",
+      "Maintain hygiene — wash hands frequently to prevent spread.",
+    ];
+    response.watchOuts = ["Watch for bloody stool, high fever, severe cramps, or signs of dehydration."];
+    response.doctor = ["See a doctor if diarrhea lasts more than 2 days, contains blood, or the person (especially a child) shows signs of dehydration."];
+  } else if (hasPain) {
+    response.summary = `This sounds like a pain-related concern for ${focusLabel}.`;
+    response.doNow = [
+      "Rest the affected area and apply a cold compress for acute pain or a warm compress for muscle stiffness.",
+      "Paracetamol can help with mild pain if safe for this person. Avoid prolonged painkiller use without medical advice.",
+      "Note the location, intensity (1-10), and any triggers to share with a doctor if needed.",
+    ];
+    response.watchOuts = [
+      "Chest pain, sudden severe abdominal pain, or pain with numbness/weakness needs immediate medical attention.",
+      "Avoid ignoring pain that wakes you from sleep or progressively worsens over days.",
+    ];
+    response.doctor = [
+      "See a doctor if pain is severe, persistent, or accompanied by fever, swelling, or loss of function.",
+    ];
+  } else if (hasAcidity && hasDizziness) {
+    response.summary = `This sounds like a combination of digestive discomfort and dizziness for ${focusLabel}.`;
+    response.doNow = [
+      "Sit down or lie down immediately in a safe place to avoid falls.",
+      "Sip plain water slowly to ensure hydration.",
+      "Stay in a cool, well-ventilated area.",
+    ];
+    response.watchOuts = ["Watch for signs of dehydration, such as dry mouth or reduced urination."];
+    response.doctor = ["Seek medical help if the dizziness is severe, persistent, or accompanied by blurred vision, chest pain, or sudden weakness."];
+  } else if (hasDizziness) {
+    response.summary = `This sounds like a concern related to dizziness or lightheadedness for ${focusLabel}.`;
+    response.doNow = [
+      "Sit or lie down safely until the feeling passes.",
+      "Hydrate well with plain water or ORS if appropriate.",
+      "Avoid sudden movements or standing up too quickly.",
+    ];
+    response.watchOuts = ["Monitor for any other symptoms like palpitations, headache, or confusion."];
+    response.doctor = ["Contact a doctor if the dizziness is recurrent, follows a head injury, or is accompanied by fainting, chest pain, or slurred speech."];
+  } else if (hasAcidity) {
     response.summary = `This sounds like mild acidity or post-meal indigestion for ${focusLabel}.`;
     response.doNow = [
       "Sip water slowly and stay upright for 2 to 3 hours after dinner.",
@@ -289,37 +609,26 @@ function buildRuleBasedHealthReply(message, context = {}) {
       "Avoid lying flat right after eating.",
       "Avoid repeated use of painkillers or trigger foods if they usually worsen acidity.",
     ];
-    response.doctor = [
-      "Contact a doctor urgently for chest pain, vomiting blood, black stools, trouble swallowing, or severe persistent pain.",
-      "Arrange a medical review if acidity is happening often or disturbing sleep.",
-    ];
-  } else if (/(fever|temperature|viral)/i.test(normalized)) {
+    response.doctor = ["Contact a doctor urgently for chest pain, vomiting blood, black stools, trouble swallowing, or severe persistent pain."];
+  } else if (hasFever) {
     response.summary = `This sounds like a fever-related concern for ${focusLabel}.`;
     response.doNow = [
       "Encourage fluids, rest, and light food.",
       "Check temperature and note any worsening symptoms.",
       "Use only medicines already known to be safe for that person.",
     ];
-    response.watchOuts = [
-      "Watch for dehydration, reduced urination, unusual sleepiness, or confusion.",
-    ];
-    response.doctor = [
-      "Get urgent help for breathing trouble, severe weakness, dehydration, seizures, or fever that is very high or persistent.",
-    ];
-  } else if (/(cough|cold|sore throat|congestion)/i.test(normalized)) {
+    response.watchOuts = ["Watch for dehydration, reduced urination, unusual sleepiness, or confusion."];
+    response.doctor = ["Get urgent help for breathing trouble, severe weakness, dehydration, seizures, or fever that is very high or persistent."];
+  } else if (hasRespiratory) {
     response.summary = `This sounds like a mild upper-respiratory issue for ${focusLabel}.`;
     response.doNow = [
       "Encourage fluids, warm drinks, and rest.",
       "Steam inhalation can help some adults if done carefully.",
       "Honey can soothe the throat for adults and children over 1 year old.",
     ];
-    response.watchOuts = [
-      "Avoid smoke exposure and very cold drinks if they worsen symptoms.",
-    ];
-    response.doctor = [
-      "Get medical help for breathing difficulty, chest pain, blue lips, wheezing, or symptoms that keep worsening.",
-    ];
-  } else if (/(hair loss|hair fall|alopecia|dandruff|itchy scalp|thinning hair)/i.test(normalized)) {
+    response.watchOuts = ["Avoid smoke exposure and very cold drinks if they worsen symptoms."];
+    response.doctor = ["Get medical help for breathing difficulty, chest pain, blue lips, wheezing, or symptoms that keep worsening."];
+  } else if (hasHair) {
     response.summary = `This sounds like a hair or scalp concern for ${focusLabel}.`;
     response.doNow = [
       "Check for recent stress, illness, rapid weight change, poor sleep, or diet changes that may be contributing.",
@@ -330,9 +639,7 @@ function buildRuleBasedHealthReply(message, context = {}) {
       "Avoid starting supplements or medicated products blindly without checking the likely cause first.",
       "Watch for patchy bald spots, scalp redness, severe itching, flakes, or rapid worsening.",
     ];
-    response.doctor = [
-      "Arrange a medical review if hair loss is sudden, patchy, persistent, or associated with fatigue, weight change, or menstrual/hormonal issues.",
-    ];
+    response.doctor = ["Arrange a medical review if hair loss is sudden, patchy, persistent, or associated with fatigue, weight change, or menstrual/hormonal issues."];
   }
 
   return [
@@ -621,10 +928,23 @@ export const chatWithAI = async (req, res) => {
     }
     const prompt = buildAdvisorPrompt({ message, member, history, context });
     let reply;
+    let isFallback = false;
+    let isQuotaExhausted = false;
     try {
       reply = await generateWithGemini(prompt, { mode: "chat" });
-    } catch {
+    } catch (geminiError) {
+      isFallback = true;
+      isQuotaExhausted = Boolean(geminiError?.isQuotaExhausted);
       reply = buildRuleBasedHealthReply(message, context);
+      logger.warn({
+        route: "ai-chat",
+        userId: req.userId,
+        isFallback: true,
+        isQuotaExhausted,
+        error: {
+          message: geminiError?.message || "Gemini failed, using fallback",
+        },
+      });
     }
 
     try {
@@ -645,7 +965,11 @@ export const chatWithAI = async (req, res) => {
     }
 
     return sendSuccess(res, {
-      data: { reply },
+      data: {
+        reply,
+        ...(isFallback ? { fallback: true } : {}),
+        ...(isQuotaExhausted ? { quotaExceeded: true } : {}),
+      },
     });
   } catch (err) {
     logger.error({

@@ -8,7 +8,11 @@ const FloatingAIButton = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  if (location.pathname.startsWith("/ai-chat")) {
+  if (
+    location.pathname.startsWith("/ai-chat") ||
+    location.pathname === "/dashboard" ||
+    location.pathname === "/"
+  ) {
     return null;
   }
 
