@@ -77,9 +77,11 @@ export const createReminder = async (req, res) => {
       });
     }
 
-    const nextDate = nextRunAt
-      ? new Date(nextRunAt)
-      : computeNextRun(new Date(), frequency || "once", options || {});
+    let nextDate = nextRunAt ? new Date(nextRunAt) : null;
+    
+    if (!nextDate || isNaN(nextDate.getTime())) {
+      nextDate = computeNextRun(new Date(), frequency || "once", options || {});
+    }
 
     const reminder = await Reminder.create({
       ownerId,

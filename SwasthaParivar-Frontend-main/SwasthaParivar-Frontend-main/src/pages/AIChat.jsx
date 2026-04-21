@@ -332,7 +332,7 @@ const AIChat = () => {
     setSelectedMember,
     refreshMembers,
   } = useFamilyStore();
-  const { sidebarCollapsed } = useUIStore();
+  const { sidebarCollapsed, activeThreadId, setActiveThreadId } = useUIStore();
   const contexts = useMemo(
     () =>
       activeView === "self"
@@ -389,7 +389,6 @@ const AIChat = () => {
   );
   
   const { threads, saveMemory, deleteThread } = useAIChat();
-  const [activeThreadId, setActiveThreadId] = useState(null);
   const hasMessages = messages.length > 0;
 
   useEffect(() => {

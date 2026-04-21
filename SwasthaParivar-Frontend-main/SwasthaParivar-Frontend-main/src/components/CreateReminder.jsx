@@ -13,6 +13,7 @@ const reminderTypes = [
   { value: "medicine", label: "Medicine" },
   { value: "vaccination", label: "Vaccination" },
   { value: "checkup", label: "Checkup" },
+  { value: "followup", label: "Follow-up" },
   { value: "custom", label: "Custom" },
 ];
 

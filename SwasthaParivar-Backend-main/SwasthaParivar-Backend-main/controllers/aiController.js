@@ -168,11 +168,12 @@ function getModel() {
 function getCandidateModels() {
   return [
     process.env.GEMINI_MODEL,
-    "gemini-flash-latest",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
     "gemini-1.5-flash-latest",
+    "gemini-1.5-pro",
     "gemini-1.5-pro-latest",
+    "gemini-pro",
   ].filter((value, index, array) => value && array.indexOf(value) === index);
 }
 
@@ -930,9 +931,21 @@ export const chatWithAI = async (req, res) => {
     let reply;
     let isFallback = false;
     let isQuotaExhausted = false;
-    try {
-      reply = await generateWithGemini(prompt, { mode: "chat" });
-    } catch (geminiError) {
+
+    // 1. Try Cache Lookup First (Last 24 hours)
+    const recentInsight = await AIInsight.findOne({
+      sourceMessage: { $regex: new RegExp(`^${escapeRegex(message)}$`, "i") },
+      memberLabel: context.focusLabel,
+      createdAt: { $gt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    }).sort({ createdAt: -1 });
+
+    if (recentInsight?.adviceSummary) {
+      reply = recentInsight.adviceSummary;
+      logger.info({ route: "ai-chat", userId: req.userId, cacheHit: true }, "Serving cached AI reply");
+    } else {
+      try {
+        reply = await generateWithGemini(prompt, { mode: "chat" });
+      } catch (geminiError) {
       isFallback = true;
       isQuotaExhausted = Boolean(geminiError?.isQuotaExhausted);
       reply = buildRuleBasedHealthReply(message, context);

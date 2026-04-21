@@ -76,6 +76,11 @@
   outline: 0;
 }
 
+.ui-field__select option {
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
 .ui-field__input,
 .ui-field__select {
   min-height: 3rem;

@@ -142,6 +142,12 @@ const request = async (endpoint, options = {}) => {
 
   const payload = response?.data ?? null;
   if (payload && typeof payload === "object" && "success" in payload) {
+    if (!payload.success) {
+      const error = new Error(payload.error?.message || payload.message || "Request failed");
+      error.data = payload.data;
+      error.status = response.status;
+      throw error;
+    }
     return payload.data ?? null;
   }
 

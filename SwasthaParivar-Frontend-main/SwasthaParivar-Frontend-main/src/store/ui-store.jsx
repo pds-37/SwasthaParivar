@@ -9,6 +9,13 @@ const uiReducer = (state, action) => {
   switch (action.type) {
     case "SET_COLLAPSED":
       return { ...state, sidebarCollapsed: action.payload };
+    case "SET_ACTIVE_THREAD":
+      if (action.payload) {
+        localStorage.setItem("swastha:last_thread_id", action.payload);
+      } else {
+        localStorage.removeItem("swastha:last_thread_id");
+      }
+      return { ...state, activeThreadId: action.payload };
     case "TOAST_PUSH":
       return { ...state, toasts: [action.payload, ...state.toasts].slice(0, 3) };
     case "TOAST_REMOVE":
@@ -22,6 +29,7 @@ export const UIStoreProvider = ({ children }) => {
   const { mode, preference, setThemePreference } = useThemeMode();
   const [state, dispatch] = useReducer(uiReducer, {
     sidebarCollapsed: false,
+    activeThreadId: typeof window !== "undefined" ? localStorage.getItem("swastha:last_thread_id") : null,
     toasts: [],
   });
 
@@ -45,8 +53,10 @@ export const UIStoreProvider = ({ children }) => {
       theme: preference,
       resolvedTheme: mode,
       sidebarCollapsed: state.sidebarCollapsed,
+      activeThreadId: state.activeThreadId,
       toasts: state.toasts,
       setSidebarCollapsed: (nextValue) => dispatch({ type: "SET_COLLAPSED", payload: nextValue }),
+      setActiveThreadId: (id) => dispatch({ type: "SET_ACTIVE_THREAD", payload: id }),
       setTheme: setThemePreference,
     }),
     [mode, preference, setThemePreference, state.sidebarCollapsed, state.toasts]
