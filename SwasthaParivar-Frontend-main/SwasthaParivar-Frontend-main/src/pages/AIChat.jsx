@@ -108,7 +108,7 @@ const HEALTH_FALLBACK_KEYWORDS = [
   "reminder",
 ];
 
-const CHAT_HISTORY_LIMIT = 8;
+const CHAT_HISTORY_LIMIT = 15;
 const CHAT_HISTORY_TEXT_MAX = 2000;
 
 const fileToBase64Payload = (file) =>

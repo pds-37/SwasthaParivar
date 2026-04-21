@@ -14,6 +14,7 @@ import {
 import Navigation from "../components/Navigation";
 import { howToUseNote, howToUseSteps } from "../lib/howToUse";
 import { Button } from "../components/ui";
+import { motion } from "framer-motion";
 import "./Landing.css";
 
 const features = [
@@ -124,17 +125,30 @@ const Landing = () => {
             </p>
           </div>
 
-          <div className="landing-feature-grid">
-            {features.map((feature) => (
-              <article key={feature.title} className="landing-feature-card card card-hover">
+          <motion.div 
+            className="landing-feature-grid"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, staggerChildren: 0.2 }}
+          >
+            {features.map((feature, index) => (
+              <motion.article 
+                key={feature.title} 
+                className="landing-feature-card card card-hover"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+              >
                 <div className="landing-feature-card__icon">
                   <feature.icon size={20} />
                 </div>
                 <h3 className="text-h4">{feature.title}</h3>
                 <p className="text-body-sm">{feature.text}</p>
-              </article>
+              </motion.article>
             ))}
-          </div>
+          </motion.div>
         </section>
 
         <section className="landing-howto" id="how-to-use">
@@ -147,15 +161,28 @@ const Landing = () => {
             </p>
           </div>
 
-          <div className="landing-howto__grid">
+          <motion.div 
+            className="landing-howto__grid"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
             {howToUseSteps.map((step, index) => (
-              <article key={step.title} className="landing-howto__card card card-hover">
+              <motion.article 
+                key={step.title} 
+                className="landing-howto__card card card-hover"
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.15 }}
+              >
                 <span className="landing-howto__step">Step {index + 1}</span>
                 <h3 className="text-h4">{step.title}</h3>
                 <p className="text-body-sm">{step.text}</p>
-              </article>
+              </motion.article>
             ))}
-          </div>
+          </motion.div>
 
           <div className="landing-howto__note">
             <CircleHelp size={18} />

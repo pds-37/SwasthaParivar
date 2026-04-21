@@ -26,6 +26,8 @@ const AIChat = lazy(() => import("./pages/AIChat"));
 const Reminders = lazy(() => import("./pages/Reminders"));
 const Settings = lazy(() => import("./pages/Settings"));
 
+import { motion } from "framer-motion";
+
 const RouteScreen = ({ page, componentProps }) => {
   const location = useLocation();
   const Page = page;
@@ -33,7 +35,16 @@ const RouteScreen = ({ page, componentProps }) => {
   return (
     <ErrorBoundary resetKey={location.pathname}>
       <Suspense fallback={<PageSkeleton />}>
-        <Page {...componentProps} />
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}
+        >
+          <Page {...componentProps} />
+        </motion.div>
       </Suspense>
     </ErrorBoundary>
   );

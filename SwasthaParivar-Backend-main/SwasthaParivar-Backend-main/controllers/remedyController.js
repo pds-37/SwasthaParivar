@@ -7,7 +7,14 @@ import { logger } from "../utils/logger.js";
 
 const activeProfileStatusFilter = () => ({ $ne: "archived" });
 const JSON_FENCE_PATTERN = /```json|```/gi;
-const MODEL_CANDIDATES = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+const MODEL_CANDIDATES = [
+  "gemini-1.5-flash",
+  "gemini-1.5-flash-8b",
+  "gemini-1.5-flash-latest",
+  "gemini-1.5-pro",
+  "gemini-1.5-pro-latest",
+  "gemini-pro",
+];
 
 const TEMPLATE_LIBRARY = [
   {
@@ -523,14 +530,42 @@ export const generateRemedy = async (req, res) => {
     const selectedMemberId = req.body?.memberId || "family";
 
     const context = await buildFocusContext(req.userId, selectedMemberId);
-
     let remedy;
 
-    try {
-      remedy = await generateWithGemini(query, context);
-    } catch (error) {
-      console.error("Gemini remedy generation failed, using fallback:", error.message);
-      remedy = buildFallbackRemedy(query, context);
+    // 1. Try Cache Lookup (48h cache)
+    const AIInsight = mongoose.models.AIInsight || (await import("../models/aiinsightmodel.js")).default;
+    const recentCache = await AIInsight.findOne({
+      sourceMessage: `remedy:${query}`,
+      memberLabel: context.focusLabel,
+      createdAt: { $gt: new Date(Date.now() - 48 * 60 * 60 * 1000) },
+    }).sort({ createdAt: -1 });
+
+    if (recentCache?.adviceSummary) {
+      try {
+        remedy = JSON.parse(recentCache.adviceSummary);
+        logger.info({ route: "remedy-generate", userId: req.userId, cacheHit: true }, "Serving cached remedy");
+      } catch (err) {
+        // Continue to generation if JSON is invalid
+      }
+    }
+
+    if (!remedy) {
+      try {
+        remedy = await generateWithGemini(query, context);
+        
+        // 2. Cache the result for future requests
+        await AIInsight.create({
+          ownerId: req.userId,
+          memberId: selectedMemberId !== "family" ? selectedMemberId : null,
+          memberLabel: context.focusLabel,
+          sourceMessage: `remedy:${query}`,
+          adviceSummary: JSON.stringify(remedy),
+          symptoms: [query],
+        });
+      } catch (error) {
+        console.error("Gemini remedy generation failed, using fallback:", error.message);
+        remedy = buildFallbackRemedy(query, context);
+      }
     }
 
     return sendSuccess(res, {

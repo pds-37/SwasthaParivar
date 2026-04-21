@@ -50,6 +50,9 @@ const REMEDY_KEYWORDS = [
   "black pepper",
 ];
 
+const CHAT_HISTORY_LIMIT = 15;
+const CHAT_HISTORY_TEXT_MAX = 3000;
+
 const HEALTH_SCOPE_KEYWORDS = [
   "health",
   "family health",
@@ -820,7 +823,7 @@ function normalizeHistory(history = []) {
 
   return history
     .filter((entry) => entry && typeof entry.text === "string")
-    .slice(-8)
+    .slice(-CHAT_HISTORY_LIMIT)
     .map((entry) => {
       const sender = entry.sender === "user" ? "User" : "Assistant";
       const text = entry.text.replace(/\s+/g, " ").trim().slice(0, 600);
@@ -832,37 +835,31 @@ function buildAdvisorPrompt({ message, member, history, context }) {
   const historyBlock = normalizeHistory(history);
 
   return `
-You are SwasthaParivar AI, a careful family health advisor inside a household care app.
+You are SwasthaParivar AI, a highly intelligent and empathetic family health advisor.
 
-Your job is to connect symptoms, reminders, uploaded reports, remedy ideas, and family context without sounding robotic.
+Goal: Provide expert-level health guidance, connect family vitals/history, and maintain perfect context in multi-turn conversations.
 
-Rules:
-- Safety comes before creativity.
-- Never pretend to diagnose with certainty.
-- Never invent patient details that are not provided in the saved context below.
-- Only answer family-health, wellness-tracking, medical-report, reminder, or care-planning questions.
-- If the user asks about anything outside health or family care, politely refuse and ask for a health-related question instead.
-- When giving home-care suggestions, be conservative around children, pregnancy, allergies, medications, high blood pressure, and high blood sugar.
-- If the user asks about danger signs or the symptoms sound urgent, clearly advise in-person medical care or emergency help.
-- If the request needs missing information, ask at most 2 short follow-up questions.
-- Keep the answer practical and easy to scan.
+Core Competencies:
+- Contextual Awareness: ALWAYS analyze the 'Recent conversation' block before answering. If a user asks "What about him?", look back to see who "him" refers to.
+- Medical Precision: Use the 'Saved family context' to personalize advice (e.g., check for allergies before suggesting a remedy).
+- Safety First: If symptoms sound urgent (chest pain, high fever in infants, bleeding), prioritize advising professional medical care.
+- Scope: Help with symptoms, medicines, reports, reminders, vitals, and family wellness. Politely pivot other topics back to health.
 
-Preferred response shape:
-Summary:
-What to do now:
-Watch-outs:
-When to contact a doctor:
-Question:
+Tone: Professional, calm, and supportive. Avoid sounding like a bot.
 
-Only include Question if you truly need more detail.
+Response Structure:
+Summary: (Direct answer to the question)
+What to do now: (Actionable steps)
+Watch-outs: (Risks or red flags)
+When to contact a doctor: (Specific triggers for professional help)
 
 Selected conversation context: ${member || "Self"}
 Resolved profile focus: ${context.focusLabel}
 Saved family context:
 ${context.summary}
 
-Recent conversation:
-${historyBlock.length ? historyBlock.join("\n") : "No recent conversation available."}
+Recent conversation (Context History):
+${historyBlock.length ? historyBlock.join("\n") : "Starting a new conversation."}
 
 Latest user message:
 ${message}
@@ -893,7 +890,7 @@ export const chatWithAI = async (req, res) => {
     
     // Allow short conversational answers (like "yes", "recurring issue", "3 days") mid-conversation
     // Longer irrelevant queries will still be blocked by the keyword filter.
-    const isShortFollowUp = hasHistory && message.split(/\s+/).length <= 8;
+    const isShortFollowUp = hasHistory && message.split(/\s+/).length <= 15;
 
     if (!isHealthQuery && !isShortFollowUp) {
       return sendSuccess(res, {
