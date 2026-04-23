@@ -8,77 +8,18 @@ import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 import { logger } from "../utils/logger.js";
 
-const MODEL_CANDIDATES = [
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
-  "gemini-1.5-flash-latest",
-  "gemini-1.5-pro",
-  "gemini-1.5-pro-latest",
-  "gemini-pro",
-  "gemini-1.0-pro",
-];
-
 const JSON_FENCE_PATTERN = /```json|```/gi;
 
-function getModel() {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured");
-  }
-  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-}
-
 function parseJsonResponse(rawText) {
-  return JSON.parse(String(rawText || "").replace(JSON_FENCE_PATTERN, "").trim());
-}
-
-function getCandidateModels() {
-  const primary = process.env.GEMINI_MODEL;
-  const list = [primary, ...MODEL_CANDIDATES].filter((val, idx, arr) => val && arr.indexOf(val) === idx);
-  return list;
+  try {
+    return JSON.parse(String(rawText || "").replace(JSON_FENCE_PATTERN, "").trim());
+  } catch (err) {
+    return {};
+  }
 }
 
 function escapeRegex(value = "") {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-async function generateWithGemini(prompt, options = {}) {
-  const genAI = getModel();
-  let lastError = null;
-
-  for (const modelName of getCandidateModels()) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent([{ text: prompt }]);
-      const responseText = result?.response?.text?.()?.trim();
-
-      if (!responseText) {
-        throw new Error(`Empty response from model ${modelName}`);
-      }
-
-      return responseText;
-    } catch (error) {
-      lastError = error;
-      const isQuotaError = error?.message?.includes("429") || error?.message?.includes("quota");
-      
-      logger.warn({
-        route: "ai-generate",
-        model: modelName,
-        error: {
-          message: error?.message || "Generation failed",
-          isQuotaExhausted: isQuotaError,
-        },
-      });
-
-      if (isQuotaError) {
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  const quotaError = new Error("AI service quota reached on all available models");
-  quotaError.isQuotaExhausted = true;
-  throw lastError || quotaError;
 }
 
 const SYMPTOM_KEYWORDS = [
@@ -242,7 +183,7 @@ function getModel() {
 }
 
 function getCandidateModels() {
-  return [
+  const list = [
     process.env.GEMINI_MODEL,
     "gemini-1.5-flash",
     "gemini-1.5-flash-8b",
@@ -250,7 +191,9 @@ function getCandidateModels() {
     "gemini-1.5-pro",
     "gemini-1.5-pro-latest",
     "gemini-pro",
+    "gemini-1.0-pro",
   ].filter((value, index, array) => value && array.indexOf(value) === index);
+  return list;
 }
 
 function sleep(ms) {
