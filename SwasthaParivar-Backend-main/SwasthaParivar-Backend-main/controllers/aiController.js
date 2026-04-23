@@ -955,6 +955,7 @@ export const chatWithAI = async (req, res) => {
           message: geminiError?.message || "Gemini failed, using fallback",
         },
       });
+      }
     }
 
     try {
