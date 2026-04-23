@@ -294,14 +294,6 @@ async function generateWithGemini(parts, { mode = "text" } = {}) {
   throw finalError;
 }
 
-function parseJsonResponse(rawText) {
-  return JSON.parse(String(rawText || "").replace(/```json|```/g, "").trim());
-}
-
-function escapeRegex(value = "") {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function isReminderQuery(text) {
   const lower = text.toLowerCase();
   const keywords = ["remind", "reminder", "schedule", "appointment", "vaccination", "follow up"];
