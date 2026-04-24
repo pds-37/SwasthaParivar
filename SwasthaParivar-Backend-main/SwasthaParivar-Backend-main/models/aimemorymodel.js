@@ -1,5 +1,19 @@
 import mongoose from "mongoose";
 
+const suggestedReminderSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      default: "",
+    },
+    type: {
+      type: String,
+      default: "",
+    },
+  },
+  { _id: false }
+);
+
 const messageSchema = new mongoose.Schema(
   {
     sender: {
@@ -18,6 +32,18 @@ const messageSchema = new mongoose.Schema(
     },
     attachment: {
       type: String,
+      default: null,
+    },
+    riskLevel: {
+      type: String,
+      default: null,
+    },
+    followUpPrompt: {
+      type: String,
+      default: null,
+    },
+    suggestedReminder: {
+      type: suggestedReminderSchema,
       default: null,
     },
   },

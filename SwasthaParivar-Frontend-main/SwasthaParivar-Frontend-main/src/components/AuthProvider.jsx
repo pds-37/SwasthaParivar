@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { AuthContext } from "./auth-context";
 import AppLoader from "./AppLoader";
+import { identifyAnalyticsUser, resetAnalytics } from "../utils/analytics";
 
 const parseStoredUser = () => {
   const storedUser = localStorage.getItem("user");
@@ -94,6 +95,18 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (state.user?.id) {
+      identifyAnalyticsUser(state.user);
+      return;
+    }
+
+    resetAnalytics();
+  }, [state.user]);
+
+  const resolveRedirectPath = (value) =>
+    typeof value === "string" && value.startsWith("/") ? value : "/dashboard";
+
   const setAuthenticatedState = (data) => {
     localStorage.removeItem("token");
     localStorage.setItem("user", JSON.stringify(data.user));
@@ -105,22 +118,44 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
-  const login = async (credentials) => {
+  const updateUser = (nextUserOrUpdater) => {
+    const nextUser =
+      typeof nextUserOrUpdater === "function"
+        ? nextUserOrUpdater(state.user)
+        : {
+            ...(state.user || {}),
+            ...(nextUserOrUpdater || {}),
+          };
+
+    if (!nextUser) {
+      return;
+    }
+
+    localStorage.setItem("user", JSON.stringify(nextUser));
+    dispatch({
+      type: "AUTH_SET",
+      payload: {
+        user: nextUser,
+      },
+    });
+  };
+
+  const login = async (credentials, options = {}) => {
     try {
       const data = await api.post("/auth/login", credentials);
       setAuthenticatedState(data);
-      navigate("/dashboard");
+      navigate(resolveRedirectPath(options.redirectTo), { replace: true });
     } catch (error) {
       console.error("Login failed", error);
       throw error; 
     }
   };
 
-  const signup = async (userData) => {
+  const signup = async (userData, options = {}) => {
     try {
       const data = await api.post("/auth/signup", userData);
       setAuthenticatedState(data);
-      navigate("/dashboard");
+      navigate(resolveRedirectPath(options.redirectTo), { replace: true });
     } catch (error) {
       console.error("Signup failed", error);
       throw error;
@@ -136,6 +171,7 @@ export const AuthProvider = ({ children }) => {
 
     localStorage.removeItem("user");
     localStorage.removeItem("token");
+    resetAnalytics();
     dispatch({ type: "AUTH_CLEAR" });
     navigate("/");
   };
@@ -150,6 +186,7 @@ export const AuthProvider = ({ children }) => {
         login,
         signup,
         logout,
+        updateUser,
       }}
     >
       {state.loading ? <AppLoader /> : children}

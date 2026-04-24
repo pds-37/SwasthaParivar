@@ -1,6 +1,7 @@
 import axios from "axios";
 import notify from "./notify";
 import { captureFrontendError } from "./sentry";
+import { getFriendlyError } from "../utils/errorHandler";
 
 const sanitizePath = (value = "") => {
   if (!value) return "";
@@ -52,12 +53,15 @@ apiClient.interceptors.response.use(
   async (error) => {
     const status = error?.response?.status;
     const originalRequest = error?.config || {};
-    const message =
+    const upgradeRequired = Boolean(error?.response?.data?.upgradeRequired);
+    const blockedFeature = error?.response?.data?.feature || "";
+    const serverMessage =
       error?.response?.data?.error?.message ||
       error?.response?.data?.message ||
       error?.response?.data?.error ||
       error.message ||
       "Request failed";
+    const friendlyMessage = getFriendlyError(error);
 
     const isRefreshRequest = originalRequest.url?.includes("/auth/refresh");
     const isAuthBootstrap = originalRequest.url?.includes("/auth/session");
@@ -102,17 +106,29 @@ apiClient.interceptors.response.use(
       window.location.assign("/auth");
     }
 
+    if (upgradeRequired && typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("show-upgrade-prompt", {
+          detail: { feature: blockedFeature },
+        })
+      );
+    }
+
     if (status === 429) {
-      notify.error("Slow down", message);
+      notify.error(friendlyMessage);
+    }
+
+    if (
+      status &&
+      status !== 401 &&
+      status !== 429 &&
+      !(upgradeRequired && status === 403) &&
+      !originalRequest.suppressErrorToast
+    ) {
+      notify.error(friendlyMessage);
     }
 
     if (status >= 500) {
-      const serverTitle = status === 503 ? "Server is restarting" : "Server error";
-      const serverDescription =
-        status === 503
-          ? message
-          : "Please try again in a moment.";
-      notify.error(serverTitle, serverDescription);
       captureFrontendError(error, {
         source: "api-interceptor",
         status,
@@ -120,9 +136,10 @@ apiClient.interceptors.response.use(
       });
     }
 
-    const nextError = new Error(message);
+    const nextError = new Error(friendlyMessage);
     nextError.status = status;
     nextError.data = error?.response?.data;
+    nextError.serverMessage = serverMessage;
     return Promise.reject(nextError);
   }
 );

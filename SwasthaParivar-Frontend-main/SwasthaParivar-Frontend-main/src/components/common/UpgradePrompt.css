@@ -1,0 +1,66 @@
+.upgrade-prompt .ui-modal-body {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.upgrade-prompt__hero {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary-soft) 84%, transparent), transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)), var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, var(--color-border-subtle));
+}
+
+.upgrade-prompt__hero p,
+.upgrade-prompt__price small {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.upgrade-prompt__icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-primary);
+}
+
+.upgrade-prompt__features {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.upgrade-prompt__feature {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
+.upgrade-prompt__feature svg {
+  color: var(--color-success);
+  flex-shrink: 0;
+}
+
+.upgrade-prompt__price {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+  text-align: center;
+  padding-top: var(--space-1);
+}
+
+.upgrade-prompt__price strong {
+  font-size: var(--text-2xl);
+  line-height: 1;
+}
+

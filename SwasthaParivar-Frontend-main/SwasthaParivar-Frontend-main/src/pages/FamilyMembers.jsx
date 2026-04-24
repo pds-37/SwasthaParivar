@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Pill, Plus, ShieldAlert, Users } from "lucide-react";
+import { Activity, Pill, Plus, ShieldAlert, Trash2, Users } from "lucide-react";
 import AddMemberModal from "../components/AddMemberModal";
+import ProfileAvatar from "../components/common/ProfileAvatar";
+import InviteLink from "../components/household/InviteLink";
 import notify from "../lib/notify";
 import { saveReminderDraft } from "../lib/reminderDraft";
 import { Button, EmptyState, Modal, PullToRefresh, Skeleton } from "../components/ui";
@@ -10,10 +12,12 @@ import "./FamilyMembers.css";
 
 const FamilyMembers = () => {
   const navigate = useNavigate();
-  const { members, loading, createMember, createInvite, refreshMembers } = useFamilyStore();
+  const { members, loading, createMember, createInvite, deleteMember, refreshMembers } = useFamilyStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [pendingMedicationPrompt, setPendingMedicationPrompt] = useState(null);
   const [createdInvite, setCreatedInvite] = useState(null);
+  const [memberToDelete, setMemberToDelete] = useState(null);
+  const [deletingMember, setDeletingMember] = useState(false);
 
   const addMember = async (form) => {
     try {
@@ -35,6 +39,7 @@ const FamilyMembers = () => {
         age: Number(form.age),
         gender: form.gender,
         relation: form.relation,
+        avatar: form.avatar,
         conditions: form.conditions,
         allergies: form.allergies,
         medications: form.medications,
@@ -51,6 +56,21 @@ const FamilyMembers = () => {
       }
     } catch {
       notify.error(form.mode === "dependent" ? "Could not add member" : "Could not create invite");
+    }
+  };
+
+  const handleDeleteMember = async () => {
+    if (!memberToDelete) return;
+
+    setDeletingMember(true);
+    try {
+      await deleteMember(memberToDelete._id);
+      notify.success("Member removed from household");
+      setMemberToDelete(null);
+    } catch (error) {
+      notify.error(error?.message || "Could not delete member");
+    } finally {
+      setDeletingMember(false);
     }
   };
 
@@ -80,60 +100,71 @@ const FamilyMembers = () => {
           </div>
         ) : members.length === 0 ? (
           <EmptyState
-            icon={<Users size={20} />}
-            heading="No family members yet"
-            description="Create the first profile to start organizing records, medications, and reminders by person."
-            ctaLabel="Add first member"
-            onCta={() => setShowAddModal(true)}
+            type="members"
+            onAction={() => setShowAddModal(true)}
           />
         ) : (
           <div className="family-grid">
-            {members.map((member) => (
-              <article key={member._id} className="family-card card card-hover">
-                <div className="family-card__top">
-                  <div className="family-card__identity">
-                    <span className="avatar avatar--lg">{member.name?.charAt(0) || "U"}</span>
+            {members.map((member) => {
+              const canDeleteMember = member.profileType !== "self" && !member.linkedUserId;
+
+              return (
+                <article key={member._id} className="family-card card card-hover">
+                  <div className="family-card__top">
+                    <div className="family-card__identity">
+                      <ProfileAvatar name={member.name} src={member.avatar} size="lg" />
+                      <div>
+                        <strong>{member.name}</strong>
+                        <span>{member.relation || "Family member"}</span>
+                      </div>
+                    </div>
+
+                    {member.childSensitive ? <span className="badge badge--warning">Sensitive</span> : null}
+                  </div>
+
+                  <div className="family-card__meta">
+                    {member.age ? `${member.age} years old` : "Age not added"} | {member.gender}
+                  </div>
+
+                  <div className="family-card__counts">
                     <div>
-                      <strong>{member.name}</strong>
-                      <span>{member.relation || "Family member"}</span>
+                      <Activity size={16} />
+                      <strong>{member.conditions?.length || 0}</strong>
+                      <span>conditions</span>
+                    </div>
+                    <div>
+                      <Pill size={16} />
+                      <strong>{member.medications?.length || 0}</strong>
+                      <span>medications</span>
+                    </div>
+                    <div>
+                      <ShieldAlert size={16} />
+                      <strong>{member.allergies?.length || 0}</strong>
+                      <span>allergies</span>
                     </div>
                   </div>
 
-                  {member.childSensitive ? <span className="badge badge--warning">Sensitive</span> : null}
-                </div>
-
-                <div className="family-card__meta">
-                  {member.age ? `${member.age} years old` : "Age not added"} | {member.gender}
-                </div>
-
-                <div className="family-card__counts">
-                  <div>
-                    <Activity size={16} />
-                    <strong>{member.conditions?.length || 0}</strong>
-                    <span>conditions</span>
+                  <div className="family-card__actions">
+                    <Button variant="ghost" onClick={() => navigate(`/health/${member._id}`)}>
+                      Health records
+                    </Button>
+                    <Button variant="secondary" onClick={() => navigate(`/family/${member._id}`)}>
+                      Open profile
+                    </Button>
+                    {canDeleteMember ? (
+                      <Button
+                        variant="danger"
+                        className="family-card__delete"
+                        leftIcon={<Trash2 size={16} />}
+                        onClick={() => setMemberToDelete(member)}
+                      >
+                        Delete member
+                      </Button>
+                    ) : null}
                   </div>
-                  <div>
-                    <Pill size={16} />
-                    <strong>{member.medications?.length || 0}</strong>
-                    <span>medications</span>
-                  </div>
-                  <div>
-                    <ShieldAlert size={16} />
-                    <strong>{member.allergies?.length || 0}</strong>
-                    <span>allergies</span>
-                  </div>
-                </div>
-
-                <div className="family-card__actions">
-                  <Button variant="ghost" onClick={() => navigate(`/health/${member._id}`)}>
-                    Health records
-                  </Button>
-                  <Button variant="secondary" onClick={() => navigate(`/family/${member._id}`)}>
-                    Open profile
-                  </Button>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
         </div>
@@ -157,19 +188,13 @@ const FamilyMembers = () => {
         }
       >
         {createdInvite ? (
-          <div>
-            <p className="text-body-md">
-              <strong>{createdInvite.email}</strong>
-            </p>
-            <p className="text-body-sm muted-copy">
-              {createdInvite.inviteType === "link_existing"
-                ? "Link existing app user"
-                : "Invite adult family member"}
-            </p>
-            <p className="text-body-md">
-              Invite code: <strong>{createdInvite.code}</strong>
-            </p>
-          </div>
+          <InviteLink
+            initialCode={createdInvite.code}
+            inviteType={createdInvite.inviteType}
+            email={createdInvite.email}
+            name={createdInvite.name}
+            relation={createdInvite.relation}
+          />
         ) : null}
       </Modal>
 
@@ -206,6 +231,41 @@ const FamilyMembers = () => {
         {pendingMedicationPrompt ? (
           <p className="text-body-md muted-copy">
             "{pendingMedicationPrompt.medication}" was added to {pendingMedicationPrompt.memberName}&apos;s profile.
+          </p>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={Boolean(memberToDelete)}
+        onClose={() => {
+          if (deletingMember) return;
+          setMemberToDelete(null);
+        }}
+        title="Delete member?"
+        description="This removes the member from the active household directory. Their profile will be archived and no longer appear in family care flows."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setMemberToDelete(null)}
+              disabled={deletingMember}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              leftIcon={<Trash2 size={16} />}
+              onClick={handleDeleteMember}
+              loading={deletingMember}
+            >
+              Delete member
+            </Button>
+          </>
+        }
+      >
+        {memberToDelete ? (
+          <p className="text-body-md muted-copy">
+            You are deleting <strong>{memberToDelete.name}</strong>. You can only delete dependent profiles from family management.
           </p>
         ) : null}
       </Modal>

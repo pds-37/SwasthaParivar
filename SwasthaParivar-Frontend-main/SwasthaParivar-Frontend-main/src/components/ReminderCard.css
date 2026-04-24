@@ -22,12 +22,18 @@
   justify-content: flex-start;
 }
 
-.reminder-card__identity strong,
-.reminder-card__identity span {
+.reminder-card__identity > div {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.reminder-card__identity > div strong,
+.reminder-card__identity > div span {
   display: block;
 }
 
-.reminder-card__identity span,
+.reminder-card__identity > div span,
 .reminder-card__description,
 .reminder-card__summary p {
   color: var(--color-text-secondary);

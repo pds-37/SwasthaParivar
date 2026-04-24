@@ -5,6 +5,7 @@ import User from "../../models/user.js";
 import appConfig from "../../config/AppConfig.js";
 import householdService from "../household/HouseholdService.js";
 import { logger } from "../../utils/logger.js";
+import { getEffectivePlan, normalizePlan } from "../../utils/planState.js";
 
 class AuthServiceError extends Error {
   constructor(code, message, status = 500, details = null) {
@@ -21,6 +22,57 @@ const isDuplicateKeyError = (error) => error?.code === 11000;
 const normalizeProviderError = (value = "") => String(value || "").toLowerCase();
 
 class AuthService {
+  async generateUniqueReferralCode() {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const code = crypto.randomBytes(4).toString("hex").toUpperCase();
+      const existing = await User.exists({ referralCode: code });
+
+      if (!existing) {
+        return code;
+      }
+    }
+
+    throw new AuthServiceError(
+      "REFERRAL_CODE_GENERATION_FAILED",
+      "Could not generate a referral code right now.",
+      500
+    );
+  }
+
+  async ensureBillingFields(user) {
+    if (!user) {
+      return user;
+    }
+
+    let changed = false;
+    const normalizedPlan = normalizePlan(user.plan);
+    const effectivePlan = getEffectivePlan(user);
+
+    if (!user.referralCode) {
+      user.referralCode = await this.generateUniqueReferralCode();
+      changed = true;
+    }
+
+    if (user.plan !== normalizedPlan) {
+      user.plan = normalizedPlan;
+      changed = true;
+    }
+
+    if (effectivePlan !== normalizedPlan) {
+      user.plan = effectivePlan;
+      if (effectivePlan === "free") {
+        user.proExpiresAt = null;
+      }
+      changed = true;
+    }
+
+    if (changed) {
+      await user.save();
+    }
+
+    return user;
+  }
+
   isGoogleAuthConfigured() {
     return appConfig.hasGoogleAuth;
   }
@@ -179,6 +231,8 @@ class AuthService {
   }
 
   async buildSession(user) {
+    await this.ensureBillingFields(user);
+
     const accessToken = this.issueAccessToken(user._id);
     const refreshToken = this.issueRefreshToken(user._id);
     await this.persistRefreshToken(user._id, refreshToken);
@@ -240,6 +294,8 @@ class AuthService {
         email,
         fullName,
         password: hashedPassword,
+        plan: "free",
+        referralCode: await this.generateUniqueReferralCode(),
       });
     } catch (error) {
       if (isDuplicateKeyError(error)) {
@@ -319,6 +375,8 @@ class AuthService {
           password: generatedPassword,
           googleId,
           avatarUrl: profile?.picture || null,
+          plan: "free",
+          referralCode: await this.generateUniqueReferralCode(),
         });
       } catch (error) {
         if (!isDuplicateKeyError(error)) {

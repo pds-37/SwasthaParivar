@@ -1,7 +1,8 @@
 import express from "express";
 import multer from "multer";
 import auth from "../middleware/auth.js";
-import { downloadReport, listReports, uploadReport } from "../controllers/reportController.js";
+import { analyzeReport, downloadReport, listReports, uploadReport } from "../controllers/reportController.js";
+import { requireFeature } from "../middleware/planGuard.js";
 import { validate } from "../middleware/validate.js";
 import {
   reportDownloadQuerySchema,
@@ -22,6 +23,13 @@ const router = express.Router();
 
 router.get("/", auth, validate(reportListQuerySchema, "query"), listReports);
 router.post("/upload", auth, upload.single("file"), validate(reportUploadBodySchema), uploadReport);
+router.post(
+  "/:id/analyse",
+  auth,
+  validate(reportParamsSchema, "params"),
+  requireFeature("reportAiAnalysis"),
+  analyzeReport
+);
 router.get(
   "/:id/download",
   auth,

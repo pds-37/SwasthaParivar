@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Activity, Heart, Moon, Plus, Scale, Syringe, Waves, Footprints } from "lucide-react";
 
 import api from "../lib/api";
+import RecordTimeline from "../components/records/RecordTimeline";
+import { showUnlockedBadges } from "../lib/badges";
 import notify from "../lib/notify";
 import { Button, EmptyState, Input, Modal, Select, Skeleton } from "../components/ui";
 import { useFamilyStore } from "../store/family-store";
@@ -27,6 +29,7 @@ const HealthMonitor = () => {
   const [members, setMembers] = useState([]);
   const [selectedId, setSelectedId] = useState(id || "");
   const [member, setMember] = useState(null);
+  const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formDate, setFormDate] = useState(new Date().toISOString().slice(0, 16));
@@ -67,16 +70,26 @@ const HealthMonitor = () => {
     const loadMember = async () => {
       if (!selectedId) {
         setMember(null);
+        setRecords([]);
         setLoading(false);
         return;
       }
 
       setLoading(true);
       try {
-        const response = await api.get(`/members/${selectedId}`);
-        if (!cancelled) setMember(response);
+        const [memberResponse, recordsResponse] = await Promise.all([
+          api.get(`/members/${selectedId}`),
+          api.get(`/health/${selectedId}`).catch(() => []),
+        ]);
+        if (!cancelled) {
+          setMember(memberResponse);
+          setRecords(Array.isArray(recordsResponse) ? recordsResponse : []);
+        }
       } catch {
-        if (!cancelled) setMember(null);
+        if (!cancelled) {
+          setMember(null);
+          setRecords([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -113,21 +126,8 @@ const HealthMonitor = () => {
     [member]
   );
 
-  const snapshots = useMemo(() => {
-    const allDates = new Set();
-    Object.values(member?.health || {}).forEach((entries) => {
-      if (Array.isArray(entries)) {
-        entries.forEach((entry) => {
-          if (entry?.date) allDates.add(entry.date);
-        });
-      }
-    });
-
-    return [...allDates].sort((first, second) => new Date(second) - new Date(first));
-  }, [member]);
-
   const insights = useMemo(() => {
-    if (!snapshots.length) {
+    if (!records.length) {
       return ["Add the first health snapshot to start seeing household care insights."];
     }
 
@@ -136,7 +136,7 @@ const HealthMonitor = () => {
         ? `${metric.label} last recorded ${new Date(metric.latest.date).toLocaleDateString("en-IN")}.`
         : `${metric.label} has no saved entries yet.`
     );
-  }, [latestValues, snapshots.length]);
+  }, [latestValues, records.length]);
 
   const handleSave = async () => {
     if (!selectedId) {
@@ -144,28 +144,31 @@ const HealthMonitor = () => {
       return;
     }
 
-    const nextHealth = { ...(member?.health || {}) };
-    const isoDate = new Date(formDate).toISOString();
-
-    metrics.forEach((metric) => {
-      const existingEntries = Array.isArray(nextHealth[metric.key]) ? nextHealth[metric.key] : [];
-      const filtered = existingEntries.filter((entry) => entry.date !== isoDate);
-      if (formValues[metric.key] !== "") {
-        filtered.push({
-          value: metric.key === "bloodPressure" ? String(formValues[metric.key]) : Number(formValues[metric.key]),
-          date: isoDate,
-        });
-      }
-      nextHealth[metric.key] = filtered;
-    });
-
     try {
-      const updated = await api.put(`/members/${selectedId}`, { health: nextHealth });
-      setMember(updated);
-      setMembers((previous) => previous.map((entry) => (entry._id === updated._id ? updated : entry)));
+      const payload = {
+        date: new Date(formDate).toISOString(),
+        ...Object.fromEntries(
+          metrics
+            .filter((metric) => formValues[metric.key] !== "")
+            .map((metric) => [
+              metric.key,
+              metric.key === "bloodPressure"
+                ? String(formValues[metric.key]).trim()
+                : Number(formValues[metric.key]),
+            ])
+        ),
+      };
+      const response = await api.post(`/health/${selectedId}`, payload);
+      const updatedMember = response?.member || member;
+      setMember(updatedMember);
+      setRecords(Array.isArray(response?.records) ? response.records : records);
+      setMembers((previous) =>
+        previous.map((entry) => (entry._id === updatedMember?._id ? updatedMember : entry))
+      );
       setShowModal(false);
       setFormValues(getDefaultValues());
       notify.success("Health snapshot saved");
+      showUnlockedBadges(response?.newBadges || []);
     } catch {
       notify.error("Could not save health snapshot");
     }
@@ -239,6 +242,19 @@ const HealthMonitor = () => {
               ))}
             </section>
 
+            <section className="health-panel card">
+              <div className="section-header">
+                <div>
+                  <h2 className="text-h4">Health timeline</h2>
+                  <p className="text-body-sm muted-copy">
+                    Spot trends across the latest 30 readings before they turn into surprises.
+                  </p>
+                </div>
+              </div>
+
+              <RecordTimeline records={records} />
+            </section>
+
             <div className="health-content">
               <section className="health-panel card">
                 <div className="section-header">
@@ -248,25 +264,23 @@ const HealthMonitor = () => {
                   </div>
                 </div>
 
-                {snapshots.length === 0 ? (
+                {records.length === 0 ? (
                   <EmptyState
-                    icon={<Activity size={18} />}
-                    heading="No snapshots yet"
-                    description="Add the first blood pressure, sleep, or sugar snapshot to begin the health timeline."
-                    ctaLabel="Add snapshot"
-                    onCta={() => setShowModal(true)}
+                    type="records"
+                    onAction={() => setShowModal(true)}
                   />
                 ) : (
                   <div className="health-snapshot-list">
-                    {snapshots.map((snapshot) => (
-                      <article key={snapshot} className="health-snapshot-row">
+                    {records.map((snapshot) => (
+                      <article key={snapshot.date} className="health-snapshot-row">
                         <div>
-                          <strong>{new Date(snapshot).toLocaleString("en-IN")}</strong>
+                          <strong>{new Date(snapshot.date).toLocaleString("en-IN")}</strong>
                           <p>
                             {metrics
                               .map((metric) => {
-                                const match = (member.health?.[metric.key] || []).find((entry) => entry.date === snapshot);
-                                return match ? `${metric.label}: ${match.value} ${metric.unit}` : null;
+                                return snapshot?.[metric.key] !== undefined
+                                  ? `${metric.label}: ${snapshot[metric.key]} ${metric.unit}`
+                                  : null;
                               })
                               .filter(Boolean)
                               .slice(0, 3)

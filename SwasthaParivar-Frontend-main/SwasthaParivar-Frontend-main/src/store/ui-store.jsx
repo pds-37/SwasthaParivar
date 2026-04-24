@@ -59,7 +59,7 @@ export const UIStoreProvider = ({ children }) => {
       setActiveThreadId: (id) => dispatch({ type: "SET_ACTIVE_THREAD", payload: id }),
       setTheme: setThemePreference,
     }),
-    [mode, preference, setThemePreference, state.sidebarCollapsed, state.toasts]
+    [mode, preference, setThemePreference, state.sidebarCollapsed, state.activeThreadId, state.toasts]
   );
 
   return <UIStoreContext.Provider value={value}>{children}</UIStoreContext.Provider>;

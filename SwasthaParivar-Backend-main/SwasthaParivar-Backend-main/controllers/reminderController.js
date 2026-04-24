@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Reminder from "../models/remindermodel.js";
 import householdService from "../services/household/HouseholdService.js";
+import { checkAndAwardBadges } from "../utils/badgeChecker.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 
@@ -95,10 +96,14 @@ export const createReminder = async (req, res) => {
       nextRunAt: nextDate,
       meta: meta || {},
     });
+    const newBadges = await checkAndAwardBadges(ownerId);
 
     return sendSuccess(res, {
       status: 201,
-      data: reminder,
+      data: {
+        reminder,
+        newBadges,
+      },
     });
   } catch (error) {
     return sendError(res, {

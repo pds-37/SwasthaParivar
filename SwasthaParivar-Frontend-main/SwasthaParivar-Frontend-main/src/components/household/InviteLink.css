@@ -1,0 +1,20 @@
+.invite-link {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.invite-link__meta {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.invite-link__meta p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.invite-link__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

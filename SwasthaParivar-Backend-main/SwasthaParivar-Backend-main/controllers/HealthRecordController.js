@@ -19,7 +19,7 @@ class HealthRecordController {
   }
 
   async list(req, res) {
-    const result = await memberHealthService.list(req.userId, req.params.memberId, req.query);
+    const result = await memberHealthService.list(req.userId, req.params.memberId, req.query, req.user);
     if (result.error) {
       return sendError(res, {
         status: result.status,

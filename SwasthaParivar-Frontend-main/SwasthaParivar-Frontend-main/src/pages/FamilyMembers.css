@@ -56,12 +56,18 @@
   gap: var(--space-3);
 }
 
-.family-card__identity strong,
-.family-card__identity span {
+.family-card__identity > div {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.family-card__identity > div strong,
+.family-card__identity > div span {
   display: block;
 }
 
-.family-card__identity span,
+.family-card__identity > div span,
 .family-card__meta,
 .family-card__counts span {
   color: var(--color-text-secondary);
@@ -90,9 +96,13 @@
 }
 
 .family-card__actions {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
+}
+
+.family-card__delete {
+  grid-column: 1 / -1;
 }
 
 .family-fab {

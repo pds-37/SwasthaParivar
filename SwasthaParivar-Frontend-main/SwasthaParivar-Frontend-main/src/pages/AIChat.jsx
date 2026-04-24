@@ -4,6 +4,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   ArrowLeft,
+  Languages,
+  Mic,
   PanelLeftClose,
   PanelLeftOpen,
   Paperclip,
@@ -16,12 +18,21 @@ import {
 } from "lucide-react";
 
 import api from "../lib/api";
-import { Button } from "../components/ui";
+import AiDisclaimer from "../components/ai/AiDisclaimer";
+import FollowUpChips from "../components/ai/FollowUpChips";
+import RiskBadge from "../components/ai/RiskBadge";
+import ProfileAvatar from "../components/common/ProfileAvatar";
+import { Button, Select } from "../components/ui";
+import EmptyState from "../components/common/EmptyState";
 import { useAIChat } from "../hooks/useAIChat";
+import { useFeatureFlags } from "../hooks/useFeatureFlags";
+import { useStreamingChat } from "../hooks/useStreamingChat";
+import { useVoiceInput } from "../hooks/useVoiceInput";
 import notify from "../lib/notify";
 import { saveReminderDraft } from "../lib/reminderDraft";
 import { useFamilyStore } from "../store/family-store";
 import { useUIStore } from "../store/ui-store";
+import { trackEvent } from "../utils/analytics";
 import "./AIChat.css";
 
 const MEDICATION_KEYWORDS = [
@@ -71,6 +82,24 @@ const SUGGESTED_PROMPTS = [
   "What can help with mild acidity after dinner?",
   "How should I prepare for a blood test tomorrow morning?",
 ];
+
+const LANGUAGE_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "hi", label: "Hindi" },
+  { value: "mr", label: "Marathi" },
+  { value: "ta", label: "Tamil" },
+  { value: "te", label: "Telugu" },
+  { value: "bn", label: "Bengali" },
+];
+
+const VOICE_LANGUAGE_CODES = {
+  en: "en-IN",
+  hi: "hi-IN",
+  mr: "mr-IN",
+  ta: "ta-IN",
+  te: "te-IN",
+  bn: "bn-IN",
+};
 
 const HEALTH_FALLBACK_KEYWORDS = [
   "health",
@@ -136,8 +165,6 @@ const fileToBase64Payload = (file) =>
     reader.onerror = () => reject(new Error("Could not read attachment"));
     reader.readAsDataURL(file);
   });
-
-const buildDefaultConversation = () => [];
 
 const serializeHistoryForRequest = (entries = []) =>
   entries.slice(-CHAT_HISTORY_LIMIT).map(({ sender, text, ts }) => ({
@@ -269,15 +296,6 @@ const buildClientHealthFallbackReply = (message = "", focusLabel = "your family"
   ].join("\n");
 };
 
-const safeReadConversation = (key) => {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
 const truncateThreadTitle = (value = "", maxLength = 42) => {
   const normalized = String(value || "").replace(/\s+/g, " ").trim();
   if (!normalized) return "";
@@ -376,13 +394,31 @@ const AIChat = () => {
   const [desktopRailCollapsed, setDesktopRailCollapsed] = useState(false);
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [pendingReminderSuggestion, setPendingReminderSuggestion] = useState(null);
+  const [language, setLanguage] = useState("en");
   const listRef = useRef(null);
+  const { flags } = useFeatureFlags();
+  const {
+    streamingText,
+    isStreaming,
+    streamMeta,
+    sendMessage: streamMessage,
+    resetStreaming,
+  } = useStreamingChat();
+  const {
+    listening,
+    supported: voiceSupported,
+    start: startVoiceInput,
+    stop: stopVoiceInput,
+  } = useVoiceInput((transcript) => {
+    setInput((current) => (current ? `${current} ${transcript}` : transcript));
+    trackEvent("voice_input_completed", {
+      language,
+    });
+  });
 
   const currentContext = contexts.find((item) => item.key === selectedContext) || contexts[0];
   const contextLabel = currentContext?.label || "All family";
   const memberValue = currentContext?.memberValue || "All family";
-  const requestMemberValue =
-    currentContext?.requestValue || (activeView === "self" ? "Self" : "family");
   const activeMember = useMemo(
     () => userFamily.find((member) => member._id === currentContext?.memberId) || null,
     [currentContext?.memberId, userFamily]
@@ -390,6 +426,7 @@ const AIChat = () => {
   
   const { threads, saveMemory, deleteThread } = useAIChat();
   const hasMessages = messages.length > 0;
+  const isBusy = loading || isStreaming;
 
   useEffect(() => {
     if (activeView === "self" && selfMember?._id) {
@@ -428,7 +465,7 @@ const AIChat = () => {
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
+  }, [isStreaming, loading, messages, streamingText]);
 
   const conversationHistory = (threads || [])
     .map((thread) => {
@@ -460,6 +497,25 @@ const AIChat = () => {
       }
     } catch {
       // API call failed
+    }
+  };
+
+  const handleVoiceToggle = () => {
+    if (!voiceSupported) {
+      notify.error("Voice input is not supported in this browser. Try Chrome.");
+      return;
+    }
+
+    if (listening) {
+      stopVoiceInput();
+      return;
+    }
+
+    const started = startVoiceInput(VOICE_LANGUAGE_CODES[language] || "en-IN");
+    if (started) {
+      trackEvent("voice_input_started", {
+        language,
+      });
     }
   };
 
@@ -512,6 +568,9 @@ const AIChat = () => {
     sender: "ai",
     text,
     ts: Date.now(),
+    riskLevel: options.riskLevel || "LOW",
+    followUpPrompt: options.followUpPrompt || null,
+    suggestedReminder: options.suggestedReminder || null,
     actions: options.disableActions ? [] : buildAiActions(text),
   });
 
@@ -525,6 +584,20 @@ const AIChat = () => {
       memberName,
     });
     navigate("/reminders");
+  };
+
+  const createReminderFromSuggestion = (suggestion) => {
+    if (!suggestion) {
+      return;
+    }
+
+    openReminderDraft({
+      title: suggestion.title || "Follow-up care",
+      memberId: activeMember?._id,
+      memberName: activeMember?.name || contextLabel,
+      description: `Suggested from AI guidance for ${activeMember?.name || contextLabel}.`,
+      frequency: suggestion.type === "checkup" ? "once" : "daily",
+    });
   };
 
   const handleMessageAction = async (action, message) => {
@@ -580,24 +653,31 @@ const AIChat = () => {
 
   const sendMessage = async (messageText = input) => {
     const trimmed = String(messageText || "").trim();
-    if (!trimmed) return;
+    if (!trimmed || isBusy) return;
 
     const nextUserMessage = { sender: "user", text: trimmed, ts: Date.now() };
     const history = [...messages, nextUserMessage];
     setMessages(history);
     setInput("");
-    setLoading(true);
     setMobileHistoryOpen(false);
+    resetStreaming();
+    trackEvent("ai_chat_message_sent", {
+      active_view: activeView,
+      context: contextLabel,
+      language,
+    });
 
     try {
-      const response = await api.post("/ai/chat", {
+      const response = await streamMessage({
         message: trimmed,
-        member: requestMemberValue,
-        history: serializeHistoryForRequest(history),
+        memberId: currentContext?.memberId || null,
+        chatHistory: serializeHistoryForRequest(history),
+        collectedData: {},
+        language,
       });
 
       let replyText =
-        String(response?.reply || response?.text || "").trim() ||
+        String(response?.reply || "").trim() ||
         buildClientHealthFallbackReply(trimmed, contextLabel);
 
       // If the backend flagged this as a fallback response, prepend a notice
@@ -610,6 +690,9 @@ const AIChat = () => {
       const nextMessages = [
         ...history,
         createAiMessage(replyText, {
+          riskLevel: response?.riskLevel,
+          followUpPrompt: response?.followUpPrompt,
+          suggestedReminder: response?.suggestedReminder,
           disableActions: Boolean(response?.outOfScope),
         }),
       ];
@@ -623,13 +706,11 @@ const AIChat = () => {
       ];
       setMessages(nextMessages);
       persistConversation(nextMessages);
-    } finally {
-      setLoading(false);
     }
   };
 
   const sendAttachment = async () => {
-    if (!attachmentPreview) return;
+    if (!attachmentPreview || isBusy) return;
 
     const nextMessages = [
       ...messages,
@@ -642,6 +723,10 @@ const AIChat = () => {
     ];
     setMessages(nextMessages);
     setLoading(true);
+    trackEvent("ai_attachment_review_requested", {
+      context: contextLabel,
+      language,
+    });
 
     try {
       const response = await api.post("/ai/attachments", {
@@ -708,7 +793,7 @@ const AIChat = () => {
                     setMobileHistoryOpen(false);
                   }}
                 >
-                  <span className="avatar avatar--sm">{conversation.member.charAt(0)}</span>
+                  <ProfileAvatar name={conversation.member} size="sm" />
                   <div className="ai-chat-history__content">
                     <div className="ai-chat-history__item-head">
                       <strong>{conversation.title}</strong>
@@ -784,6 +869,22 @@ const AIChat = () => {
                 Context: talking about {contextLabel}
               </div>
 
+              {flags.HINDI_AI ? (
+                <Select
+                  wrapperClassName="ai-chat-language"
+                  label="Reply language"
+                  value={language}
+                  onChange={(event) => setLanguage(event.target.value)}
+                  leftIcon={<Languages size={16} />}
+                >
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              ) : null}
+
               <div className="ai-chat-context-pills">
                 {contexts.map((context) => (
                   <button
@@ -810,8 +911,7 @@ const AIChat = () => {
             <div className={`ai-chat-thread ${hasMessages ? "" : "is-empty"}`}>
               {!hasMessages ? (
                 <div className="ai-chat-empty">
-                  <h3>Ask a family health question</h3>
-                  <p>This assistant only handles health topics like symptoms, medicines, reports, vitals, reminders, and safer next steps.</p>
+                  <EmptyState type="chat" />
                   <div className="ai-chat-empty__suggestions">
                     {SUGGESTED_PROMPTS.map((prompt) => (
                       <button key={prompt} type="button" className="pill-button" onClick={() => sendMessage(prompt)}>
@@ -829,7 +929,25 @@ const AIChat = () => {
                 >
                   <div className={`ai-chat-bubble ${message.sender === "user" ? "is-user" : "is-ai"}`}>
                     {message.attachment ? <img src={message.attachment} alt="attachment" loading="lazy" /> : null}
+                    {message.sender === "ai" ? (
+                      <div className="ai-chat-bubble__meta">
+                        <RiskBadge level={message.riskLevel} />
+                      </div>
+                    ) : null}
+                    {message.sender === "ai" && message.riskLevel && message.riskLevel !== "LOW" ? (
+                      <AiDisclaimer riskLevel={message.riskLevel} />
+                    ) : null}
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+
+                    {message.sender === "ai" &&
+                    (message.followUpPrompt || message.suggestedReminder) ? (
+                      <FollowUpChips
+                        followUpPrompt={message.followUpPrompt}
+                        suggestedReminder={message.suggestedReminder}
+                        onCreateReminder={createReminderFromSuggestion}
+                        onAskFollowUp={(followUpPrompt) => sendMessage(followUpPrompt)}
+                      />
+                    ) : null}
 
                     {message.sender === "ai" && message.actions?.length ? (
                       <div className="ai-chat-actions">
@@ -851,7 +969,33 @@ const AIChat = () => {
                 </article>
               ))}
 
-              {loading ? (
+              {isStreaming ? (
+                <article className="ai-chat-message is-ai">
+                  <div
+                    className={`ai-chat-bubble is-ai ${streamingText ? "" : "ai-chat-bubble--typing"}`}
+                  >
+                    {streamingText ? (
+                      <>
+                        <div className="ai-chat-bubble__meta">
+                          <RiskBadge level={streamMeta.riskLevel} />
+                        </div>
+                        {streamMeta.riskLevel && streamMeta.riskLevel !== "LOW" ? (
+                          <AiDisclaimer riskLevel={streamMeta.riskLevel} />
+                        ) : null}
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
+                      </>
+                    ) : (
+                      <>
+                        <span />
+                        <span />
+                        <span />
+                      </>
+                    )}
+                  </div>
+                </article>
+              ) : null}
+
+              {loading && !isStreaming ? (
                 <article className="ai-chat-message is-ai">
                   <div className="ai-chat-bubble is-ai ai-chat-bubble--typing">
                     <span />
@@ -893,25 +1037,41 @@ const AIChat = () => {
             ) : null}
 
             <div className="ai-chat-composer">
-              <label className="ai-chat-composer__icon">
-                <Paperclip size={18} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    const payload = await fileToBase64Payload(file);
-                    setAttachmentPreview(payload);
-                  }}
-                />
-              </label>
+              <div className="ai-chat-composer__tools">
+                <label className="ai-chat-composer__icon">
+                  <Paperclip size={18} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      const payload = await fileToBase64Payload(file);
+                      setAttachmentPreview(payload);
+                    }}
+                    disabled={isBusy}
+                  />
+                </label>
+
+                {flags.VOICE_INPUT ? (
+                  <button
+                    type="button"
+                    className={`ai-chat-composer__icon ${listening ? "is-listening" : ""}`}
+                    onClick={handleVoiceToggle}
+                    disabled={isBusy}
+                    aria-label={listening ? "Stop voice input" : "Start voice input"}
+                  >
+                    <Mic size={18} />
+                  </button>
+                ) : null}
+              </div>
 
               <input
                 className="ai-chat-composer__input"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 placeholder="Ask about symptoms, medicines, reports, medicine photos, vitals, or reminders"
+                disabled={isBusy}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
@@ -920,7 +1080,11 @@ const AIChat = () => {
                 }}
               />
 
-              <Button rightIcon={<Send size={16} />} onClick={() => sendMessage()}>
+              <Button
+                rightIcon={<Send size={16} />}
+                onClick={() => sendMessage()}
+                disabled={!input.trim() || isBusy}
+              >
                 Send
               </Button>
             </div>

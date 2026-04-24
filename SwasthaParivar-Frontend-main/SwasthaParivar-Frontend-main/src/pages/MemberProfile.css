@@ -22,11 +22,21 @@
   gap: var(--space-4);
 }
 
-.member-profile-hero__identity span,
-.member-profile-hero__identity p {
-  display: block;
+.member-profile-hero__identity > div {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.member-profile-hero__identity > div p {
   margin: 0;
   color: var(--color-text-secondary);
+}
+
+.member-profile-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 
 .member-profile-tabs {
@@ -95,5 +105,9 @@
 
   .member-profile-hero {
     flex-direction: column;
+  }
+
+  .member-profile-hero__actions {
+    width: 100%;
   }
 }

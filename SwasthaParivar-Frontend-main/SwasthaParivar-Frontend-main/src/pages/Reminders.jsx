@@ -48,6 +48,7 @@ const Reminders = () => {
   const [showCreate, setShowCreate] = useState(() => Boolean(readReminderDraft()));
   const [editing, setEditing] = useState(null);
   const loading = membersLoading || remindersLoading;
+  const selfMemberId = selfMember?._id || null;
   const reminders = useMemo(() => {
     const byId = new Map(members.map((member) => [member._id, member]));
     const decorated = rawReminders.map((reminder) => ({
@@ -55,12 +56,12 @@ const Reminders = () => {
       memberName: byId.get(reminder.memberId)?.name || reminder.memberName || "Family member",
     }));
 
-    if (activeView === "self" && selfMember?._id) {
-      return decorated.filter((reminder) => reminder.memberId === selfMember._id);
+    if (activeView === "self" && selfMemberId) {
+      return decorated.filter((reminder) => reminder.memberId === selfMemberId);
     }
 
     return decorated;
-  }, [activeView, members, rawReminders, selfMember?._id]);
+  }, [activeView, members, rawReminders, selfMemberId]);
 
   const overdue = useMemo(
     () =>
@@ -217,11 +218,8 @@ const Reminders = () => {
 
             {(viewMode === "calendar" ? filteredByDate : reminders).length === 0 ? (
               <EmptyState
-                icon={<Bell size={18} />}
-                heading="No reminders for this view"
-                description="Create a new reminder to start organizing medicines, checkups, and family follow-ups."
-                ctaLabel="Create reminder"
-                onCta={() => setShowCreate(true)}
+                type="reminders"
+                onAction={() => setShowCreate(true)}
               />
             ) : (
               <div className="reminders-list">

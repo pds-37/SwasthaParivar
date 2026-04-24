@@ -1,0 +1,23 @@
+{
+  "name": "SwasthaParivar",
+  "short_name": "Swastha",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#061419",
+  "theme_color": "#134a57",
+  "description": "Manage family reminders, health records, reports, and AI-guided care in one connected household app.",
+  "icons": [
+    {
+      "src": "/swastha_parivar_fast.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-health.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

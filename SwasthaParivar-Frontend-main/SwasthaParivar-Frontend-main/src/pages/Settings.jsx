@@ -1,15 +1,23 @@
-import React, { useMemo, useState } from "react";
-import { Download, Moon, Shield, SunMedium, Trash2, UserCircle2 } from "lucide-react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Copy, Download, Gift, Link2, Moon, Shield, Sparkles, SunMedium, Trash2, UserCircle2, Users } from "lucide-react";
 
 import { useAuth } from "../components/auth-context";
-import { Button, Modal, Select, Toggle } from "../components/ui";
+import ProfileAvatar from "../components/common/ProfileAvatar";
+import { Button, Input, Modal, Select, Toggle } from "../components/ui";
+import api, { apiClient } from "../lib/api";
+import { buildJoinHouseholdPath, normalizeInviteCode } from "../lib/householdInvites";
 import notify from "../lib/notify";
+import { useFeatureFlags } from "../hooks/useFeatureFlags";
 import { useThemeMode } from "../theme/theme-context";
+import { trackEvent } from "../utils/analytics";
 import "./Settings.css";
 
 const Settings = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
+  const navigate = useNavigate();
   const { preference, setThemePreference } = useThemeMode();
+  const { privacyPolicyVersion } = useFeatureFlags();
   const [notificationSettings, setNotificationSettings] = useState({
     familyReminders: true,
     medicine: true,
@@ -17,26 +25,123 @@ const Settings = () => {
     reports: true,
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [referralCodeInput, setReferralCodeInput] = useState("");
+  const [applyingReferral, setApplyingReferral] = useState(false);
+  const [householdInviteCode, setHouseholdInviteCode] = useState("");
+  const [exportingData, setExportingData] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
-  const initials = useMemo(() => user?.fullName?.charAt(0) || "U", [user]);
+  const currentPlan = String(user?.plan || "free").toLowerCase();
+  const planLabel = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
+  const proExpiryLabel = user?.proExpiresAt
+    ? new Date(user.proExpiresAt).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "";
 
-  const handleExport = () => {
-    const payload = {
-      user,
-      notificationSettings,
-      exportedAt: new Date().toISOString(),
-    };
+  const handleExport = async () => {
+    setExportingData(true);
 
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
+    try {
+      const response = await apiClient.get("/account/me/export", {
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "my-swasthaparivar-data.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      trackEvent("account_data_export_requested", {
+        plan: currentPlan,
+      });
+      notify.success("Data export started");
+    } catch (error) {
+      notify.error(error.message || "Could not export your data");
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleCopyReferralCode = async () => {
+    if (!user?.referralCode) {
+      notify.error("Referral code is not ready yet");
+      return;
+    }
+
+    await navigator.clipboard.writeText(user.referralCode);
+    trackEvent("referral_code_copied", {
+      plan: currentPlan,
     });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "swastha-parivar-data.json";
-    link.click();
-    URL.revokeObjectURL(url);
-    notify.success("Data export started");
+    notify.success("Referral code copied");
+  };
+
+  const handleApplyReferral = async () => {
+    const nextCode = referralCodeInput.trim().toUpperCase();
+    if (!nextCode) {
+      notify.error("Enter a referral code first");
+      return;
+    }
+
+    setApplyingReferral(true);
+
+    try {
+      const response = await api.post(`/referral/apply/${encodeURIComponent(nextCode)}`, {}, {
+        suppressErrorToast: true,
+      });
+      if (response?.user) {
+        updateUser(response.user);
+      }
+      trackEvent("referral_code_applied", {
+        plan_before: currentPlan,
+      });
+      notify.success(response?.message || "Referral applied");
+      setReferralCodeInput("");
+    } catch (error) {
+      notify.error(error.message || "Could not apply referral code");
+    } finally {
+      setApplyingReferral(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+
+    try {
+      await api.delete("/account/me", {
+        suppressErrorToast: true,
+      });
+      trackEvent("account_deleted", {
+        plan: currentPlan,
+      });
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      navigate("/", { replace: true });
+      window.location.reload();
+    } catch (error) {
+      notify.error(error.message || "Could not delete your account");
+    } finally {
+      setDeletingAccount(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleJoinHousehold = () => {
+    const nextCode = normalizeInviteCode(householdInviteCode);
+
+    if (!nextCode) {
+      notify.error("Enter a family invite code first");
+      return;
+    }
+
+    trackEvent("household_join_started", {
+      entrypoint: "settings",
+      invite_code: nextCode,
+    });
+    navigate(buildJoinHouseholdPath(nextCode));
   };
 
   return (
@@ -44,7 +149,7 @@ const Settings = () => {
       <div className="app-shell settings-shell">
         <section className="settings-hero">
           <div className="settings-hero__identity">
-            <span className="avatar avatar--lg">{initials}</span>
+            <ProfileAvatar name={user?.fullName} src={user?.avatarUrl} size="lg" />
             <div>
               <span className="eyebrow">
                 <UserCircle2 size={16} />
@@ -74,6 +179,136 @@ const Settings = () => {
             <div className="settings-row">
               <span>Email</span>
               <strong>{user?.email || "Not available"}</strong>
+            </div>
+            <div className="settings-row">
+              <span>Plan</span>
+              <strong>{planLabel}</strong>
+            </div>
+            {proExpiryLabel ? (
+              <div className="settings-row">
+                <span>Pro valid until</span>
+                <strong>{proExpiryLabel}</strong>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="settings-section card">
+            <div className="settings-section__head">
+              <div>
+                <h2 className="text-h4">Plan & referrals</h2>
+                <p className="text-body-sm muted-copy">
+                  Unlock premium care features or share your code to earn a month of Pro.
+                </p>
+              </div>
+              <span className={`badge ${currentPlan === "free" ? "badge--warning" : "badge--success"}`}>
+                <Sparkles size={14} />
+                {planLabel}
+              </span>
+            </div>
+
+            <div className="settings-plan-card">
+              <div>
+                <strong>
+                  {currentPlan === "free"
+                    ? "Free plan active"
+                    : `${planLabel} plan active`}
+                </strong>
+                <p>
+                  {currentPlan === "free"
+                    ? "Free includes 3 family profiles, 30 days of health history, and 10 AI chats per day."
+                    : "Premium care is unlocked for your account, including AI reports and deeper history access."}
+                </p>
+              </div>
+              <Button
+                variant={currentPlan === "free" ? "primary" : "secondary"}
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("show-upgrade-prompt", {
+                      detail: { feature: "plan" },
+                    })
+                  )
+                }
+              >
+                {currentPlan === "free" ? "See Pro benefits" : "Review plans"}
+              </Button>
+            </div>
+
+            <div className="settings-referral-grid">
+              <Input
+                label="Your referral code"
+                value={user?.referralCode || ""}
+                readOnly
+                helperText={`Successful referrals: ${user?.referralCount || 0}`}
+                rightSlot={
+                  <button type="button" className="settings-inline-action" onClick={handleCopyReferralCode}>
+                    <Copy size={14} />
+                  </button>
+                }
+              />
+
+              <div className="settings-referral-help">
+                <Gift size={18} />
+                <p>When someone signs up with your code, both of you get 1 month of Pro.</p>
+              </div>
+            </div>
+
+            {!user?.referredBy ? (
+              <div className="settings-referral-apply">
+                <Input
+                  label="Apply a referral code"
+                  placeholder="Enter a friend's code"
+                  value={referralCodeInput}
+                  onChange={(event) => setReferralCodeInput(event.target.value.toUpperCase())}
+                />
+                <Button
+                  variant="secondary"
+                  onClick={handleApplyReferral}
+                  loading={applyingReferral}
+                >
+                  Apply code
+                </Button>
+              </div>
+            ) : (
+              <p className="text-body-sm muted-copy">
+                A referral code has already been applied to this account.
+              </p>
+            )}
+          </section>
+
+          <section className="settings-section card">
+            <div className="settings-section__head">
+              <div>
+                <h2 className="text-h4">Join a family</h2>
+                <p className="text-body-sm muted-copy">
+                  Paste a household invite code here if someone invited you into their family workspace.
+                </p>
+              </div>
+              <span className="badge badge--primary">
+                <Users size={14} />
+                Household
+              </span>
+            </div>
+
+            <div className="settings-household-join">
+              <Input
+                label="Family invite code"
+                placeholder="Enter household code"
+                value={householdInviteCode}
+                onChange={(event) => setHouseholdInviteCode(normalizeInviteCode(event.target.value))}
+                leftIcon={<Link2 size={16} />}
+                helperText="Works for adult and existing-user family invites."
+              />
+              <Button onClick={handleJoinHousehold}>
+                Join family
+              </Button>
+            </div>
+
+            <div className="settings-privacy-note">
+              <strong>What happens next</strong>
+              <p>
+                We&apos;ll validate the code and connect your account to that household. If this account already manages
+                another active family, the app will explain what needs to happen before moving.
+              </p>
             </div>
           </section>
 
@@ -177,6 +412,14 @@ const Settings = () => {
               <option value="standard">Standard retention</option>
               <option value="extended">Extended history</option>
             </Select>
+
+            <div className="settings-privacy-note">
+              <strong>Your Data Rights (DPDP Act 2023)</strong>
+              <p>
+                Consent is recorded under privacy policy version {privacyPolicyVersion}. You can
+                export your data or permanently delete your account at any time.
+              </p>
+            </div>
           </section>
 
           <section className="settings-section card">
@@ -188,7 +431,12 @@ const Settings = () => {
             </div>
 
             <div className="settings-actions">
-              <Button variant="secondary" leftIcon={<Download size={18} />} onClick={handleExport}>
+              <Button
+                variant="secondary"
+                leftIcon={<Download size={18} />}
+                onClick={handleExport}
+                loading={exportingData}
+              >
                 Download all my data as JSON
               </Button>
               <Button variant="danger" leftIcon={<Trash2 size={18} />} onClick={() => setShowDeleteConfirm(true)}>
@@ -214,10 +462,8 @@ const Settings = () => {
             </Button>
             <Button
               variant="danger"
-              onClick={() => {
-                setShowDeleteConfirm(false);
-                notify.error("Account deletion is not wired yet. This is a protected placeholder.");
-              }}
+              onClick={handleDeleteAccount}
+              loading={deletingAccount}
             >
               Confirm delete
             </Button>
@@ -225,7 +471,8 @@ const Settings = () => {
         }
       >
         <p className="text-body-md muted-copy">
-          For now this is a safeguarded confirmation flow so the action cannot happen accidentally while the backend delete endpoint is still being finalized.
+          Account deletion is permanent and irreversible. All health records, members, reminders,
+          reports, and saved AI conversations tied to your account will be erased.
         </p>
       </Modal>
     </div>

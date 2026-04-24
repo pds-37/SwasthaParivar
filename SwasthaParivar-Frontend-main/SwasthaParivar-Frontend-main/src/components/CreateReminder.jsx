@@ -2,10 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { CalendarPlus, Camera, LoaderCircle, Sparkles } from "lucide-react";
 
 import api from "../lib/api";
+import ProfileAvatar from "./common/ProfileAvatar";
+import { showUnlockedBadges } from "../lib/badges";
 import { buildGoogleCalendarUrl } from "../lib/googleCalendar";
 import notify from "../lib/notify";
 import { clearReminderDraft, readReminderDraft, toLocalDateTimeValue } from "../lib/reminderDraft";
 import { useFamilyStore } from "../store/family-store";
+import { trackEvent } from "../utils/analytics";
 import { Button, Checkbox, Input, Select, Textarea } from "./ui";
 import "./CreateReminder.css";
 
@@ -198,8 +201,13 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
           ...payload,
           memberId: selectedMembers[0],
         });
+        trackEvent("reminder_updated", {
+          category,
+          frequency,
+          selected_member_count: selectedMembers.length,
+        });
       } else {
-        await Promise.all(
+        const responses = await Promise.all(
           selectedMembers.map((memberId) =>
             api.post("/reminders", {
               ...payload,
@@ -207,6 +215,14 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
             })
           )
         );
+        showUnlockedBadges(responses.flatMap((response) => response?.newBadges || []));
+        trackEvent("reminder_created", {
+          category,
+          frequency,
+          selected_member_count: selectedMembers.length,
+          synced_to_calendar: syncToCalendar,
+          attached_report: Boolean(reportFileName),
+        });
       }
 
       if (syncToCalendar) {
@@ -290,7 +306,7 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
                 onClick={() => toggleMember(member._id)}
                 disabled={activeView === "self"}
               >
-                <span className="avatar avatar--sm">{member.name?.charAt(0) || "U"}</span>
+                <ProfileAvatar name={member.name} src={member.avatar} size="sm" />
                 <span>{member.name}</span>
               </button>
             ))}

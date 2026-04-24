@@ -13,10 +13,12 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 
 import AddMemberModal from "../components/AddMemberModal";
 import { useAuth } from "../components/auth-context";
+import ProfileAvatar from "../components/common/ProfileAvatar";
+import InviteLink from "../components/household/InviteLink";
 import { Button, EmptyState, Modal, PullToRefresh, Skeleton } from "../components/ui";
 import { useReminders } from "../hooks/useReminders";
 import notify from "../lib/notify";
@@ -64,7 +66,6 @@ const FamilyDashboard = () => {
     members,
     selectedMember,
     loading: membersLoading,
-    error: membersError,
     createMember,
     createInvite,
     refreshMembers,
@@ -208,6 +209,7 @@ const FamilyDashboard = () => {
         relation: form.relation,
         age: Number(form.age),
         gender: form.gender,
+        avatar: form.avatar,
         conditions: form.conditions,
         allergies: form.allergies,
         medications: form.medications,
@@ -263,7 +265,7 @@ const FamilyDashboard = () => {
       >
         <div className="dashboard-shell">
         <section className="dashboard-overview">
-          <motion.div 
+          <Motion.div
             className="dashboard-overview__copy"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -276,7 +278,7 @@ const FamilyDashboard = () => {
             <h1 className="text-h1">{dashboardHeading}</h1>
             <p className="text-body-lg">{dashboardSubheading}</p>
 
-            <motion.div 
+            <Motion.div
               className="dashboard-summary-pills"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -288,23 +290,23 @@ const FamilyDashboard = () => {
                 <TriangleAlert size={14} />
                 {healthAlerts.length} health alerts
               </button>
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
 
           <div className="dashboard-overview__visual">
-            <motion.div 
-              className="dashboard-orbit dashboard-orbit--one" 
+            <Motion.div
+              className="dashboard-orbit dashboard-orbit--one"
               initial={{ rotateX: 70, rotateZ: 0 }}
               animate={{ rotateX: 70, rotateZ: 360 }}
               transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
             />
-            <motion.div 
-              className="dashboard-orbit dashboard-orbit--two" 
+            <Motion.div
+              className="dashboard-orbit dashboard-orbit--two"
               initial={{ rotateX: 70, rotateZ: 0 }}
               animate={{ rotateX: 70, rotateZ: -360 }}
               transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
             />
-            <motion.div 
+            <Motion.div
               className="dashboard-overview__core card"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -313,33 +315,33 @@ const FamilyDashboard = () => {
               <span>Family care brain</span>
               <strong>{members.length || 0}</strong>
               <small>active household profiles</small>
-            </motion.div>
-            <motion.div 
+            </Motion.div>
+            <Motion.div
               className="dashboard-overview__node dashboard-overview__node--left"
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1, y: [0, -8, 0] }}
-              transition={{ 
-                x: { delay: 0.4, type: "spring" }, 
-                opacity: { delay: 0.4 }, 
-                y: { delay: 0.8, duration: 4, repeat: Infinity, ease: "easeInOut" } 
+              transition={{
+                x: { delay: 0.4, type: "spring" },
+                opacity: { delay: 0.4 },
+                y: { delay: 0.8, duration: 4, repeat: Infinity, ease: "easeInOut" }
               }}
             >
               <span>Reports</span>
               <strong>{recentActivity.filter((item) => item.type === "Health record").length}</strong>
-            </motion.div>
-            <motion.div 
+            </Motion.div>
+            <Motion.div
               className="dashboard-overview__node dashboard-overview__node--right"
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1, y: [0, -8, 0] }}
-              transition={{ 
-                x: { delay: 0.5, type: "spring" }, 
-                opacity: { delay: 0.5 }, 
-                y: { delay: 1, duration: 4.5, repeat: Infinity, ease: "easeInOut" } 
+              transition={{
+                x: { delay: 0.5, type: "spring" },
+                opacity: { delay: 0.5 },
+                y: { delay: 1, duration: 4.5, repeat: Infinity, ease: "easeInOut" }
               }}
             >
               <span>Today</span>
               <strong>{remindersToday.length}</strong>
-            </motion.div>
+            </Motion.div>
           </div>
         </section>
 
@@ -375,7 +377,7 @@ const FamilyDashboard = () => {
                 return (
                   <article key={member._id} className="dashboard-member-card card card-hover">
                     <div className="dashboard-member-card__identity">
-                      <span className="avatar avatar--lg">{member.name?.charAt(0) || "U"}</span>
+                      <ProfileAvatar name={member.name} src={member.avatar} size="lg" />
                       <div>
                         <strong>{member.name}</strong>
                         <span>{member.relation || "Family member"}</span>
@@ -534,9 +536,7 @@ const FamilyDashboard = () => {
                   {upcomingReminders.map((reminder) => (
                     <article key={reminder._id} className="dashboard-mini-row">
                       <div className="dashboard-mini-row__meta">
-                        <span className="avatar avatar--sm">
-                          {(reminder.memberName || "F").charAt(0)}
-                        </span>
+                        <ProfileAvatar name={reminder.memberName || "Family member"} size="sm" />
                         <div>
                           <strong>{reminder.title}</strong>
                           <p>{reminder.memberName || "Family member"}</p>
@@ -608,18 +608,13 @@ const FamilyDashboard = () => {
         }
       >
         {createdInvite ? (
-          <div className="dashboard-stack">
-            <article className="dashboard-mini-row">
-              <div className="dashboard-mini-row__meta">
-                <span className="avatar avatar--sm">{createdInvite.email?.charAt(0)?.toUpperCase() || "I"}</span>
-                <div>
-                  <strong>{createdInvite.email}</strong>
-                  <p>{createdInvite.inviteType === "link_existing" ? "Link existing app user" : "Invite adult family member"}</p>
-                </div>
-              </div>
-              <span>{createdInvite.code}</span>
-            </article>
-          </div>
+          <InviteLink
+            initialCode={createdInvite.code}
+            inviteType={createdInvite.inviteType}
+            email={createdInvite.email}
+            name={createdInvite.name}
+            relation={createdInvite.relation}
+          />
         ) : null}
       </Modal>
 

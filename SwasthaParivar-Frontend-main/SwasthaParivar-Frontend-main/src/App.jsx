@@ -1,4 +1,5 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -6,16 +7,21 @@ import Navigation from "./components/Navigation";
 import { AuthProvider } from "./components/AuthProvider";
 import ErrorBoundary from "./components/ErrorBoundary";
 import FloatingAIButton from "./components/FloatingAIButton";
+import OnboardingWizard from "./components/onboarding/OnboardingWizard";
 import PageSkeleton from "./components/PageSkeleton";
+import UpgradePrompt from "./components/common/UpgradePrompt";
 import { useAuth } from "./components/auth-context";
+import { AppThemeProvider } from "./context/ThemeContext";
 import { FamilyStoreProvider } from "./store/family-store";
 import { UIStoreProvider } from "./store/ui-store";
-import { AppThemeProvider } from "./theme/ThemeProvider";
+import { initAnalytics, trackEvent } from "./utils/analytics";
 
 const Auth = lazy(() => import("./pages/Auth"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const JoinFamily = lazy(() => import("./pages/JoinFamily"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const HealthMonitor = lazy(() => import("./pages/HealthMonitor"));
 const FamilyMembers = lazy(() => import("./pages/FamilyMembers"));
@@ -25,17 +31,22 @@ const Remedies = lazy(() => import("./pages/remedies.jsx"));
 const AIChat = lazy(() => import("./pages/AIChat"));
 const Reminders = lazy(() => import("./pages/Reminders"));
 const Settings = lazy(() => import("./pages/Settings"));
-
-import { motion } from "framer-motion";
+const MotionDiv = motion.div;
 
 const RouteScreen = ({ page, componentProps }) => {
   const location = useLocation();
   const Page = page;
 
+  useEffect(() => {
+    trackEvent("page_view", {
+      path: location.pathname,
+    });
+  }, [location.pathname]);
+
   return (
     <ErrorBoundary resetKey={location.pathname}>
       <Suspense fallback={<PageSkeleton />}>
-        <motion.div
+        <MotionDiv
           key={location.pathname}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -44,15 +55,16 @@ const RouteScreen = ({ page, componentProps }) => {
           style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}
         >
           <Page {...componentProps} />
-        </motion.div>
+        </MotionDiv>
       </Suspense>
     </ErrorBoundary>
   );
 };
 
 const ProtectedLayout = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, updateUser } = useAuth();
   const location = useLocation();
+  const showOnboarding = Boolean(user && !user.onboardingComplete);
 
   if (loading) return <PageSkeleton />;
   if (!user) {
@@ -68,6 +80,12 @@ const ProtectedLayout = ({ children }) => {
         <Navigation />
         <main className="app-main-shell">{children}</main>
         <FloatingAIButton />
+        <OnboardingWizard
+          open={showOnboarding}
+          onComplete={(updatedUser) => {
+            updateUser(updatedUser || { onboardingComplete: true });
+          }}
+        />
       </div>
     </FamilyStoreProvider>
   );
@@ -101,6 +119,8 @@ const AppRoutes = () => {
       <Route path="/" element={<RouteScreen page={Landing} />} />
       <Route path="/privacy" element={<RouteScreen page={Privacy} />} />
       <Route path="/terms" element={<RouteScreen page={Terms} />} />
+      <Route path="/pricing" element={<RouteScreen page={Pricing} />} />
+      <Route path="/join/:code" element={<RouteScreen page={JoinFamily} />} />
       <Route
         path="/auth"
         element={
@@ -196,17 +216,47 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => (
-  <AppThemeProvider>
-    <BrowserRouter>
-      <UIStoreProvider>
-        <AuthProvider>
-          <AppRoutes />
-          <Toaster position="top-right" toastOptions={{ duration: 3200 }} />
-        </AuthProvider>
-      </UIStoreProvider>
-    </BrowserRouter>
-  </AppThemeProvider>
-);
+const App = () => {
+  const [upgradePrompt, setUpgradePrompt] = useState({
+    open: false,
+    feature: "",
+  });
+
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
+  useEffect(() => {
+    const handleShowUpgradePrompt = (event) => {
+      setUpgradePrompt({
+        open: true,
+        feature: event?.detail?.feature || "",
+      });
+    };
+
+    window.addEventListener("show-upgrade-prompt", handleShowUpgradePrompt);
+    return () => {
+      window.removeEventListener("show-upgrade-prompt", handleShowUpgradePrompt);
+    };
+  }, []);
+
+  return (
+    <AppThemeProvider>
+      <BrowserRouter>
+        <UIStoreProvider>
+          <AuthProvider>
+            <AppRoutes />
+            <UpgradePrompt
+              open={upgradePrompt.open}
+              featureName={upgradePrompt.feature}
+              onClose={() => setUpgradePrompt({ open: false, feature: "" })}
+            />
+            <Toaster position="top-right" toastOptions={{ duration: 3200 }} />
+          </AuthProvider>
+        </UIStoreProvider>
+      </BrowserRouter>
+    </AppThemeProvider>
+  );
+};
 
 export default App;

@@ -15,6 +15,7 @@ class AppConfig {
     this.googleRedirectUri = env.GOOGLE_REDIRECT_URI || "";
     this.sentryDsn = env.SENTRY_DSN || "";
     this.sentryEnvironment = env.SENTRY_ENVIRONMENT || this.nodeEnv;
+    this.privacyPolicyVersion = env.PRIVACY_POLICY_VERSION || "v1.0";
     this.accessTokenTtl = "15m";
     this.refreshTokenTtl = "7d";
     this.accessTokenMaxAgeMs = 15 * 60 * 1000;

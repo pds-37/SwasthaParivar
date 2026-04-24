@@ -1,0 +1,60 @@
+.avatar-upload {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.avatar-upload__label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.avatar-upload__card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 1.25rem;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.avatar-upload__preview {
+  width: 4rem;
+  height: 4rem;
+  font-size: 1rem;
+}
+
+.avatar-upload__copy {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.avatar-upload__copy strong {
+  color: var(--text);
+}
+
+.avatar-upload__copy p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.avatar-upload__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.avatar-upload__input {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .avatar-upload__card {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+}

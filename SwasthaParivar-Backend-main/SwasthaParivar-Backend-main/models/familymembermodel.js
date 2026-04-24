@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+const MAX_MEMBER_AVATAR_LENGTH = 700000;
+
 const metricEntrySchema = new mongoose.Schema({
   value: { type: mongoose.Schema.Types.Mixed, required: true },
   date: { type: String, required: true },
@@ -76,7 +78,7 @@ const familyMemberSchema = new mongoose.Schema({
   },
   age: { type: Number, default: 0, min: 0, max: 120 },
   gender: { type: String, enum: ["male", "female", "other"], default: "other" },
-  avatar: { type: String, trim: true, maxlength: 200 },
+  avatar: { type: String, trim: true, maxlength: MAX_MEMBER_AVATAR_LENGTH },
   relation: { type: String, default: "", trim: true, maxlength: 40 },
 
   // Embedded health snapshots power household-level risk scoring.

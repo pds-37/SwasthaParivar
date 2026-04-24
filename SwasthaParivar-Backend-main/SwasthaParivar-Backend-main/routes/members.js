@@ -1,5 +1,6 @@
 import express from "express";
 import familyMemberController from "../controllers/FamilyMemberController.js";
+import { requireFeature } from "../middleware/planGuard.js";
 import { validate } from "../middleware/validate.js";
 import {
   createMemberSchema,
@@ -14,7 +15,12 @@ const router = express.Router();
 router.get("/", validate(memberListQuerySchema, "query"), (req, res) =>
   familyMemberController.list(req, res)
 );
-router.post("/", validate(createMemberSchema), (req, res) => familyMemberController.create(req, res));
+router.post(
+  "/",
+  validate(createMemberSchema),
+  requireFeature("addMember"),
+  (req, res) => familyMemberController.create(req, res)
+);
 router.get("/:id", validate(memberParamsSchema, "params"), (req, res) =>
   familyMemberController.get(req, res)
 );

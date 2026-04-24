@@ -18,6 +18,7 @@ export const useReports = () => {
 
   const uploadReport = async (formData) => {
     const created = await api.post("/reports/upload", formData, {
+      suppressErrorToast: true,
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -32,12 +33,23 @@ export const useReports = () => {
     return created;
   };
 
+  const analyzeReport = async (reportId) => {
+    const analyzed = await api.post(`/reports/${reportId}/analyse`, {}, { suppressErrorToast: true });
+    await swr.mutate((previous) => {
+      const current = Array.isArray(previous) ? previous : previous?.reports || [];
+      return current.map((report) => (report.id === analyzed.id ? analyzed : report));
+    }, false);
+    swr.mutate();
+    return analyzed;
+  };
+
   return {
     reports,
     loading: swr.isLoading,
     error: swr.error,
     mutate: swr.mutate,
     uploadReport,
+    analyzeReport,
   };
 };
 

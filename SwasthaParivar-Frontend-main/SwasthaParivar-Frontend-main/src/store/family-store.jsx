@@ -38,7 +38,7 @@ const familyReducer = (state, action) => {
         selectedMember:
           state.selectedMember && action.payload.some((member) => member._id === state.selectedMember._id)
             ? action.payload.find((member) => member._id === state.selectedMember._id)
-            : state.selectedMember,
+            : null,
       };
     case "SET_HOUSEHOLD":
       return {

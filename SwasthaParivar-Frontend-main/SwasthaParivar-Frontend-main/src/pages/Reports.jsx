@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
+  Brain,
   FileImage,
   FilePlus2,
   FileText,
@@ -12,6 +13,7 @@ import { Button, EmptyState, Input, Modal, PullToRefresh, Select, Skeleton, Text
 import notify from "../lib/notify";
 import { useReports } from "../hooks/useReports";
 import { useFamilyStore } from "../store/family-store";
+import { trackEvent } from "../utils/analytics";
 import "./Reports.css";
 
 const reportTypes = ["Lab report", "Prescription", "Scan", "Discharge summary", "Other"];
@@ -78,7 +80,7 @@ const UploadReportModal = ({ members, onClose, onUploaded }) => {
       onClose={onClose}
       size="lg"
       title="Upload health report"
-      description="Attach a report, assign it to a member, and generate an AI summary for quick review."
+      description="Attach a report, assign it to a member, and keep it ready for AI review whenever you need it."
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -163,7 +165,7 @@ const UploadReportModal = ({ members, onClose, onUploaded }) => {
           {uploading ? (
             <div className="reports-processing">
               <LoaderCircle size={18} className="spin" />
-              <span>Uploading, validating, and generating AI summary...</span>
+              <span>Uploading report and preparing it for later AI review...</span>
             </div>
           ) : null}
         </div>
@@ -174,12 +176,13 @@ const UploadReportModal = ({ members, onClose, onUploaded }) => {
 
 const Reports = () => {
   const { members, selfMember, activeView, loading: membersLoading } = useFamilyStore();
-  const { reports, loading: reportsLoading, mutate, uploadReport } = useReports();
+  const { reports, loading: reportsLoading, mutate, uploadReport, analyzeReport } = useReports();
   const [showUpload, setShowUpload] = useState(false);
   const [memberFilter, setMemberFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [analyzingId, setAnalyzingId] = useState("");
   const loading = membersLoading || reportsLoading;
   const availableMembers = useMemo(
     () => (activeView === "self" ? (selfMember ? [selfMember] : []) : members),
@@ -222,7 +225,32 @@ const Reports = () => {
   const handleUploaded = async (formData) => {
     await uploadReport(formData);
     setShowUpload(false);
+    trackEvent("report_uploaded", {
+      active_view: activeView,
+    });
     notify.success("Report uploaded");
+  };
+
+  const handleAnalyzeReport = async (reportId) => {
+    setAnalyzingId(reportId);
+
+    try {
+      await analyzeReport(reportId);
+      trackEvent("report_ai_analysis_completed", {
+        report_id: reportId,
+        active_view: activeView,
+      });
+      notify.success("AI summary generated");
+    } catch (error) {
+      if (!error?.data?.upgradeRequired) {
+        trackEvent("report_ai_analysis_failed", {
+          report_id: reportId,
+        });
+        notify.error(error.message || "Could not analyze report");
+      }
+    } finally {
+      setAnalyzingId("");
+    }
   };
 
   return (
@@ -295,11 +323,8 @@ const Reports = () => {
             </div>
           ) : filteredReports.length === 0 ? (
             <EmptyState
-              icon={<FileText size={20} />}
-              heading="No reports found"
-              description="Upload the first health report to build a searchable family record history."
-              ctaLabel="Upload report"
-              onCta={() => setShowUpload(true)}
+              type="reports"
+              onAction={() => setShowUpload(true)}
             />
           ) : (
             <div className="reports-grid">
@@ -329,14 +354,30 @@ const Reports = () => {
                         <Sparkles size={14} />
                         AI summary
                       </span>
-                      <p>{report.aiSummary || "Summary not available for this file yet."}</p>
+                      <p>
+                        {report.aiSummary ||
+                          "No AI summary yet. Run AI analysis when you want a doctor-ready quick read."}
+                      </p>
                     </div>
 
                     {report.notes ? <small>{report.notes}</small> : null}
 
-                    <Button as="a" href={report.signedUrl} target="_blank" rel="noreferrer" variant="secondary" size="sm">
-                      Open file
-                    </Button>
+                    <div className="reports-card__actions">
+                      {!report.aiSummary ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          leftIcon={<Brain size={16} />}
+                          loading={analyzingId === report.id}
+                          onClick={() => handleAnalyzeReport(report.id)}
+                        >
+                          Analyze with AI
+                        </Button>
+                      ) : null}
+                      <Button as="a" href={report.signedUrl} target="_blank" rel="noreferrer" variant="secondary" size="sm">
+                        Open file
+                      </Button>
+                    </div>
                   </div>
                 </article>
               ))}

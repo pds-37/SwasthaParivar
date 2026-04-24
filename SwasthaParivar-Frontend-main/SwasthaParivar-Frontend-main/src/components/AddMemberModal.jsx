@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Link2, Mail, ShieldPlus, UserRound, Users } from "lucide-react";
+import { Mail, ShieldPlus, UserRound, Users } from "lucide-react";
 import notify from "../lib/notify";
+import AvatarUploadField from "./common/AvatarUploadField";
 import { Button, Checkbox, Input, Modal, Radio, Select, Textarea } from "./ui";
 import "./AddMemberModal.css";
 
@@ -32,6 +33,7 @@ const AddMemberModal = ({ onClose, onSave }) => {
     name: "",
     email: "",
     relation: "",
+    avatar: "",
     age: "",
     gender: "male",
     conditions: "",
@@ -179,6 +181,13 @@ const AddMemberModal = ({ onClose, onSave }) => {
                   <option value="other">Other</option>
                 </Select>
               </div>
+
+              <AvatarUploadField
+                name={form.name}
+                value={form.avatar}
+                onChange={(value) => handleChange("avatar", value)}
+                helperText="Upload directly from this device so the member is easy to recognize."
+              />
             </section>
 
             <section className="member-modal__section">
@@ -252,14 +261,14 @@ const AddMemberModal = ({ onClose, onSave }) => {
               />
             </div>
 
-            <Input
-              label="Email"
-              placeholder="Enter their email address"
-              value={form.email}
-              onChange={(event) => handleChange("email", event.target.value)}
-              leftIcon={form.mode === "link_existing" ? <Link2 size={18} /> : <Mail size={18} />}
-              error={errors.email}
-            />
+              <Input
+                label="Email"
+                placeholder="Enter their email address"
+                value={form.email}
+                onChange={(event) => handleChange("email", event.target.value)}
+                leftIcon={<Mail size={18} />}
+                error={errors.email}
+              />
           </section>
         )}
       </form>

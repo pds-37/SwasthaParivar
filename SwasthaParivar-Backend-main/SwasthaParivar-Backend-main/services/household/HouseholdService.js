@@ -10,6 +10,7 @@ import Report from "../../models/reportmodel.js";
 import SymptomEpisode from "../../models/symptomepisode.js";
 import User from "../../models/user.js";
 import { logger } from "../../utils/logger.js";
+import { getEffectivePlan } from "../../utils/planState.js";
 
 const HEALTH_METRICS = [
   "bloodPressure",
@@ -374,11 +375,20 @@ class HouseholdService {
   }
 
   buildSafeUser(user, context = {}) {
+    const effectivePlan = getEffectivePlan(user);
+
     return {
       id: user._id,
       email: user.email,
       fullName: user.fullName,
       avatarUrl: user.avatarUrl || null,
+      onboardingComplete: Boolean(user.onboardingComplete),
+      plan: effectivePlan,
+      referralCode: user.referralCode || "",
+      referredBy: user.referredBy || null,
+      referralCount: Number(user.referralCount || 0),
+      proExpiresAt: effectivePlan === "free" ? null : user.proExpiresAt || null,
+      preferences: user.preferences || {},
       activeHouseholdId: context.household?._id || user.activeHouseholdId || null,
       primaryMemberProfileId:
         context.selfMember?._id || user.primaryMemberProfileId || null,
@@ -751,16 +761,12 @@ class HouseholdService {
     }
 
     const email = this.normalizeEmail(payload.email);
-    if (!email) {
-      return { status: 400, error: { code: "VALIDATION_ERROR", message: "Invite email is required" } };
-    }
-
     const currentUser = await this.loadUser(userId);
     if (!currentUser) {
       return { status: 404, error: { code: "USER_NOT_FOUND", message: "User not found" } };
     }
 
-    if (email === currentUser.email) {
+    if (email && email === currentUser.email) {
       return {
         status: 400,
         error: { code: "VALIDATION_ERROR", message: "You are already part of this household" },
@@ -770,12 +776,14 @@ class HouseholdService {
     const inviteType =
       payload.inviteType === "link_existing" ? "link_existing" : "adult_invite";
 
-    const existingInvite = await HouseholdInvite.findOne({
-      householdId: context.household._id,
-      email,
-      status: "pending",
-      expiresAt: { $gt: new Date() },
-    });
+    const existingInvite = email
+      ? await HouseholdInvite.findOne({
+          householdId: context.household._id,
+          email,
+          status: "pending",
+          expiresAt: { $gt: new Date() },
+        })
+      : null;
 
     if (existingInvite) {
       return {

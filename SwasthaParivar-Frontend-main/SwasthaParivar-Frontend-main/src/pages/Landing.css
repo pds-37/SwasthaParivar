@@ -213,6 +213,10 @@
   margin-top: var(--space-12);
 }
 
+.landing-features__head h2 {
+  margin-top: var(--space-5);
+}
+
 .landing-section-head {
   max-width: 40rem;
 }
@@ -255,6 +259,10 @@
 
 .landing-howto {
   margin-top: var(--space-12);
+}
+
+.landing-howto__head h2 {
+  margin-top: var(--space-5);
 }
 
 .landing-howto__grid {
@@ -339,6 +347,7 @@
 }
 
 .landing-cta .eyebrow {
+  margin-bottom: var(--space-5);
   background: color-mix(in srgb, var(--color-brand-on-dark) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-brand-on-dark) 20%, transparent);
 }

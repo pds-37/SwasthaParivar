@@ -16,6 +16,23 @@ export const aiChatSchema = z.object({
     .optional(),
 });
 
+export const aiStreamingChatSchema = z.object({
+  message: z.string().trim().min(1).max(4000),
+  memberId: objectIdSchema.optional().nullable(),
+  language: z.string().trim().max(8).optional(),
+  collectedData: z.record(z.string(), z.any()).optional(),
+  chatHistory: z
+    .array(
+      z.object({
+        sender: z.enum(["user", "ai"]),
+        text: z.string().trim().max(4000),
+        ts: z.number().optional(),
+      })
+    )
+    .max(15)
+    .optional(),
+});
+
 export const aiAttachmentSchema = z.object({
   imageData: z.string().min(20),
   mimeType: z.string().refine((value) => value.startsWith("image/") || value === "application/pdf", {
@@ -39,6 +56,15 @@ export const aiMemoryBodySchema = z.object({
       text: z.string().trim().max(4000),
       ts: z.number().optional(),
       attachment: z.string().optional().nullable(),
+      riskLevel: z.string().trim().max(20).optional(),
+      followUpPrompt: z.string().trim().max(240).optional().nullable(),
+      suggestedReminder: z
+        .object({
+          title: z.string().trim().max(120),
+          type: z.string().trim().max(40).optional(),
+        })
+        .optional()
+        .nullable(),
     })
   ),
 });

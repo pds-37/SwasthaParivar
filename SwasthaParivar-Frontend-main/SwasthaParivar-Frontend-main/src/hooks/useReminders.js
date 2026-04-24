@@ -18,9 +18,10 @@ export const useReminders = () => {
 
   const createReminder = async (payload) => {
     const created = await api.post("/reminders", payload);
+    const createdReminder = created?.reminder || created;
     swr.mutate((previous) => {
       const current = Array.isArray(previous) ? previous : previous?.reminders || [];
-      return [created, ...current];
+      return [createdReminder, ...current];
     }, false);
     swr.mutate();
     return created;

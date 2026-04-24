@@ -2,6 +2,8 @@ import express from "express";
 import authController from "../controllers/AuthController.js";
 import auth from "../middleware/auth.js";
 import { authRateLimiter, googleAuthRateLimiter } from "../middleware/rateLimiter.js";
+import User from "../models/user.js";
+import householdService from "../services/household/HouseholdService.js";
 import { validate } from "../middleware/validate.js";
 import { loginSchema, signupSchema } from "../validations/authSchemas.js";
 const router = express.Router();
@@ -13,5 +15,19 @@ router.get("/google/callback", googleAuthRateLimiter.middleware(), (req, res) =>
 router.post("/refresh", (req, res) => authController.refresh(req, res));
 router.post("/logout", (req, res) => authController.logout(req, res));
 router.get("/session", auth, (req, res) => authController.session(req, res));
+router.patch("/me", auth, async (req, res) => {
+  const allowed = new Set(["onboardingComplete", "preferences"]);
+  const updates = Object.fromEntries(
+    Object.entries(req.body || {}).filter(([key]) => allowed.has(key))
+  );
+
+  const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true });
+  const safeUser = householdService.buildSafeUser(user, req.householdContext || {});
+
+  res.status(200).json({
+    success: true,
+    data: safeUser,
+  });
+});
 
 export default router;

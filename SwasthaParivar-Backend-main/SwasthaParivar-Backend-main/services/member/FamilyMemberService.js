@@ -13,6 +13,8 @@ export const HEALTH_METRICS = [
 ];
 
 const ALLOWED_GENDERS = new Set(["male", "female", "other"]);
+const MAX_MEMBER_AVATAR_LENGTH = 700000;
+const AVATAR_DATA_URL_PATTERN = /^data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+$/;
 const activeProfileStatusFilter = () => ({ $ne: "archived" });
 
 class FamilyMemberService {
@@ -34,6 +36,40 @@ class FamilyMemberService {
 
   normalizeBoolean(value) {
     return value === true || value === "true" || value === 1 || value === "1";
+  }
+
+  normalizeAvatar(value) {
+    const avatar = String(value || "").trim();
+
+    if (!avatar) {
+      return { value: "" };
+    }
+
+    if (avatar.length > MAX_MEMBER_AVATAR_LENGTH) {
+      return {
+        error: "Profile photo is too large. Please choose a smaller image.",
+      };
+    }
+
+    if (avatar.startsWith("data:image/")) {
+      if (!AVATAR_DATA_URL_PATTERN.test(avatar)) {
+        return { error: "Profile photo format is invalid." };
+      }
+
+      return { value: avatar };
+    }
+
+    try {
+      const url = new URL(avatar);
+
+      if (!["http:", "https:"].includes(url.protocol)) {
+        return { error: "Profile photo must use a secure web address." };
+      }
+
+      return { value: avatar };
+    } catch {
+      return { error: "Profile photo must come from an upload or a valid web address." };
+    }
   }
 
   normalizeList(value, { maxItems = 8, maxLength = 60 } = {}) {
@@ -200,6 +236,7 @@ class FamilyMemberService {
     const relation = this.normalizeText(payload?.relation, { maxLength: 40 });
     const age = this.normalizeAge(payload?.age);
     const gender = String(payload?.gender || "other").toLowerCase();
+    const avatar = this.normalizeAvatar(payload?.avatar);
 
     if (requireName && !name) {
       return { error: "Name required" };
@@ -213,13 +250,17 @@ class FamilyMemberService {
       return { error: "Gender must be male, female, or other" };
     }
 
+    if (avatar.error) {
+      return { error: avatar.error };
+    }
+
     return {
       data: {
         name,
         age: age ?? 0,
         gender,
         relation,
-        avatar: this.normalizeText(payload?.avatar, { maxLength: 200 }),
+        avatar: avatar.value,
         conditions: this.normalizeList(payload?.conditions, { maxItems: 10, maxLength: 60 }),
         allergies: this.normalizeList(payload?.allergies, { maxItems: 10, maxLength: 60 }),
         medications: this.normalizeList(payload?.medications, { maxItems: 12, maxLength: 80 }),

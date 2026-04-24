@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createInviteSchema = z.object({
   inviteType: z.enum(["adult_invite", "link_existing"]),
-  email: z.string().trim().email(),
+  email: z.union([z.string().trim().email(), z.literal("")]).optional().default(""),
   name: z.string().trim().max(120).optional().default(""),
   relation: z.string().trim().max(40).optional().default(""),
 });

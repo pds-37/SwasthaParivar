@@ -2,11 +2,18 @@ import express from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import auth from "../middleware/auth.js";
 import { analyzeAttachment, chatWithAI, listAIInsights } from "../controllers/aiController.js";
+import { streamChatWithAI } from "../controllers/aiStreamController.js";
 import appConfig from "../config/AppConfig.js";
+import { requireFeature } from "../middleware/planGuard.js";
 import { aiRateLimiter } from "../middleware/rateLimiter.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { validate } from "../middleware/validate.js";
-import { aiAttachmentSchema, aiChatSchema, aiInsightQuerySchema } from "../validations/aiSchemas.js";
+import {
+  aiAttachmentSchema,
+  aiChatSchema,
+  aiInsightQuerySchema,
+  aiStreamingChatSchema,
+} from "../validations/aiSchemas.js";
 
 const router = express.Router();
 
@@ -34,8 +41,30 @@ router.get("/models", auth, async (req, res) => {
 });
 
 router.get("/insights", auth, validate(aiInsightQuerySchema, "query"), listAIInsights);
-router.post("/", auth, aiRateLimiter.middleware(), validate(aiChatSchema), chatWithAI);
-router.post("/chat", auth, aiRateLimiter.middleware(), validate(aiChatSchema), chatWithAI);
+router.post(
+  "/",
+  auth,
+  aiRateLimiter.middleware(),
+  validate(aiChatSchema),
+  requireFeature("aiChat"),
+  chatWithAI
+);
+router.post(
+  "/chat",
+  auth,
+  aiRateLimiter.middleware(),
+  validate(aiChatSchema),
+  requireFeature("aiChat"),
+  chatWithAI
+);
+router.post(
+  "/chat/stream",
+  auth,
+  aiRateLimiter.middleware(),
+  validate(aiStreamingChatSchema),
+  requireFeature("aiChat"),
+  streamChatWithAI
+);
 router.post("/attachments", auth, aiRateLimiter.middleware(), validate(aiAttachmentSchema), analyzeAttachment);
 
 export default router;

@@ -2,6 +2,19 @@ import React, { useEffect, useMemo, useState } from "react";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import { ThemeModeContext } from "./theme-context";
 
+const STORAGE_KEY = "sp-theme";
+const LEGACY_STORAGE_KEY = "themeMode";
+
+const readStoredPreference = () => {
+  const storedValue = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+  return storedValue || "system";
+};
+
+const persistPreference = (value) => {
+  localStorage.setItem(STORAGE_KEY, value);
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+};
+
 const resolvePaletteTokens = (mode) => {
   if (typeof document === "undefined" || !document.body) {
     return {};
@@ -41,7 +54,7 @@ export const AppThemeProvider = ({ children }) => {
   const getSystemPreference = () =>
     window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
-  const storedMode = localStorage.getItem("themeMode") || "system";
+  const storedMode = readStoredPreference();
   const [preference, setPreference] = useState(storedMode);
   const [systemMode, setSystemMode] = useState(getSystemPreference);
   const mode = preference === "system" ? systemMode : preference;
@@ -49,7 +62,7 @@ export const AppThemeProvider = ({ children }) => {
   const toggleTheme = () => {
     const nextMode = mode === "light" ? "dark" : "light";
     setPreference(nextMode);
-    localStorage.setItem("themeMode", nextMode);
+    persistPreference(nextMode);
   };
 
   useEffect(() => {
@@ -81,7 +94,7 @@ export const AppThemeProvider = ({ children }) => {
 
   const setThemePreference = (nextPreference) => {
     setPreference(nextPreference);
-    localStorage.setItem("themeMode", nextPreference);
+    persistPreference(nextPreference);
   };
 
   const theme = useMemo(

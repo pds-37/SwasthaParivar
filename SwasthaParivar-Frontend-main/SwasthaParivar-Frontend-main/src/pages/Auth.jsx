@@ -15,7 +15,9 @@ import {
 import { useAuth } from "../components/auth-context";
 import { Button, Input } from "../components/ui";
 import { buildApiUrl } from "../lib/api";
+import { buildJoinHouseholdPath, getInviteCodeFromRedirectPath, normalizeInviteCode } from "../lib/householdInvites";
 import { useThemeMode } from "../theme/theme-context";
+import { trackEvent } from "../utils/analytics";
 import "../Auth.css";
 
 const trustPoints = [
@@ -116,12 +118,16 @@ const getReadableAuthError = (error) => {
 const Auth = () => {
   const { login, signup } = useAuth();
   const { mode, toggleTheme } = useThemeMode();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [inviteCode, setInviteCode] = useState(() =>
+    getInviteCodeFromRedirectPath(searchParams.get("from"))
+  );
+  const [inviteNotice, setInviteNotice] = useState("");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -144,6 +150,16 @@ const Auth = () => {
     if (!authError) return;
     setError(GOOGLE_AUTH_ERRORS[authError] || "Google sign-in failed. Please try again.");
     setIsLogin(true);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const redirectedInviteCode = getInviteCodeFromRedirectPath(searchParams.get("from"));
+    setInviteCode(redirectedInviteCode);
+    if (redirectedInviteCode) {
+      setInviteNotice("This code will be used right after you sign in or create your account.");
+    } else {
+      setInviteNotice("");
+    }
   }, [searchParams]);
 
   const handleChange = (key, value) => {
@@ -169,21 +185,33 @@ const Auth = () => {
     }
 
     setLoading(true);
+    const redirectTo = searchParams.get("from") || "/dashboard";
 
     try {
       if (isLogin) {
         await login({
           email: formData.email.trim(),
           password: formData.password,
+        }, { redirectTo });
+        trackEvent("auth_login_completed", {
+          method: "password",
+          redirect_to: redirectTo,
         });
       } else {
         await signup({
           ...formData,
           email: formData.email.trim(),
           fullName: formData.fullName.trim(),
+        }, { redirectTo });
+        trackEvent("auth_signup_completed", {
+          method: "password",
+          redirect_to: redirectTo,
         });
       }
     } catch (err) {
+      trackEvent(isLogin ? "auth_login_failed" : "auth_signup_failed", {
+        method: "password",
+      });
       setError(getReadableAuthError(err));
     } finally {
       setLoading(false);
@@ -193,10 +221,34 @@ const Auth = () => {
   const handleGoogleContinue = () => {
     setError("");
     setGoogleLoading(true);
+    const returnPath = searchParams.get("from") || "/dashboard";
+    trackEvent("auth_google_started", {
+      redirect_to: returnPath,
+    });
 
     const nextUrl = new URL(buildApiUrl("/auth/google/start"), window.location.origin);
     nextUrl.searchParams.set("returnTo", window.location.origin);
+    nextUrl.searchParams.set("returnPath", returnPath);
     window.location.assign(nextUrl.toString());
+  };
+
+  const handleUseInviteCode = () => {
+    const nextCode = normalizeInviteCode(inviteCode);
+
+    if (!nextCode) {
+      setInviteNotice("Enter a family invite code first.");
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("from", buildJoinHouseholdPath(nextCode));
+    nextParams.set("mode", isLogin ? "signin" : "signup");
+    setSearchParams(nextParams, { replace: true });
+    setInviteNotice("Invite code saved. Continue below and we’ll join the family right after auth.");
+    trackEvent("household_invite_code_captured", {
+      entrypoint: "auth",
+      invite_code: nextCode,
+    });
   };
 
   return (
@@ -352,6 +404,32 @@ const Auth = () => {
           <Button variant="secondary" size="lg" fullWidth loading={googleLoading} onClick={handleGoogleContinue}>
             Continue with Google
           </Button>
+
+          <div className="auth-invite-card">
+            <div className="auth-invite-card__copy">
+              <span className="auth-card-label">Family invite</span>
+              <h3>Have an invite code?</h3>
+              <p>Paste it here so this account joins the right family immediately after sign-in.</p>
+            </div>
+
+            <div className="auth-invite-card__actions">
+              <Input
+                label="Invite code"
+                value={inviteCode}
+                onChange={(event) => {
+                  setInviteCode(normalizeInviteCode(event.target.value));
+                  if (inviteNotice) setInviteNotice("");
+                }}
+                placeholder="Enter household code"
+                leftIcon={<Users size={18} />}
+              />
+              <Button variant="secondary" onClick={handleUseInviteCode}>
+                Use invite code
+              </Button>
+            </div>
+
+            {inviteNotice ? <p className="auth-invite-card__note">{inviteNotice}</p> : null}
+          </div>
 
           <p className="policy-text">
             By continuing, you agree to our <Link to="/terms">Terms of Service</Link> and{" "}

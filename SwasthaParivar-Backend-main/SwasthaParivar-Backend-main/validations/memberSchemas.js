@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { objectIdSchema, paginationSchema, stringListSchema } from "./commonSchemas.js";
 
+const MAX_MEMBER_AVATAR_LENGTH = 700000;
+
 export const memberParamsSchema = z.object({
   id: objectIdSchema,
 });
@@ -12,7 +14,7 @@ export const createMemberSchema = z.object({
   relation: z.string().trim().min(1).max(40).optional().default(""),
   age: z.coerce.number().int().min(0).max(120),
   gender: z.enum(["male", "female", "other"]).default("other"),
-  avatar: z.string().trim().max(200).optional(),
+  avatar: z.string().trim().max(MAX_MEMBER_AVATAR_LENGTH).optional(),
   conditions: stringListSchema.optional(),
   allergies: stringListSchema.optional(),
   medications: stringListSchema.optional(),

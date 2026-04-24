@@ -1,0 +1,41 @@
+.join-family-page {
+  min-height: 100%;
+}
+
+.join-family-shell {
+  max-width: 42rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-5);
+}
+
+.join-family-card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.join-family-card p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.join-family-card__icon {
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary-soft) 68%, transparent);
+  color: var(--color-primary);
+}
+
+.join-family-card__actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

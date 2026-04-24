@@ -13,7 +13,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 
 import REMEDIES_DATA from "../data/remedies.js";
 import api from "../lib/api";
@@ -473,7 +473,7 @@ export default function Remedies() {
   return (
     <div className="remedies-page">
       <section className="remedies-hero">
-        <motion.div 
+        <Motion.div 
           className="hero-copy"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -489,9 +489,9 @@ export default function Remedies() {
             Find trusted Ayurvedic remedies tailored to your family's health history, 
             or let AI craft a custom solution for your exact symptoms.
           </p>
-        </motion.div>
+        </Motion.div>
 
-        <motion.div 
+        <Motion.div 
           className="hero-panel"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -528,10 +528,10 @@ export default function Remedies() {
             {aiBusy ? <Loader2 className="spin" size={16} /> : <Sparkles size={16} />}
             Generate New Remedy
           </button>
-        </motion.div>
+        </Motion.div>
       </section>
 
-      <motion.section 
+      <Motion.section 
         className="context-strip"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -554,7 +554,7 @@ export default function Remedies() {
             <span className="safe-pill"><Sparkles size={14} style={{ display: "inline-block", verticalAlign: "text-bottom", marginRight: "4px" }} /> No active risk flags</span>
           )}
         </div>
-      </motion.section>
+      </Motion.section>
 
       <section className="tag-strip">
         {tagOptions.map((tag) => (

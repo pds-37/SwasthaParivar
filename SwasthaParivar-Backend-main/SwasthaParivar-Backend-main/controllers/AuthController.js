@@ -1,5 +1,6 @@
 import authService from "../services/auth/AuthService.js";
 import appConfig from "../config/AppConfig.js";
+import { logConsentIfMissing } from "../utils/consent.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import {
   clearAuthCookies,
@@ -11,6 +12,7 @@ import {
 
 const GOOGLE_STATE_COOKIE = "sp_google_state";
 const GOOGLE_RETURN_COOKIE = "sp_google_return_to";
+const GOOGLE_RETURN_PATH_COOKIE = "sp_google_return_path";
 const GOOGLE_COOKIE_PATH = "/api/auth";
 const GOOGLE_COOKIE_MAX_AGE_MS = 10 * 60 * 1000;
 
@@ -49,6 +51,21 @@ const resolveClientOrigin = (req, candidate = "") => {
   return appConfig.defaultClientUrl;
 };
 
+const normalizeClientPath = (value = "") => {
+  const text = String(value || "").trim();
+
+  if (!text.startsWith("/") || text.startsWith("//")) {
+    return "";
+  }
+
+  try {
+    const url = new URL(text, "https://swasthaparivar.local");
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "";
+  }
+};
+
 const buildClientUrl = (origin, pathname, params = {}) => {
   const url = new URL(pathname, origin);
   Object.entries(params).forEach(([key, value]) => {
@@ -67,6 +84,7 @@ const normalizeAuthErrorCode = (error, fallback = "google_auth_failed") => {
 const clearGoogleCookies = (res) => {
   res.clearCookie(GOOGLE_STATE_COOKIE, getGoogleCookieOptions(0));
   res.clearCookie(GOOGLE_RETURN_COOKIE, getGoogleCookieOptions(0));
+  res.clearCookie(GOOGLE_RETURN_PATH_COOKIE, getGoogleCookieOptions(0));
 };
 
 class AuthController {
@@ -80,6 +98,10 @@ class AuthController {
       });
     }
 
+    await logConsentIfMissing({
+      userId: result.data?.user?.id,
+      req,
+    });
     setAuthCookies(res, result.data);
     return sendSuccess(res, {
       status: result.status,
@@ -99,6 +121,10 @@ class AuthController {
       });
     }
 
+    await logConsentIfMissing({
+      userId: result.data?.user?.id,
+      req,
+    });
     setAuthCookies(res, result.data);
     return sendSuccess(res, {
       status: result.status,
@@ -143,6 +169,10 @@ class AuthController {
   }
 
   async session(req, res) {
+    await logConsentIfMissing({
+      userId: req.userId,
+      req,
+    });
     return sendSuccess(res, {
       status: 200,
       data: {
@@ -153,10 +183,14 @@ class AuthController {
 
   async googleStart(req, res) {
     const clientOrigin = resolveClientOrigin(req, req.query.returnTo);
+    const returnPath = normalizeClientPath(req.query.returnPath) || "/dashboard";
 
     if (!authService.isGoogleAuthConfigured()) {
       return res.redirect(
-        buildClientUrl(clientOrigin, "/auth", { authError: "google_not_configured" })
+        buildClientUrl(clientOrigin, "/auth", {
+          authError: "google_not_configured",
+          from: returnPath !== "/dashboard" ? returnPath : "",
+        })
       );
     }
 
@@ -167,16 +201,27 @@ class AuthController {
       clientOrigin,
       getGoogleCookieOptions(GOOGLE_COOKIE_MAX_AGE_MS)
     );
+    res.cookie(
+      GOOGLE_RETURN_PATH_COOKIE,
+      returnPath,
+      getGoogleCookieOptions(GOOGLE_COOKIE_MAX_AGE_MS)
+    );
 
     return res.redirect(authService.buildGoogleAuthUrl({ state }));
   }
 
   async googleCallback(req, res) {
     const clientOrigin = resolveClientOrigin(req, req.cookies?.[GOOGLE_RETURN_COOKIE]);
+    const returnPath = normalizeClientPath(req.cookies?.[GOOGLE_RETURN_PATH_COOKIE]) || "/dashboard";
     const fail = (authError) => {
       clearGoogleCookies(res);
       clearAuthCookies(res);
-      return res.redirect(buildClientUrl(clientOrigin, "/auth", { authError }));
+      return res.redirect(
+        buildClientUrl(clientOrigin, "/auth", {
+          authError,
+          from: returnPath !== "/dashboard" ? returnPath : "",
+        })
+      );
     };
 
     if (req.query.error) {
@@ -195,8 +240,12 @@ class AuthController {
         return fail(normalizeAuthErrorCode(result.error));
       }
 
+      await logConsentIfMissing({
+        userId: result.data?.user?.id,
+        req,
+      });
       setAuthCookies(res, result.data);
-      return res.redirect(buildClientUrl(clientOrigin, "/dashboard"));
+      return res.redirect(buildClientUrl(clientOrigin, returnPath));
     } catch (error) {
       return fail(normalizeAuthErrorCode(error));
     }

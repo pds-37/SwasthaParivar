@@ -19,6 +19,7 @@ import {
   Users,
 } from "lucide-react";
 
+import ProfileAvatar from "./common/ProfileAvatar";
 import { subscribePush } from "../hooks/usePush";
 import { howToUseNote, howToUseSteps } from "../lib/howToUse";
 import { useFamilyStore } from "../store/family-store";
@@ -269,7 +270,7 @@ const Navigation = ({ variant = "app" }) => {
           </Button>
 
           <div className="app-sidebar__profile card">
-            <div className="avatar avatar--md">{user?.fullName?.charAt(0) || "U"}</div>
+            <ProfileAvatar name={user?.fullName} src={user?.avatarUrl} size="md" />
             <div className="app-sidebar__profile-copy">
               <strong>{user?.fullName || "Family account"}</strong>
               <span>{user?.email || "Signed in"}</span>
@@ -360,7 +361,7 @@ const Navigation = ({ variant = "app" }) => {
               Switch to {mode === "dark" ? "light" : "dark"} mode
             </Button>
             <div className="app-drawer__profile">
-              <div className="avatar avatar--md">{user?.fullName?.charAt(0) || "U"}</div>
+              <ProfileAvatar name={user?.fullName} src={user?.avatarUrl} size="md" />
               <div>
                 <strong>{user?.fullName || "Family account"}</strong>
                 <span>{user?.email || "Signed in"}</span>

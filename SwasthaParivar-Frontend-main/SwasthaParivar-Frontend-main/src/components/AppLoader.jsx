@@ -16,11 +16,9 @@ const quotes = [
 
 const AppLoader = () => {
   const [showSlowMessage, setShowSlowMessage] = useState(false);
-  const [quote, setQuote] = useState("");
+  const [quote] = useState(() => quotes[Math.floor(Math.random() * quotes.length)]);
 
   useEffect(() => {
-    setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
-
     // If loading takes more than 3 seconds, assume the backend is waking up from sleep
     const timer = setTimeout(() => {
       setShowSlowMessage(true);

@@ -14,7 +14,7 @@ import {
 import Navigation from "../components/Navigation";
 import { howToUseNote, howToUseSteps } from "../lib/howToUse";
 import { Button } from "../components/ui";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 import "./Landing.css";
 
 const features = [
@@ -116,7 +116,7 @@ const Landing = () => {
         </section>
 
         <section className="landing-features" id="features">
-          <div className="landing-section-head">
+          <div className="landing-section-head landing-features__head">
             <span className="eyebrow">Why it works</span>
             <h2 className="text-h2">Built for real family care, not just symptom chat.</h2>
             <p className="text-body-md">
@@ -125,7 +125,7 @@ const Landing = () => {
             </p>
           </div>
 
-          <motion.div 
+          <Motion.div 
             className="landing-feature-grid"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -133,7 +133,7 @@ const Landing = () => {
             transition={{ duration: 0.6, staggerChildren: 0.2 }}
           >
             {features.map((feature, index) => (
-              <motion.article 
+              <Motion.article 
                 key={feature.title} 
                 className="landing-feature-card card card-hover"
                 initial={{ opacity: 0, y: 20 }}
@@ -146,13 +146,13 @@ const Landing = () => {
                 </div>
                 <h3 className="text-h4">{feature.title}</h3>
                 <p className="text-body-sm">{feature.text}</p>
-              </motion.article>
+              </Motion.article>
             ))}
-          </motion.div>
+          </Motion.div>
         </section>
 
         <section className="landing-howto" id="how-to-use">
-          <div className="landing-section-head">
+          <div className="landing-section-head landing-howto__head">
             <span className="eyebrow">How to use</span>
             <h2 className="text-h2">A simple care flow your family can follow every day.</h2>
             <p className="text-body-md">
@@ -161,7 +161,7 @@ const Landing = () => {
             </p>
           </div>
 
-          <motion.div 
+          <Motion.div 
             className="landing-howto__grid"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -169,7 +169,7 @@ const Landing = () => {
             transition={{ duration: 0.8 }}
           >
             {howToUseSteps.map((step, index) => (
-              <motion.article 
+              <Motion.article 
                 key={step.title} 
                 className="landing-howto__card card card-hover"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -180,9 +180,9 @@ const Landing = () => {
                 <span className="landing-howto__step">Step {index + 1}</span>
                 <h3 className="text-h4">{step.title}</h3>
                 <p className="text-body-sm">{step.text}</p>
-              </motion.article>
+              </Motion.article>
             ))}
-          </motion.div>
+          </Motion.div>
 
           <div className="landing-howto__note">
             <CircleHelp size={18} />

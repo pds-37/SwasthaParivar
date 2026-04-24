@@ -137,40 +137,13 @@ export const uploadReport = async (req, res) => {
       });
     }
 
-    const member = memberResult.member;
-
-    let review;
-    try {
-      review = await reviewHealthAttachment({
-        base64Data: req.file.buffer.toString("base64"),
-        mimeType: detectedMime,
-        fileName: req.file.originalname,
-        memberLabel: member.name,
-      });
-    } catch {
-      review = {
-        isHealthReport: true,
-        summary: "AI summary is temporarily unavailable. The report was still saved.",
-        reason: "AI review unavailable",
-      };
-    }
-
-    if (!review.isHealthReport) {
-      return sendError(res, {
-        status: 422,
-        code: "INVALID_HEALTH_REPORT",
-        message: "Please upload a genuine health report",
-        details: review.reason,
-      });
-    }
-
     const report = await Report.create({
       ownerId: req.userId,
       householdId: householdContext?.household?._id || null,
       memberId: req.body.memberId,
       reportType: req.body.reportType,
       notes: req.body.notes || "",
-      aiSummary: review.summary || req.body.aiSummary || "",
+      aiSummary: req.body.aiSummary || "",
       originalName: req.file.originalname,
       storedFileName: buildStoredFileName(detectedMime),
       mimeType: detectedMime,
@@ -187,6 +160,59 @@ export const uploadReport = async (req, res) => {
       status: 500,
       code: "REPORT_UPLOAD_FAILED",
       message: "Could not upload report",
+      details: error.message,
+    });
+  }
+};
+
+export const analyzeReport = async (req, res) => {
+  try {
+    const householdContext = await householdService.getOptionalUserHouseholdContext(
+      req.userId,
+      "analyzeReport"
+    );
+    const report = await Report.findOne({
+      _id: req.params.id,
+      ...buildReportScope(householdContext?.household?._id || null, req.userId),
+    }).select("+fileBuffer");
+
+    if (!report) {
+      return sendError(res, {
+        status: 404,
+        code: "REPORT_NOT_FOUND",
+        message: "Report not found",
+      });
+    }
+
+    const memberResult = await householdService.findAccessibleMember(req.userId, report.memberId);
+    const memberLabel = memberResult?.member?.name || "Family member";
+    const review = await reviewHealthAttachment({
+      base64Data: report.fileBuffer.toString("base64"),
+      mimeType: report.mimeType,
+      fileName: report.originalName,
+      memberLabel,
+    });
+
+    if (!review.isHealthReport) {
+      return sendError(res, {
+        status: 422,
+        code: "INVALID_HEALTH_REPORT",
+        message: "Please upload a genuine health report",
+        details: review.reason,
+      });
+    }
+
+    report.aiSummary = review.summary || report.aiSummary || "";
+    await report.save();
+
+    return sendSuccess(res, {
+      data: serializeReport(req, report),
+    });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "REPORT_ANALYSIS_FAILED",
+      message: "Could not analyze report",
       details: error.message,
     });
   }
