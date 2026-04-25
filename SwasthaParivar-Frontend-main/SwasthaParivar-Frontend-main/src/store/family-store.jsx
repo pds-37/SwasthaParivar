@@ -25,6 +25,13 @@ const defaultFamilyStore = {
   setActiveView: () => {},
 };
 
+const getInitialActiveView = () => {
+  if (typeof window === "undefined") return "family";
+
+  const savedView = window.localStorage.getItem("sp_active_view");
+  return savedView === "self" ? "self" : "family";
+};
+
 const familyReducer = (state, action) => {
   switch (action.type) {
     case "SET_MEMBERS":
@@ -47,7 +54,14 @@ const familyReducer = (state, action) => {
         selfMember: action.payload.selfMember,
         memberships: action.payload.memberships,
         pendingInvites: action.payload.pendingInvites,
-        selectedMember: state.selectedMember,
+        selectedMember:
+          state.activeView === "self"
+            ? action.payload.selfMember || null
+            : state.selectedMember,
+        activeView:
+          state.activeView === "self" && !action.payload.selfMember
+            ? "family"
+            : state.activeView,
       };
     case "SET_SELECTED_MEMBER":
       return {
@@ -57,8 +71,11 @@ const familyReducer = (state, action) => {
     case "SET_ACTIVE_VIEW":
       return {
         ...state,
-        activeView: "family",
-        selectedMember: state.selectedMember,
+        activeView: action.payload.view === "self" ? "self" : "family",
+        selectedMember:
+          action.payload.view === "self"
+            ? action.payload.selfMember || state.selfMember || null
+            : action.payload.selectedMember ?? null,
       };
     default:
       return state;
@@ -85,7 +102,7 @@ export const FamilyStoreProvider = ({ children }) => {
     memberships: [],
     pendingInvites: [],
     selectedMember: null,
-    activeView: "family",
+    activeView: getInitialActiveView(),
   });
 
   useEffect(() => {
@@ -106,7 +123,7 @@ export const FamilyStoreProvider = ({ children }) => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    localStorage.setItem("sp_active_view", "family");
+    localStorage.setItem("sp_active_view", state.activeView);
   }, [state.activeView]);
 
   const value = useMemo(
@@ -143,10 +160,14 @@ export const FamilyStoreProvider = ({ children }) => {
         return accepted;
       },
       setSelectedMember: (member) => dispatch({ type: "SET_SELECTED_MEMBER", payload: member }),
-      setActiveView: () =>
+      setActiveView: (view, payload = {}) =>
         dispatch({
           type: "SET_ACTIVE_VIEW",
-          payload: { view: "family", selfMember: null },
+          payload: {
+            view,
+            selfMember: payload.selfMember || state.selfMember,
+            selectedMember: payload.selectedMember ?? null,
+          },
         }),
     }),
     [

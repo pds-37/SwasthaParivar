@@ -57,8 +57,11 @@ const Navigation = ({ variant = "app" }) => {
   const {
     members,
     household,
+    selfMember,
+    activeView,
     selectedMember,
     setSelectedMember,
+    setActiveView,
   } = useFamilyStore();
   const { sidebarCollapsed, setSidebarCollapsed } = useUIStore();
   const location = useLocation();
@@ -85,8 +88,27 @@ const Navigation = ({ variant = "app" }) => {
   );
 
   const allAppLinks = [...primaryLinks, ...secondaryLinks];
-  const memberScope = selectedMember?._id || "family";
-  const selectedScopeName = selectedMember?.name || household?.name || "All family";
+  const memberScope = activeView === "self" ? "self" : selectedMember?._id || "family";
+  const selectedScopeName =
+    activeView === "self"
+      ? selfMember?.name || "My profile"
+      : selectedMember?.name || household?.name || "All family";
+
+  const handleScopeChange = (value) => {
+    if (value === "self") {
+      setSelectedMember(selfMember || null);
+      setActiveView("self", { selfMember });
+      return;
+    }
+
+    const nextSelectedMember =
+      value === "family"
+        ? null
+        : members.find((member) => member._id === value) || null;
+
+    setSelectedMember(nextSelectedMember);
+    setActiveView("family", { selectedMember: nextSelectedMember });
+  };
 
   if (isPublic) {
     return (
@@ -176,22 +198,17 @@ const Navigation = ({ variant = "app" }) => {
           <span className="app-sidebar__scope-label">Care scope</span>
           <select
             value={memberScope}
-            onChange={(event) =>
-              setSelectedMember(
-                event.target.value === "family"
-                  ? null
-                  : members.find((member) => member._id === event.target.value) || null
-              )
-            }
+            onChange={(event) => handleScopeChange(event.target.value)}
           >
             <option value="family">All family</option>
+            {selfMember ? <option value="self">My profile</option> : null}
             {members.map((member) => (
               <option key={member._id} value={member._id}>
                 {member.name}
               </option>
             ))}
           </select>
-          <small>Household mode is active.</small>
+          <small>{activeView === "self" ? "Self view is active." : "Household mode is active."}</small>
         </div>
 
         <nav className="app-sidebar__nav" aria-label="Primary application navigation">
@@ -304,15 +321,10 @@ const Navigation = ({ variant = "app" }) => {
             <span>Care scope</span>
             <select
               value={memberScope}
-              onChange={(event) =>
-                setSelectedMember(
-                  event.target.value === "family"
-                    ? null
-                    : members.find((member) => member._id === event.target.value) || null
-                )
-              }
+              onChange={(event) => handleScopeChange(event.target.value)}
             >
               <option value="family">All family</option>
+              {selfMember ? <option value="self">My profile</option> : null}
               {members.map((member) => (
                 <option key={member._id} value={member._id}>
                   {member.name}

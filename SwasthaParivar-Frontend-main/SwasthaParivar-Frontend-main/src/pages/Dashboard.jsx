@@ -18,6 +18,7 @@ import { motion as Motion } from "framer-motion";
 import AddMemberModal from "../components/AddMemberModal";
 import { useAuth } from "../components/auth-context";
 import ProfileAvatar from "../components/common/ProfileAvatar";
+import SelfDashboard from "../components/dashboard/SelfDashboard";
 import InviteLink from "../components/household/InviteLink";
 import { Button, EmptyState, Modal, PullToRefresh, Skeleton } from "../components/ui";
 import { useReminders } from "../hooks/useReminders";
@@ -694,6 +695,9 @@ const FamilyDashboard = () => {
   );
 };
 
-const Dashboard = () => <FamilyDashboard />;
+const Dashboard = () => {
+  const { activeView } = useFamilyStore();
+  return activeView === "self" ? <SelfDashboard /> : <FamilyDashboard />;
+};
 
 export default Dashboard;

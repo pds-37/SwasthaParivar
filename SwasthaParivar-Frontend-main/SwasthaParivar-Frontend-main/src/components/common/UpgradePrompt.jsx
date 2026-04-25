@@ -29,8 +29,8 @@ export default function UpgradePrompt({ open, onClose, featureName }) {
       onClose={onClose}
       size="sm"
       className="upgrade-prompt"
-      title="Upgrade to Pro"
-      description={`${readableFeature} is available on the Pro plan.`}
+      title="Pro is coming soon"
+      description={`${readableFeature} will be part of the upcoming Pro plan.`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -42,7 +42,7 @@ export default function UpgradePrompt({ open, onClose, featureName }) {
               window.open("/pricing", "_blank", "noopener,noreferrer");
             }}
           >
-            Upgrade now
+            View pricing
           </Button>
         </>
       }
@@ -51,8 +51,8 @@ export default function UpgradePrompt({ open, onClose, featureName }) {
         <span className="upgrade-prompt__icon">
           <Sparkles size={20} />
         </span>
-        <strong>Premium family care, without limits.</strong>
-        <p>Pro is built for households that want AI help, richer records, and deeper follow-up tools.</p>
+        <strong>Premium family care is on the way.</strong>
+        <p>Pro will add richer records, deeper AI support, and stronger household follow-up tools.</p>
       </div>
 
       <div className="upgrade-prompt__features">
@@ -65,10 +65,9 @@ export default function UpgradePrompt({ open, onClose, featureName }) {
       </div>
 
       <div className="upgrade-prompt__price">
-        <small>Starting at</small>
-        <strong>Rs 199 / month</strong>
+        <small>Status</small>
+        <strong>Coming soon</strong>
       </div>
     </Modal>
   );
 }
-

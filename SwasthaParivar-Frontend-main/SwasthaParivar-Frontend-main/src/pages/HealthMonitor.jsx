@@ -25,44 +25,43 @@ const getDefaultValues = () =>
 const HealthMonitor = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { selfMember, activeView } = useFamilyStore();
-  const [members, setMembers] = useState([]);
+  const { members, selfMember, selectedMember, activeView, loading: familyLoading } = useFamilyStore();
   const [selectedId, setSelectedId] = useState(id || "");
   const [member, setMember] = useState(null);
   const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [memberLoading, setMemberLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formDate, setFormDate] = useState(new Date().toISOString().slice(0, 16));
   const [formValues, setFormValues] = useState(getDefaultValues());
 
-  useEffect(() => {
-    if (activeView === "self" && selfMember?._id) {
-      setSelectedId(selfMember._id);
-    }
-  }, [activeView, selfMember?._id]);
+  const availableMembers = useMemo(() => {
+    const combined = [];
+    const seen = new Set();
+
+    [selfMember, ...(Array.isArray(members) ? members : [])].forEach((entry) => {
+      if (!entry?._id || seen.has(entry._id)) return;
+      seen.add(entry._id);
+      combined.push(entry);
+    });
+
+    return combined;
+  }, [members, selfMember]);
 
   useEffect(() => {
-    let cancelled = false;
+    const preferredId =
+      id ||
+      (activeView === "self" ? selfMember?._id : selectedMember?._id) ||
+      availableMembers[0]?._id ||
+      "";
 
-    const loadMembers = async () => {
-      try {
-        const response = await api.get("/members");
-        const memberList = Array.isArray(response) ? response : response?.members || [];
-        if (cancelled) return;
-        setMembers(memberList);
-        if (!selectedId && memberList[0]?._id) {
-          setSelectedId(memberList[0]._id);
-        }
-      } catch {
-        if (!cancelled) setMembers([]);
+    setSelectedId((previous) => {
+      if (previous && availableMembers.some((entry) => entry._id === previous)) {
+        return previous;
       }
-    };
 
-    loadMembers();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedId]);
+      return preferredId;
+    });
+  }, [activeView, availableMembers, id, selectedMember?._id, selfMember?._id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,11 +70,11 @@ const HealthMonitor = () => {
       if (!selectedId) {
         setMember(null);
         setRecords([]);
-        setLoading(false);
+        setMemberLoading(false);
         return;
       }
 
-      setLoading(true);
+      setMemberLoading(true);
       try {
         const [memberResponse, recordsResponse] = await Promise.all([
           api.get(`/members/${selectedId}`),
@@ -91,7 +90,7 @@ const HealthMonitor = () => {
           setRecords([]);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setMemberLoading(false);
       }
     };
 
@@ -102,16 +101,12 @@ const HealthMonitor = () => {
   }, [selectedId]);
 
   useEffect(() => {
-    if (id && id !== selectedId) {
-      setSelectedId(id);
-    }
-  }, [id, selectedId]);
-
-  useEffect(() => {
     if (selectedId && id !== selectedId) {
       navigate(`/health/${selectedId}`, { replace: true });
     }
   }, [id, navigate, selectedId]);
+
+  const loading = familyLoading || memberLoading;
 
   const latestValues = useMemo(
     () =>
@@ -162,9 +157,6 @@ const HealthMonitor = () => {
       const updatedMember = response?.member || member;
       setMember(updatedMember);
       setRecords(Array.isArray(response?.records) ? response.records : records);
-      setMembers((previous) =>
-        previous.map((entry) => (entry._id === updatedMember?._id ? updatedMember : entry))
-      );
       setShowModal(false);
       setFormValues(getDefaultValues());
       notify.success("Health snapshot saved");
@@ -208,13 +200,14 @@ const HealthMonitor = () => {
               label={activeView === "self" ? "Profile" : "Member"}
               disabled={activeView === "self"}
             >
-              {(activeView === "self" && selfMember ? [selfMember] : (Array.isArray(members) ? members : [])).map((entry) => (
+              {availableMembers.length === 0 ? <option value="">No profiles yet</option> : null}
+              {availableMembers.map((entry) => (
                 <option key={entry?._id} value={entry?._id}>
                   {entry?.name}
                 </option>
               ))}
             </Select>
-            <Button leftIcon={<Plus size={18} />} onClick={() => setShowModal(true)}>
+            <Button leftIcon={<Plus size={18} />} onClick={() => setShowModal(true)} disabled={!member}>
               Add snapshot
             </Button>
           </div>
@@ -223,8 +216,12 @@ const HealthMonitor = () => {
         {!member ? (
           <EmptyState
             icon={<Waves size={18} />}
-            heading="No member selected"
-            description="Choose a family member to view and update health records."
+            heading={availableMembers.length === 0 ? "No health profiles yet" : "No member selected"}
+            description={
+              availableMembers.length === 0
+                ? "Add or finish setting up a family profile before recording health snapshots."
+                : "Choose a family member to view and update health records."
+            }
           />
         ) : (
           <>
@@ -260,7 +257,7 @@ const HealthMonitor = () => {
                 <div className="section-header">
                   <div>
                     <h2 className="text-h4">Recent snapshots</h2>
-                    <p className="text-body-sm muted-copy">Each saved date bundles that member’s health measurements.</p>
+                    <p className="text-body-sm muted-copy">Each saved date bundles that member&apos;s health measurements.</p>
                   </div>
                 </div>
 
