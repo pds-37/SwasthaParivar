@@ -10,7 +10,32 @@ const sanitizePath = (value = "") => {
 
 const sanitizeBaseUrl = (value) => {
   if (!value) return "/api";
-  return value.endsWith("/") ? value.slice(0, -1) : value;
+
+  const normalizedValue = value.endsWith("/") ? value.slice(0, -1) : value;
+
+  // Accept either a full API base (https://host/api) or a backend origin
+  // (https://host) to reduce deploy-time env mistakes.
+  if (/^https?:\/\//i.test(normalizedValue)) {
+    try {
+      const url = new URL(normalizedValue);
+      const pathname = url.pathname.replace(/\/+$/, "");
+
+      if (!pathname || pathname === "/") {
+        url.pathname = "/api";
+        return url.toString().replace(/\/$/, "");
+      }
+
+      if (!pathname.endsWith("/api")) {
+        url.pathname = `${pathname}/api`;
+      }
+
+      return url.toString().replace(/\/$/, "");
+    } catch {
+      return normalizedValue;
+    }
+  }
+
+  return normalizedValue;
 };
 
 export const API_BASE_URL = sanitizeBaseUrl(import.meta.env.VITE_API_URL || "/api");
