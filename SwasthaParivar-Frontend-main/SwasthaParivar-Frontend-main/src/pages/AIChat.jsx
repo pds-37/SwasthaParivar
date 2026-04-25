@@ -487,13 +487,13 @@ const AIChat = () => {
     try {
       const derivedTitle = getConversationTitle(nextMessages, `New ${contextLabel.toLowerCase()} chat`);
       const res = await saveMemory({
-        threadId: activeThreadId,
+        ...(activeThreadId ? { threadId: activeThreadId } : {}),
         member: memberValue,
         title: derivedTitle,
         messages: nextMessages,
       });
-      if (!activeThreadId && res?.data?.threadId) {
-        setActiveThreadId(res.data.threadId);
+      if (!activeThreadId && res?.threadId) {
+        setActiveThreadId(res.threadId);
       }
     } catch {
       // API call failed
