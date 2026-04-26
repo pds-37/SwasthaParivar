@@ -11,12 +11,12 @@ import { useFamilyStore } from "../store/family-store";
 import "./HealthMonitor.css";
 
 const metrics = [
-  { key: "bloodPressure", label: "Blood pressure", unit: "mmHg", icon: Activity },
-  { key: "heartRate", label: "Heart rate", unit: "bpm", icon: Heart },
-  { key: "bloodSugar", label: "Blood sugar", unit: "mg/dL", icon: Syringe },
-  { key: "weight", label: "Weight", unit: "kg", icon: Scale },
-  { key: "sleep", label: "Sleep", unit: "hours", icon: Moon },
-  { key: "steps", label: "Steps", unit: "steps", icon: Footprints },
+  { key: "bloodPressure", label: "Blood pressure", unit: "mmHg", normalRange: "90/60 to 120/80", icon: Activity },
+  { key: "heartRate", label: "Heart rate", unit: "bpm", normalRange: "60 to 100 bpm", icon: Heart },
+  { key: "bloodSugar", label: "Blood sugar", unit: "mg/dL", normalRange: "70 to 140 mg/dL", icon: Syringe },
+  { key: "weight", label: "Weight", unit: "kg", normalRange: "Personal BMI target", icon: Scale },
+  { key: "sleep", label: "Sleep", unit: "hours", normalRange: "7 to 9 hours", icon: Moon },
+  { key: "steps", label: "Steps", unit: "steps", normalRange: "6,000 to 10,000 steps", icon: Footprints },
 ];
 
 const getDefaultValues = () =>
@@ -208,7 +208,7 @@ const HealthMonitor = () => {
               ))}
             </Select>
             <Button leftIcon={<Plus size={18} />} onClick={() => setShowModal(true)} disabled={!member}>
-              Add snapshot
+              Log vitals
             </Button>
           </div>
         </section>
@@ -234,6 +234,7 @@ const HealthMonitor = () => {
                   </div>
                   <strong>{metric.latest?.value ?? "--"}</strong>
                   <small>{metric.unit}</small>
+                  <span className="health-metric__range">Normal: {metric.normalRange}</span>
                   <p>{metric.latest ? new Date(metric.latest.date).toLocaleString("en-IN") : "No entries yet"}</p>
                 </article>
               ))}
@@ -252,7 +253,7 @@ const HealthMonitor = () => {
               <RecordTimeline records={records} />
             </section>
 
-            <div className="health-content">
+            <div className={`health-content ${records.length === 0 ? "health-content--empty" : ""}`}>
               <section className="health-panel card">
                 <div className="section-header">
                   <div>
@@ -265,6 +266,7 @@ const HealthMonitor = () => {
                   <EmptyState
                     type="records"
                     onAction={() => setShowModal(true)}
+                    ctaLabel="Log vitals"
                   />
                 ) : (
                   <div className="health-snapshot-list">
@@ -315,7 +317,7 @@ const HealthMonitor = () => {
       <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
-        title="Add health snapshot"
+        title="Log vitals"
         description="Record multiple vital values for the same date and member."
         size="lg"
         footer={
@@ -324,7 +326,7 @@ const HealthMonitor = () => {
               Cancel
             </Button>
             <Button variant="primary" onClick={handleSave}>
-              Save snapshot
+              Save vitals
             </Button>
           </>
         }

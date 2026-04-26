@@ -1,15 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Line,
   LineChart,
   ReferenceLine,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { Box, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Box, ToggleButton, ToggleButtonGroup, Tooltip as MuiTooltip, Typography } from "@mui/material";
 
 const parseBloodPressure = (value) => {
   const match = String(value || "")
@@ -82,23 +82,41 @@ const normalizeValue = (value) => (Number.isFinite(value) ? value : null);
 
 export default function RecordTimeline({ records = [] }) {
   const [metric, setMetric] = useState("bp_systolic");
-  const config = METRICS[metric];
 
-  const data = useMemo(
-    () =>
-      [...records]
-        .sort((left, right) => new Date(left.date) - new Date(right.date))
-        .map((record) => ({
-          date: new Date(record.date).toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "short",
-          }),
-          value: normalizeValue(config.accessor(record)),
-        }))
-        .filter((record) => record.value !== null)
-        .slice(-30),
-    [config, records]
-  );
+  const metricData = useMemo(() => {
+    const sortedRecords = [...records]
+      .sort((left, right) => new Date(left.date) - new Date(right.date))
+      .map((record) => ({
+        ...record,
+        chartDate: new Date(record.date).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+        }),
+      }));
+
+    return Object.fromEntries(
+      Object.entries(METRICS).map(([key, item]) => [
+        key,
+        sortedRecords
+          .map((record) => ({
+            date: record.chartDate,
+            value: normalizeValue(item.accessor(record)),
+          }))
+          .filter((record) => record.value !== null)
+          .slice(-30),
+      ])
+    );
+  }, [records]);
+
+  const firstMetricWithData = Object.keys(METRICS).find((key) => metricData[key]?.length > 0);
+
+  useEffect(() => {
+    if (metricData[metric]?.length || !firstMetricWithData) return;
+    setMetric(firstMetricWithData);
+  }, [firstMetricWithData, metric, metricData]);
+
+  const config = METRICS[metric];
+  const data = metricData[metric] || [];
 
   return (
     <Box>
@@ -109,11 +127,24 @@ export default function RecordTimeline({ records = [] }) {
         onChange={(_, value) => value && setMetric(value)}
         sx={{ flexWrap: "wrap", gap: 0.75, mb: 2 }}
       >
-        {Object.entries(METRICS).map(([key, item]) => (
-          <ToggleButton key={key} value={key} sx={{ fontSize: 11 }}>
-            {item.label}
-          </ToggleButton>
-        ))}
+        {Object.entries(METRICS).map(([key, item]) => {
+          const isEmpty = !metricData[key]?.length;
+
+          return (
+            <MuiTooltip
+              key={key}
+              title={isEmpty ? `No ${item.label} records yet` : ""}
+              disableHoverListener={!isEmpty}
+              arrow
+            >
+              <span>
+                <ToggleButton value={key} disabled={isEmpty} sx={{ fontSize: 11 }}>
+                  {item.label}
+                </ToggleButton>
+              </span>
+            </MuiTooltip>
+          );
+        })}
       </ToggleButtonGroup>
 
       {data.length === 0 ? (
@@ -126,7 +157,7 @@ export default function RecordTimeline({ records = [] }) {
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
             <XAxis dataKey="date" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} unit={` ${config.unit}`} />
-            <Tooltip formatter={(value) => [`${value} ${config.unit}`, config.label]} />
+            <RechartsTooltip formatter={(value) => [`${value} ${config.unit}`, config.label]} />
             {config.high ? (
               <ReferenceLine
                 y={config.high}

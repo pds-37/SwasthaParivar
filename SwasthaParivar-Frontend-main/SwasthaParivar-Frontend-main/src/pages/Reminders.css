@@ -69,6 +69,24 @@
   padding: var(--space-5);
 }
 
+.reminders-calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.reminders-calendar__header h2 {
+  margin: 0;
+}
+
+.reminders-calendar__header span {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
 .reminders-mobile-week {
   display: none;
 }
@@ -99,6 +117,20 @@
   color: var(--color-text-secondary);
 }
 
+.reminders-month-day__add {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-grid;
+  place-items: center;
+  justify-self: start;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
 .reminders-month-day.is-active,
 .reminders-day-pill.is-active {
   border-color: var(--color-primary-soft-strong);
@@ -117,6 +149,31 @@
 .reminders-day-pill span,
 .reminders-day-pill strong {
   display: block;
+}
+
+.reminders-empty,
+.reminders-suggestions {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.reminders-suggestions {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.reminders-suggestions > span {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.reminders-suggestions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 
 @media (max-width: 64rem) {

@@ -6,7 +6,7 @@ import ReminderCard from "../components/ReminderCard";
 import { Button, EmptyState, Modal, PullToRefresh, Skeleton } from "../components/ui";
 import { useReminders } from "../hooks/useReminders";
 import notify from "../lib/notify";
-import { readReminderDraft } from "../lib/reminderDraft";
+import { readReminderDraft, saveReminderDraft } from "../lib/reminderDraft";
 import { useFamilyStore } from "../store/family-store";
 import "./Reminders.css";
 
@@ -39,6 +39,37 @@ const buildMonthGrid = () => {
 
 const isSameDay = (first, second) =>
   new Date(first).toDateString() === new Date(second).toDateString();
+
+const reminderSuggestions = [
+  {
+    title: "Morning medicine",
+    description: "Daily medicine reminder after breakfast.",
+    category: "medicine",
+    frequency: "daily",
+    hour: 9,
+  },
+  {
+    title: "Doctor follow-up",
+    description: "One-time follow-up visit reminder.",
+    category: "followup",
+    frequency: "once",
+    hour: 11,
+  },
+  {
+    title: "Vaccination check",
+    description: "Monthly vaccination and preventive care check.",
+    category: "vaccination",
+    frequency: "monthly",
+    hour: 10,
+  },
+];
+
+const toSuggestedDateTime = (hour) => {
+  const next = new Date();
+  next.setDate(next.getDate() + 1);
+  next.setHours(hour, 0, 0, 0);
+  return next.toISOString().slice(0, 16);
+};
 
 const Reminders = () => {
   const { members, selfMember, activeView, loading: membersLoading } = useFamilyStore();
@@ -81,6 +112,14 @@ const Reminders = () => {
 
   const mobileWeek = useMemo(() => buildMobileWeek(), []);
   const monthGrid = useMemo(() => buildMonthGrid(), []);
+  const monthLabel = useMemo(
+    () => new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
+    []
+  );
+  const visibleReminders = useMemo(() => {
+    const source = viewMode === "calendar" ? filteredByDate : reminders;
+    return [...source].sort((first, second) => new Date(first.nextRunAt) - new Date(second.nextRunAt));
+  }, [filteredByDate, reminders, viewMode]);
 
   const handleDelete = async (id) => {
     try {
@@ -90,6 +129,49 @@ const Reminders = () => {
       notify.error("Could not delete reminder");
     }
   };
+
+  const startSuggestedReminder = (suggestion) => {
+    const selectedMembers =
+      activeView === "self" && selfMemberId
+        ? [selfMemberId]
+        : members.length === 1
+          ? [members[0]._id]
+          : [];
+
+    saveReminderDraft({
+      title: suggestion.title,
+      description: suggestion.description,
+      category: suggestion.category,
+      frequency: suggestion.frequency,
+      nextRunAt: toSuggestedDateTime(suggestion.hour),
+      selectedMembers,
+    });
+    setShowCreate(true);
+  };
+
+  const renderReminderEmpty = () => (
+    <div className="reminders-empty">
+      <EmptyState
+        type="reminders"
+        onAction={() => setShowCreate(true)}
+      />
+      <div className="reminders-suggestions" aria-label="Suggested reminders">
+        <span>Suggested reminders</span>
+        <div>
+          {reminderSuggestions.map((suggestion) => (
+            <Button
+              key={suggestion.title}
+              variant="secondary"
+              size="sm"
+              onClick={() => startSuggestedReminder(suggestion)}
+            >
+              {suggestion.title}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="reminders-page">
@@ -165,6 +247,11 @@ const Reminders = () => {
 
         {!loading && viewMode === "calendar" ? (
           <section className="reminders-calendar card">
+            <div className="reminders-calendar__header">
+              <h2 className="text-h4">{monthLabel}</h2>
+              <span>{reminders.length} scheduled</span>
+            </div>
+
             <div className="reminders-mobile-week">
               {mobileWeek.map((date) => (
                 <button
@@ -189,9 +276,16 @@ const Reminders = () => {
                     type="button"
                     className={`reminders-month-day ${active ? "is-active" : ""}`}
                     onClick={() => setSelectedDate(date)}
+                    aria-label={`${date.toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}${count ? `, ${count} reminders` : ", add reminder"}`}
                   >
                     <span>{date.getDate()}</span>
-                    <small>{count ? `${count} items` : "Free"}</small>
+                    <small className={count ? "" : "reminders-month-day__add"}>
+                      {count ? `${count} ${count === 1 ? "item" : "items"}` : "+"}
+                    </small>
                   </button>
                 );
               })}
@@ -216,23 +310,18 @@ const Reminders = () => {
               </div>
             </div>
 
-            {(viewMode === "calendar" ? filteredByDate : reminders).length === 0 ? (
-              <EmptyState
-                type="reminders"
-                onAction={() => setShowCreate(true)}
-              />
+            {visibleReminders.length === 0 ? (
+              renderReminderEmpty()
             ) : (
               <div className="reminders-list">
-                {(viewMode === "calendar" ? filteredByDate : reminders)
-                  .sort((first, second) => new Date(first.nextRunAt) - new Date(second.nextRunAt))
-                  .map((reminder) => (
-                    <ReminderCard
-                      key={reminder._id}
-                      reminder={reminder}
-                      onDelete={handleDelete}
-                      onEdit={setEditing}
-                    />
-                  ))}
+                {visibleReminders.map((reminder) => (
+                  <ReminderCard
+                    key={reminder._id}
+                    reminder={reminder}
+                    onDelete={handleDelete}
+                    onEdit={setEditing}
+                  />
+                ))}
               </div>
             )}
           </section>

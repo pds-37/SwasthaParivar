@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../auth-context";
+import ProfileAvatar from "../common/ProfileAvatar";
 import { Button, EmptyState, Input, PullToRefresh, Skeleton } from "../ui";
 import { useReminders } from "../../hooks/useReminders";
 import { useReports } from "../../hooks/useReports";
@@ -194,7 +195,12 @@ const SelfDashboard = () => {
               <div className="dashboard-orbit dashboard-orbit--two" />
               <div className="dashboard-overview__core card">
                 <span>Self profile</span>
-                <strong>{selfMember.name?.charAt(0) || "S"}</strong>
+                <ProfileAvatar
+                  name={selfMember.name}
+                  src={selfMember.avatar}
+                  size="lg"
+                  className="dashboard-overview__profile-avatar"
+                />
                 <small>{selfMember.connectionStatus === "connected" ? "device connected" : "device pending"}</small>
               </div>
               <div className="dashboard-overview__node dashboard-overview__node--left">
@@ -250,6 +256,14 @@ const SelfDashboard = () => {
             </div>
 
             <div className="dashboard-actions-grid">
+              <button type="button" className="dashboard-action-tile card card-hover" onClick={() => navigate("/ai-chat")}>
+                <span className="dashboard-action-tile__icon">
+                  <BrainCircuit size={20} />
+                </span>
+                <strong>Talk to AI coach</strong>
+                <span>Ask about symptoms, patterns, medicines, or recovery guidance.</span>
+              </button>
+
               <button type="button" className="dashboard-action-tile card card-hover" onClick={() => navigate(`/health/${selfMember._id}`)}>
                 <span className="dashboard-action-tile__icon">
                   <HeartPulse size={20} />
@@ -272,14 +286,6 @@ const SelfDashboard = () => {
                 </span>
                 <strong>Check reminders</strong>
                 <span>See medicine, follow-up, and personal care reminders.</span>
-              </button>
-
-              <button type="button" className="dashboard-action-tile card card-hover" onClick={() => navigate("/ai-chat")}>
-                <span className="dashboard-action-tile__icon">
-                  <BrainCircuit size={20} />
-                </span>
-                <strong>Talk to AI coach</strong>
-                <span>Ask about symptoms, patterns, medicines, or recovery guidance.</span>
               </button>
             </div>
           </section>
@@ -420,7 +426,7 @@ const SelfDashboard = () => {
                     {pendingInvites.slice(0, 2).map((invite) => (
                       <article key={invite.id} className="dashboard-mini-row">
                         <div className="dashboard-mini-row__meta">
-                          <span className="avatar avatar--sm">{invite.name?.charAt(0) || "I"}</span>
+                          <ProfileAvatar name={invite.name || invite.email || "Invite"} size="sm" />
                           <div>
                             <strong>{invite.email}</strong>
                             <p>{invite.inviteType === "link_existing" ? "Link existing app user" : "Invite adult family member"}</p>

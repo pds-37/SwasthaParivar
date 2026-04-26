@@ -3,9 +3,26 @@ import { Mail, ShieldPlus, UserRound, Users } from "lucide-react";
 import notify from "../lib/notify";
 import AvatarUploadField from "./common/AvatarUploadField";
 import { Button, Checkbox, Input, Modal, Radio, Select, Textarea } from "./ui";
+import { useFamilyStore } from "../store/family-store";
 import "./AddMemberModal.css";
 
-const validateForm = (form) => {
+const isSelfRelation = (value = "") => String(value || "").trim().toLowerCase() === "self";
+
+const relationshipOptions = [
+  { value: "", label: "Select relationship" },
+  { value: "Self", label: "Self" },
+  { value: "Spouse", label: "Spouse" },
+  { value: "Child", label: "Child" },
+  { value: "Parent", label: "Parent" },
+  { value: "Mother", label: "Mother" },
+  { value: "Father", label: "Father" },
+  { value: "Sibling", label: "Sibling" },
+  { value: "Grandparent", label: "Grandparent" },
+  { value: "Care recipient", label: "Care recipient" },
+  { value: "Other", label: "Other" },
+];
+
+const validateForm = (form, { hasReservedSelfProfile = false } = {}) => {
   const nextErrors = {};
 
   if (form.mode === "dependent") {
@@ -20,14 +37,20 @@ const validateForm = (form) => {
     } else if (Number(form.age) < 0 || Number(form.age) > 120) {
       nextErrors.age = "Age must be between 0 and 120.";
     }
+
   } else if (!form.email.trim()) {
     nextErrors.email = "Email is required.";
+  }
+
+  if (isSelfRelation(form.relation) && hasReservedSelfProfile) {
+    nextErrors.relation = "Self is reserved for your connected personal profile. Choose another relation.";
   }
 
   return nextErrors;
 };
 
 const AddMemberModal = ({ onClose, onSave }) => {
+  const { members = [], selfMember } = useFamilyStore();
   const [form, setForm] = useState({
     mode: "dependent",
     name: "",
@@ -42,6 +65,9 @@ const AddMemberModal = ({ onClose, onSave }) => {
     childSensitive: false,
   });
   const [errors, setErrors] = useState({});
+  const hasReservedSelfProfile =
+    Boolean(selfMember?._id) ||
+    members.some((member) => isSelfRelation(member?.relation));
 
   const handleChange = (key, value) => {
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -49,7 +75,7 @@ const AddMemberModal = ({ onClose, onSave }) => {
   };
 
   const submit = async () => {
-    const nextErrors = validateForm(form);
+    const nextErrors = validateForm(form, { hasReservedSelfProfile });
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -152,12 +178,18 @@ const AddMemberModal = ({ onClose, onSave }) => {
                   error={errors.name}
                 />
 
-                <Input
+                <Select
                   label="Relation"
-                  placeholder="Mother, Father, Child, Self..."
                   value={form.relation}
                   onChange={(event) => handleChange("relation", event.target.value)}
-                />
+                  error={errors.relation}
+                >
+                  {relationshipOptions.map((option) => (
+                    <option key={option.value || "empty"} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
 
               <div className="member-modal__grid">
@@ -253,12 +285,18 @@ const AddMemberModal = ({ onClose, onSave }) => {
                 leftIcon={<Users size={18} />}
               />
 
-              <Input
+              <Select
                 label="Relation"
-                placeholder="Brother, Sister, Spouse..."
                 value={form.relation}
                 onChange={(event) => handleChange("relation", event.target.value)}
-              />
+                error={errors.relation}
+              >
+                {relationshipOptions.map((option) => (
+                  <option key={option.value || "empty"} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
             </div>
 
               <Input

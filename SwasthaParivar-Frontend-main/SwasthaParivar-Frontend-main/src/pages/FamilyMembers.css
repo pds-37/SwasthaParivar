@@ -74,6 +74,34 @@
   font-size: var(--text-sm);
 }
 
+.family-card__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.family-risk-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-surface);
+  box-shadow: 0 0 0 1px var(--color-border-subtle);
+}
+
+.family-risk-dot--low {
+  background: var(--color-success);
+}
+
+.family-risk-dot--medium {
+  background: var(--color-warning);
+}
+
+.family-risk-dot--high {
+  background: var(--color-danger);
+}
+
 .family-card__counts div {
   display: flex;
   flex-direction: column;
@@ -99,6 +127,16 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
+}
+
+.family-card__actions .ui-button--primary {
+  box-shadow: 0 0.75rem 1.5rem color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.family-card__actions .ui-button--secondary {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
 }
 
 .family-card__delete {

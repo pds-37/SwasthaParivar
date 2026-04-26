@@ -502,6 +502,10 @@
   gap: var(--space-4);
 }
 
+.app-guide-modal {
+  box-shadow: 0 1.75rem 4.5rem color-mix(in srgb, var(--color-shadow-strong) 86%, transparent);
+}
+
 .app-guide__grid {
   display: grid;
   gap: var(--space-3);
@@ -511,9 +515,27 @@
   padding: var(--space-5);
 }
 
+.app-guide__card-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.app-guide__icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+}
+
 .app-guide__step {
   display: inline-flex;
-  margin-bottom: var(--space-3);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
   background: var(--color-primary-soft);

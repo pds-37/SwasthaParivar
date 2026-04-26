@@ -9,7 +9,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 
-import { Button, EmptyState, Input, Modal, PullToRefresh, Select, Skeleton, Textarea } from "../components/ui";
+import { Button, DatePicker, EmptyState, Modal, PullToRefresh, Select, Skeleton, Textarea } from "../components/ui";
 import notify from "../lib/notify";
 import { useReports } from "../hooks/useReports";
 import { useFamilyStore } from "../store/family-store";
@@ -17,6 +17,17 @@ import { trackEvent } from "../utils/analytics";
 import "./Reports.css";
 
 const reportTypes = ["Lab report", "Prescription", "Scan", "Discharge summary", "Other"];
+
+const inferReportTypeFromFile = (fileName = "") => {
+  const normalized = fileName.toLowerCase();
+
+  if (/(prescription|rx|medicine|medication)/.test(normalized)) return "Prescription";
+  if (/(scan|xray|x-ray|mri|ct|ultrasound|sonography)/.test(normalized)) return "Scan";
+  if (/(discharge|summary|hospital)/.test(normalized)) return "Discharge summary";
+  if (/(lab|blood|urine|test|cbc|hba1c|lipid|thyroid)/.test(normalized)) return "Lab report";
+
+  return reportTypes[0];
+};
 
 const UploadReportModal = ({ members, onClose, onUploaded }) => {
   const [memberId, setMemberId] = useState("");
@@ -36,6 +47,9 @@ const UploadReportModal = ({ members, onClose, onUploaded }) => {
   const handleFileChange = (nextFile) => {
     setFile(nextFile || null);
     setErrors((previous) => ({ ...previous, file: "" }));
+    if (nextFile?.name) {
+      setReportType(inferReportTypeFromFile(nextFile.name));
+    }
   };
 
   const handleUpload = async () => {
@@ -196,6 +210,7 @@ const Reports = () => {
       memberName: memberMap.get(report.memberId) || "Family member",
     }));
   }, [members, reports]);
+  const hasReports = reportsWithMembers.length > 0;
 
   const filteredReports = useMemo(
     () =>
@@ -271,49 +286,53 @@ const Reports = () => {
               </p>
             </div>
 
-            <Button leftIcon={<FilePlus2 size={18} />} onClick={() => setShowUpload(true)}>
-              Upload report
-            </Button>
+            {hasReports ? (
+              <Button leftIcon={<FilePlus2 size={18} />} onClick={() => setShowUpload(true)}>
+                Upload report
+              </Button>
+            ) : null}
           </section>
 
-          <section className="reports-filters card">
-            <Select
-              label="Member"
-              value={memberFilter}
-              onChange={(event) => setMemberFilter(event.target.value)}
-              disabled={activeView === "self"}
-            >
-              <option value="all">All members</option>
-              {availableMembers.map((member) => (
-                <option key={member._id} value={member._id}>
-                  {member.name}
-                </option>
-              ))}
-            </Select>
+          {hasReports ? (
+            <section className="reports-filters card">
+              <Select
+                label="Member"
+                value={memberFilter}
+                onChange={(event) => setMemberFilter(event.target.value)}
+                disabled={activeView === "self"}
+              >
+                <option value="all">All members</option>
+                {availableMembers.map((member) => (
+                  <option key={member._id} value={member._id}>
+                    {member.name}
+                  </option>
+                ))}
+              </Select>
 
-            <Select label="Type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-              <option value="all">All types</option>
-              {reportTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </Select>
+              <Select label="Type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+                <option value="all">All types</option>
+                {reportTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </Select>
 
-            <Input
-              label="From"
-              type="date"
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-            />
+              <DatePicker
+                label="From"
+                value={startDate}
+                max={endDate || undefined}
+                onChange={(event) => setStartDate(event.target.value)}
+              />
 
-            <Input
-              label="To"
-              type="date"
-              value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
-            />
-          </section>
+              <DatePicker
+                label="To"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(event) => setEndDate(event.target.value)}
+              />
+            </section>
+          ) : null}
 
           {loading ? (
             <div className="reports-grid">
@@ -321,10 +340,17 @@ const Reports = () => {
                 <Skeleton key={item} variant="card" />
               ))}
             </div>
-          ) : filteredReports.length === 0 ? (
+          ) : !hasReports ? (
             <EmptyState
               type="reports"
               onAction={() => setShowUpload(true)}
+            />
+          ) : filteredReports.length === 0 ? (
+            <EmptyState
+              type="reports"
+              heading="No matching reports"
+              description="Try changing the member, type, or date range filters."
+              ctaLabel={null}
             />
           ) : (
             <div className="reports-grid">

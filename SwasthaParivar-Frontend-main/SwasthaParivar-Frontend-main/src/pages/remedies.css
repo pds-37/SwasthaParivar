@@ -55,8 +55,8 @@
   margin: 12px 0 16px;
   font-family: var(--font-display);
   font-size: clamp(2.4rem, 4vw, 3.2rem);
-  line-height: 1.1;
-  letter-spacing: -0.04em;
+  line-height: 1.08;
+  letter-spacing: 0;
 }
 
 .hero-copy p {
@@ -117,7 +117,9 @@
 }
 
 .hero-field select,
-.search-shell {
+.search-shell,
+.generator-input,
+.generator-textarea {
   width: 100%;
   min-height: 46px;
   border-radius: 14px;
@@ -128,17 +130,27 @@
   color: inherit;
 }
 
+.generator-textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
 .search-shell {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.search-shell input {
-  width: 100%;
+.search-shell input,
+.generator-input,
+.generator-textarea {
   border: none;
   outline: none;
   background: transparent;
+}
+
+.search-shell input {
+  width: 100%;
   font: inherit;
   color: inherit;
 }
@@ -167,14 +179,16 @@
 
 .context-strip {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 280px 1fr;
   gap: 14px;
   margin-top: 16px;
 }
 
 .context-card,
 .context-pills,
-.empty-state {
+.profile-pill,
+.empty-state,
+.triage-panel {
   border-radius: 20px;
   padding: 16px 20px;
   background: color-mix(in srgb, var(--surface) 80%, transparent);
@@ -189,7 +203,8 @@
   gap: 14px;
 }
 
-.context-card__icon {
+.context-card__icon,
+.triage-panel__icon {
   width: 42px;
   height: 42px;
   border-radius: 14px;
@@ -206,14 +221,16 @@
   font-size: 0.88rem;
 }
 
-.context-pills {
+.context-pills,
+.profile-strip {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   align-content: flex-start;
 }
 
-.context-pills span {
+.context-pills span,
+.profile-pill {
   padding: 8px 14px;
   border-radius: 999px;
   background: var(--brand-soft);
@@ -229,25 +246,23 @@
   border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
 }
 
+.profile-strip {
+  margin-top: 12px;
+}
+
+.profile-pill {
+  background: var(--surface-glass);
+}
+
 .tag-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
   gap: 10px;
-  overflow-x: auto;
-  padding: 16px 2px 6px;
+  padding: 16px 0 6px;
   margin-top: 4px;
 }
 
-.tag-strip::-webkit-scrollbar {
-  height: 8px;
-}
-
-.tag-strip::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-page) 14%, transparent);
-}
-
 .tag-pill {
-  flex: 0 0 auto;
   border: 1px solid var(--border);
   background: var(--surface-glass);
   color: var(--text-soft);
@@ -265,11 +280,30 @@
   border-color: var(--brand-soft-strong);
 }
 
+.triage-panel {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--surface));
+}
+
+.triage-panel strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.triage-panel p {
+  margin: 0;
+  color: var(--muted);
+}
+
 .remedies-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
   gap: 18px;
-  margin-top: 12px;
+  margin-top: 16px;
   align-items: start;
 }
 
@@ -283,31 +317,44 @@
 }
 
 .generator-card {
-  min-height: 320px;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(145deg, var(--hero-from) 0%, var(--hero-to) 100%);
   color: var(--color-brand-on-dark);
 }
 
-.generator-state {
-  min-height: 320px;
+.generator-form {
   padding: 22px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 14px;
 }
 
-.generator-state h3 {
-  margin: 0;
-  font-size: 1.45rem;
-  letter-spacing: -0.04em;
+.generator-form__header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
 }
 
-.generator-state p {
+.generator-form__header h3,
+.generator-state h3 {
   margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: 0;
+}
+
+.generator-form__header p,
+.generator-state p {
+  margin: 4px 0 0;
   line-height: 1.6;
   font-size: 0.95rem;
   color: color-mix(in srgb, var(--color-brand-on-dark) 84%, transparent);
+}
+
+.generator-inline-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .generator-orb {
@@ -319,6 +366,15 @@
   background: color-mix(in srgb, var(--color-brand-on-dark) 18%, transparent);
   color: var(--color-brand-on-dark);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-brand-on-dark) 26%, transparent);
+}
+
+.generator-state {
+  min-height: 220px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
 }
 
 .remedy-card {
@@ -350,7 +406,8 @@
 .rating-chip,
 .warn-chip,
 .ai-chip,
-.favorite-chip {
+.favorite-chip,
+.family-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -358,18 +415,8 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   color: var(--color-text-primary);
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 700;
-}
-
-.warn-chip {
-  background: color-mix(in srgb, var(--color-warning) 14%, var(--color-surface));
-  color: var(--color-warning);
-}
-
-.ai-chip {
-  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
-  color: var(--color-primary-strong);
 }
 
 .favorite-chip {
@@ -380,6 +427,31 @@
 .favorite-chip.active {
   background: color-mix(in srgb, var(--color-danger) 14%, var(--color-surface));
   color: var(--color-danger);
+}
+
+.family-chip {
+  background: var(--surface-muted);
+  color: var(--text-soft);
+}
+
+.family-chip--safe {
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  color: var(--color-success);
+}
+
+.family-chip--caution {
+  background: color-mix(in srgb, var(--color-warning) 14%, var(--color-surface));
+  color: var(--color-warning);
+}
+
+.family-chip--avoid {
+  background: color-mix(in srgb, var(--color-danger) 14%, var(--color-surface));
+  color: var(--color-danger);
+}
+
+.ai-chip {
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  color: var(--color-primary-strong);
 }
 
 .remedy-card__body {
@@ -402,7 +474,7 @@
   margin: 0;
   font-size: 1.12rem;
   line-height: 1.15;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   color: var(--text);
 }
 
@@ -437,6 +509,27 @@
   color: var(--color-primary-strong);
 }
 
+.remedy-card__fact {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fact-label,
+.detail-card__label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.fact-copy {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
 .remedy-card__reasons,
 .warning-stack {
   display: flex;
@@ -446,7 +539,8 @@
 
 .info-callout,
 .warning-callout,
-.warning-panel div {
+.warning-panel div,
+.safe-callout {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -456,7 +550,8 @@
   line-height: 1.5;
 }
 
-.info-callout {
+.info-callout,
+.safe-callout {
   background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
   color: var(--color-primary-strong);
 }
@@ -580,7 +675,7 @@
   margin: 10px 0 8px;
   font-size: clamp(2rem, 4vw, 3rem);
   line-height: 1.04;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .remedy-modal__hero-content p {
@@ -611,10 +706,25 @@
   gap: 22px;
 }
 
+.facts-grid,
 .remedy-modal__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
+}
+
+.detail-card {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-card strong {
+  color: var(--text);
 }
 
 .modal-section h3 {
@@ -661,6 +771,10 @@
   .context-strip {
     grid-template-columns: 1fr;
   }
+
+  .triage-panel {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 760px) {
@@ -677,9 +791,19 @@
     font-size: 2rem;
   }
 
+  .tag-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .remedies-grid,
+  .facts-grid,
   .remedy-modal__grid {
     grid-template-columns: 1fr;
+  }
+
+  .generator-form__header,
+  .context-card {
+    align-items: flex-start;
   }
 
   .remedy-card__actions,

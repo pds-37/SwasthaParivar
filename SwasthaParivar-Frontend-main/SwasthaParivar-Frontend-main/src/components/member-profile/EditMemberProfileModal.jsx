@@ -2,11 +2,26 @@ import React, { useState } from "react";
 import { ShieldPlus, UserRound } from "lucide-react";
 
 import notify from "../../lib/notify";
+import { useFamilyStore } from "../../store/family-store";
 import AvatarUploadField from "../common/AvatarUploadField";
 import { Button, Checkbox, Input, Modal, Select, Textarea } from "../ui";
 import "../AddMemberModal.css";
 
 const listToText = (items) => (Array.isArray(items) ? items.join(", ") : "");
+
+const relationshipOptions = [
+  { value: "", label: "Select relationship" },
+  { value: "Self", label: "Self" },
+  { value: "Spouse", label: "Spouse" },
+  { value: "Child", label: "Child" },
+  { value: "Parent", label: "Parent" },
+  { value: "Mother", label: "Mother" },
+  { value: "Father", label: "Father" },
+  { value: "Sibling", label: "Sibling" },
+  { value: "Grandparent", label: "Grandparent" },
+  { value: "Care recipient", label: "Care recipient" },
+  { value: "Other", label: "Other" },
+];
 
 const buildInitialForm = (member = {}) => ({
   name: member.name || "",
@@ -20,7 +35,9 @@ const buildInitialForm = (member = {}) => ({
   childSensitive: Boolean(member.childSensitive),
 });
 
-const validateForm = (form) => {
+const isSelfRelation = (value = "") => String(value || "").trim().toLowerCase() === "self";
+
+const validateForm = (form, { hasReservedSelfProfile = false } = {}) => {
   const nextErrors = {};
 
   if (!form.name.trim()) {
@@ -35,12 +52,20 @@ const validateForm = (form) => {
     nextErrors.age = "Age must be between 0 and 120.";
   }
 
+  if (isSelfRelation(form.relation) && hasReservedSelfProfile) {
+    nextErrors.relation = "Self is reserved for the connected personal profile.";
+  }
+
   return nextErrors;
 };
 
 const EditMemberProfileModal = ({ member, saving = false, onClose, onSave }) => {
+  const { members = [], selfMember } = useFamilyStore();
   const [form, setForm] = useState(() => buildInitialForm(member));
   const [errors, setErrors] = useState({});
+  const hasReservedSelfProfile =
+    Boolean(selfMember?._id && selfMember?._id !== member?._id) ||
+    members.some((entry) => entry._id !== member?._id && isSelfRelation(entry?.relation));
 
   const handleChange = (key, value) => {
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -48,7 +73,7 @@ const EditMemberProfileModal = ({ member, saving = false, onClose, onSave }) => 
   };
 
   const submit = async () => {
-    const nextErrors = validateForm(form);
+    const nextErrors = validateForm(form, { hasReservedSelfProfile });
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -126,12 +151,18 @@ const EditMemberProfileModal = ({ member, saving = false, onClose, onSave }) => 
               error={errors.name}
             />
 
-            <Input
+            <Select
               label="Relation"
-              placeholder="Mother, Father, Child, Self..."
               value={form.relation}
               onChange={(event) => handleChange("relation", event.target.value)}
-            />
+              error={errors.relation}
+            >
+              {relationshipOptions.map((option) => (
+                <option key={option.value || "empty"} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <div className="member-modal__grid">

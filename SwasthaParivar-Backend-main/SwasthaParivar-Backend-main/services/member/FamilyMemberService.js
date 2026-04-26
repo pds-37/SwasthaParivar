@@ -38,6 +38,29 @@ class FamilyMemberService {
     return value === true || value === "true" || value === 1 || value === "1";
   }
 
+  isSelfRelation(value) {
+    return this.normalizeText(value, { maxLength: 40 }).toLowerCase() === "self";
+  }
+
+  async hasReservedSelfProfile(householdId, { excludeMemberId = null } = {}) {
+    if (!householdId) {
+      return false;
+    }
+
+    const query = {
+      householdId,
+      profileStatus: activeProfileStatusFilter(),
+      $or: [{ profileType: "self" }, { relation: /^self$/i }],
+    };
+
+    if (excludeMemberId) {
+      query._id = { $ne: excludeMemberId };
+    }
+
+    const existing = await FamilyMember.findOne(query).select("_id").lean();
+    return Boolean(existing);
+  }
+
   normalizeAvatar(value) {
     const avatar = String(value || "").trim();
 
@@ -359,6 +382,19 @@ class FamilyMemberService {
       };
     }
 
+    if (
+      this.isSelfRelation(sanitized.data.relation) &&
+      (await this.hasReservedSelfProfile(householdContext.household._id))
+    ) {
+      return {
+        status: 409,
+        error: {
+          code: "SELF_RELATION_CONFLICT",
+          message: "Self is already reserved for the connected personal profile in this household.",
+        },
+      };
+    }
+
     const member = await FamilyMember.create({
       user: ownerId,
       householdId: householdContext.household._id,
@@ -419,6 +455,20 @@ class FamilyMemberService {
     const sanitized = this.sanitizeMemberPayload(payload);
     if (sanitized.error) {
       return { status: 400, error: { code: "VALIDATION_ERROR", message: sanitized.error } };
+    }
+
+    if (
+      sanitized.data.relation !== undefined &&
+      this.isSelfRelation(sanitized.data.relation) &&
+      (await this.hasReservedSelfProfile(result.member.householdId, { excludeMemberId: result.member._id }))
+    ) {
+      return {
+        status: 409,
+        error: {
+          code: "SELF_RELATION_CONFLICT",
+          message: "Self is already reserved for the connected personal profile in this household.",
+        },
+      };
     }
 
     Object.entries(sanitized.data).forEach(([key, value]) => {

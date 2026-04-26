@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import clsx from "clsx";
+import { X } from "lucide-react";
 import "./Modal.css";
 
 const focusableSelector =
@@ -134,6 +135,16 @@ const Modal = ({
           transition: dragOffset > 0 ? "none" : undefined,
         }}
       >
+        {onClose ? (
+          <button
+            type="button"
+            className="ui-modal-close"
+            onClick={() => onCloseRef.current?.()}
+            aria-label="Close dialog"
+          >
+            <X size={18} />
+          </button>
+        ) : null}
         <div
           className="ui-modal-drag-region"
           onTouchStart={handleDragStart}

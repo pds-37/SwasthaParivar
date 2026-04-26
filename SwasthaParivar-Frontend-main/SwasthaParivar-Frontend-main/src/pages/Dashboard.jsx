@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -60,6 +60,16 @@ const getMemberSnapshot = (member = {}) => {
   };
 };
 
+const formatListPreview = (items = [], emptyLabel = "None saved", maxItems = 2) => {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) return emptyLabel;
+  if (list.length <= maxItems) return list.join(", ");
+  return `${list.slice(0, maxItems).join(", ")} +${list.length - maxItems}`;
+};
+
+const memberNeedsBasics = (member = {}) =>
+  !String(member?.relation || "").trim() || !(Number(member?.age) > 0);
+
 const FamilyDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -73,9 +83,10 @@ const FamilyDashboard = () => {
   } = useFamilyStore();
   const { reminders, loading: remindersLoading, mutate: refreshReminders } = useReminders();
   const [showAddMember, setShowAddMember] = useState(false);
-  const [showAlerts, setShowAlerts] = useState(false);
+  const [showAlertDropdown, setShowAlertDropdown] = useState(false);
   const [pendingMedicationPrompt, setPendingMedicationPrompt] = useState(null);
   const [createdInvite, setCreatedInvite] = useState(null);
+  const alertsMenuRef = useRef(null);
   const loading = membersLoading || remindersLoading;
 
   const today = new Date().toLocaleDateString("en-IN", {
@@ -100,7 +111,11 @@ const FamilyDashboard = () => {
       }),
     [reminders]
   );
-  const dashboardSubheading = `${today} - ${remindersToday.length} due today`;
+
+  const memberById = useMemo(
+    () => new Map(members.map((member) => [member._id, member])),
+    [members]
+  );
 
   const upcomingReminders = useMemo(
     () =>
@@ -111,6 +126,43 @@ const FamilyDashboard = () => {
     [reminders]
   );
 
+  const onboardingPrompt = useMemo(() => {
+    if (members.length === 0) {
+      return {
+        kind: "add-member",
+        label: "Add first member",
+        message: "Add your first family profile to unlock reminders, alerts, and family-aware AI guidance.",
+      };
+    }
+
+    const memberMissingBasics = members.find((member) => memberNeedsBasics(member));
+    if (memberMissingBasics) {
+      return {
+        kind: "complete-profile",
+        memberId: memberMissingBasics._id,
+        label: "Complete profile",
+        message: `Finish ${memberMissingBasics.name}'s profile so reminders, alerts, and records stay mapped to the right person.`,
+      };
+    }
+
+    const memberMissingRecord = members.find((member) => !getMemberSnapshot(member).latestDate);
+    if (memberMissingRecord) {
+      return {
+        kind: "add-record",
+        memberId: memberMissingRecord._id,
+        label: "Add first record",
+        message: `Add ${memberMissingRecord.name}'s first health record so the dashboard can surface real household care context.`,
+      };
+    }
+
+    return null;
+  }, [members]);
+
+  const showOnboardingCta = Boolean(onboardingPrompt && remindersToday.length === 0);
+  const dashboardSubheading = showOnboardingCta
+    ? onboardingPrompt.message
+    : `${today} - ${remindersToday.length} due today`;
+
   const recentActivity = useMemo(() => {
     const reminderEvents = reminders
       .filter((item) => item?.nextRunAt)
@@ -120,6 +172,8 @@ const FamilyDashboard = () => {
         title: item.title,
         subtitle: item.memberName || "Family reminder",
         date: item.nextRunAt,
+        memberName: memberById.get(item.memberId)?.name || item.memberName || "Family member",
+        memberAvatar: memberById.get(item.memberId)?.avatar || "",
       }));
 
     const recordEvents = members.flatMap((member) => {
@@ -132,6 +186,8 @@ const FamilyDashboard = () => {
           title: `Updated ${member.name}`,
           subtitle: snapshot.label,
           date: snapshot.latestDate,
+          memberName: member.name,
+          memberAvatar: member.avatar || "",
         },
       ];
     });
@@ -139,7 +195,7 @@ const FamilyDashboard = () => {
     return [...reminderEvents, ...recordEvents]
       .sort((first, second) => new Date(second.date) - new Date(first.date))
       .slice(0, 5);
-  }, [members, reminders]);
+  }, [memberById, members, reminders]);
 
   const healthAlerts = useMemo(() => {
     const overdueReminders = reminders
@@ -147,8 +203,12 @@ const FamilyDashboard = () => {
       .map((item) => ({
         id: `reminder-${item._id}`,
         title: item.title,
-        subtitle: `${item.memberName || "Family member"} missed a scheduled reminder`,
+        subtitle: `${memberById.get(item.memberId)?.name || item.memberName || "Family member"} missed a scheduled reminder that should be reviewed now.`,
         level: "danger",
+        memberName: memberById.get(item.memberId)?.name || item.memberName || "Family member",
+        memberAvatar: memberById.get(item.memberId)?.avatar || "",
+        actionLabel: "Open reminders",
+        target: "/reminders",
       }));
 
     const staleProfiles = members
@@ -158,10 +218,14 @@ const FamilyDashboard = () => {
         title: `${member.name} needs a first health record`,
         subtitle: "Add a health snapshot so future guidance uses real family history.",
         level: "warning",
+        memberName: member.name,
+        memberAvatar: member.avatar || "",
+        actionLabel: "Add record",
+        target: `/health/${member._id}`,
       }));
 
-    return [...overdueReminders, ...staleProfiles].slice(0, 4);
-  }, [members, reminders]);
+    return [...overdueReminders, ...staleProfiles].slice(0, 6);
+  }, [memberById, members, reminders]);
 
   const profilesWithFreshContext = useMemo(
     () => members.filter((member) => Boolean(getMemberSnapshot(member).latestDate)).length,
@@ -232,6 +296,12 @@ const FamilyDashboard = () => {
 
   const quickActions = [
     {
+      icon: Brain,
+      label: "Ask AI",
+      description: "Get context-aware family care guidance.",
+      onClick: () => navigate("/ai-chat"),
+    },
+    {
       icon: Bell,
       label: "Add reminder",
       description: "Schedule a medicine or checkup task.",
@@ -244,18 +314,47 @@ const FamilyDashboard = () => {
       onClick: () => navigate("/reports"),
     },
     {
-      icon: Brain,
-      label: "Ask AI",
-      description: "Get context-aware family care guidance.",
-      onClick: () => navigate("/ai-chat"),
-    },
-    {
       icon: UserPlus,
       label: "Add member",
       description: "Create a new household care profile.",
       onClick: () => setShowAddMember(true),
     },
   ];
+
+  useEffect(() => {
+    if (!showAlertDropdown) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!alertsMenuRef.current?.contains(event.target)) {
+        setShowAlertDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [showAlertDropdown]);
+
+  const handleOnboardingAction = () => {
+    if (!onboardingPrompt) return;
+
+    if (onboardingPrompt.kind === "add-member") {
+      setShowAddMember(true);
+      return;
+    }
+
+    if (onboardingPrompt.kind === "complete-profile") {
+      navigate(`/family/${onboardingPrompt.memberId}`);
+      return;
+    }
+
+    if (onboardingPrompt.kind === "add-record") {
+      navigate(`/health/${onboardingPrompt.memberId}`);
+    }
+  };
+
+  const openAlertDropdown = () => {
+    setShowAlertDropdown((previous) => !previous);
+  };
 
   return (
     <div className="dashboard-page">
@@ -264,7 +363,7 @@ const FamilyDashboard = () => {
           await Promise.all([refreshMembers?.(), refreshReminders?.()]);
         }}
       >
-        <div className="dashboard-shell">
+        <div className="dashboard-shell family-dashboard-shell">
         <section className="dashboard-overview">
           <Motion.div
             className="dashboard-overview__copy"
@@ -278,6 +377,16 @@ const FamilyDashboard = () => {
             </span>
             <h1 className="text-h1">{dashboardHeading}</h1>
             <p className="text-body-lg">{dashboardSubheading}</p>
+            {showOnboardingCta ? (
+              <Button
+                variant="secondary"
+                className="dashboard-overview__cta"
+                leftIcon={<UserPlus size={16} />}
+                onClick={handleOnboardingAction}
+              >
+                {onboardingPrompt.label}
+              </Button>
+            ) : null}
 
             <Motion.div
               className="dashboard-summary-pills"
@@ -287,10 +396,55 @@ const FamilyDashboard = () => {
             >
               <span className="badge badge--primary">{members.length} family profiles</span>
               <span className="badge badge--success">{upcomingReminders.length} upcoming tasks</span>
-              <button type="button" className="dashboard-summary-pill" onClick={() => setShowAlerts(true)}>
-                <TriangleAlert size={14} />
-                {healthAlerts.length} health alerts
-              </button>
+              <div className="dashboard-alert-menu" ref={alertsMenuRef}>
+                <button type="button" className="dashboard-summary-pill" onClick={openAlertDropdown}>
+                  <TriangleAlert size={14} />
+                  {healthAlerts.length} health alerts
+                </button>
+
+                {showAlertDropdown ? (
+                  <div className="dashboard-alert-dropdown card">
+                    <div className="dashboard-alert-dropdown__header">
+                      <strong>Household health alerts</strong>
+                      <span>{healthAlerts.length ? "Tap an item to act on it" : "All clear right now"}</span>
+                    </div>
+
+                    {healthAlerts.length === 0 ? (
+                      <div className="dashboard-alert-dropdown__empty">
+                        <Sparkles size={16} />
+                        <span>No active household alerts.</span>
+                      </div>
+                    ) : (
+                      <div className="dashboard-stack">
+                        {healthAlerts.map((alert) => (
+                          <button
+                            key={alert.id}
+                            type="button"
+                            className={`dashboard-alert-dropdown__item ${alert.level === "danger" ? "is-danger" : "is-warning"}`}
+                            onClick={() => {
+                              setShowAlertDropdown(false);
+                              if (alert.target) {
+                                navigate(alert.target);
+                              }
+                            }}
+                          >
+                            <ProfileAvatar
+                              name={alert.memberName}
+                              src={alert.memberAvatar}
+                              size="sm"
+                            />
+                            <div>
+                              <strong>{alert.title}</strong>
+                              <p>{alert.subtitle}</p>
+                              <span>{alert.actionLabel}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
             </Motion.div>
           </Motion.div>
 
@@ -387,17 +541,33 @@ const FamilyDashboard = () => {
 
                     <div className="dashboard-member-card__meta">
                       <span>{member.age ? `${member.age} years` : "Age pending"}</span>
-                      <span>{snapshot.label}</span>
+                      <span>{snapshot.latestDate ? `Last checkup ${formatRelativeTime(snapshot.latestDate)}` : "No checkup recorded"}</span>
                     </div>
 
-                    <Button
-                      variant="ghost"
-                      rightIcon={<ChevronRight size={16} />}
-                      onClick={() => navigate(`/family/${member._id}`)}
-                      fullWidth
-                    >
-                      Open profile
-                    </Button>
+                    <div className="dashboard-member-card__details">
+                      <div>
+                        <strong>Conditions</strong>
+                        <span>{formatListPreview(member.conditions, "No conditions saved")}</span>
+                      </div>
+                      <div>
+                        <strong>Medicines</strong>
+                        <span>{formatListPreview(member.medications, "No medicines saved")}</span>
+                      </div>
+                    </div>
+
+                    <div className="dashboard-member-card__actions">
+                      <Button variant="ghost" onClick={() => navigate(`/health/${member._id}`)} fullWidth>
+                        Add record
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        rightIcon={<ChevronRight size={16} />}
+                        onClick={() => navigate(`/family/${member._id}`)}
+                        fullWidth
+                      >
+                        Open profile
+                      </Button>
+                    </div>
                   </article>
                 );
               })}
@@ -457,9 +627,16 @@ const FamilyDashboard = () => {
                 {recentActivity.map((item) => (
                   <article key={item.id} className="dashboard-activity-row">
                     <span className="dashboard-activity-row__type">{item.type}</span>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>{item.subtitle}</p>
+                    <div className="dashboard-activity-row__content">
+                      <ProfileAvatar
+                        name={item.memberName || item.title}
+                        src={item.memberAvatar}
+                        size="sm"
+                      />
+                      <div>
+                        <strong>{item.title}</strong>
+                        <p>{item.subtitle}</p>
+                      </div>
                     </div>
                     <span>{formatRelativeTime(item.date)}</span>
                   </article>
@@ -537,7 +714,11 @@ const FamilyDashboard = () => {
                   {upcomingReminders.map((reminder) => (
                     <article key={reminder._id} className="dashboard-mini-row">
                       <div className="dashboard-mini-row__meta">
-                        <ProfileAvatar name={reminder.memberName || "Family member"} size="sm" />
+                        <ProfileAvatar
+                          name={memberById.get(reminder.memberId)?.name || reminder.memberName || "Family member"}
+                          src={memberById.get(reminder.memberId)?.avatar || ""}
+                          size="sm"
+                        />
                         <div>
                           <strong>{reminder.title}</strong>
                           <p>{reminder.memberName || "Family member"}</p>
@@ -556,7 +737,7 @@ const FamilyDashboard = () => {
                   <h2 className="text-h4">Health alerts</h2>
                   <p className="text-body-sm muted-copy">Overdue reminders or profiles that need fresh attention.</p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowAlerts(true)}>
+                <Button variant="ghost" size="sm" onClick={openAlertDropdown}>
                   Review
                 </Button>
               </div>
@@ -580,7 +761,7 @@ const FamilyDashboard = () => {
                       key={alert.id}
                       className={`dashboard-alert-row ${alert.level === "danger" ? "is-danger" : "is-warning"}`}
                     >
-                      <TriangleAlert size={16} />
+                      <ProfileAvatar name={alert.memberName} src={alert.memberAvatar} size="sm" />
                       <div>
                         <strong>{alert.title}</strong>
                         <p>{alert.subtitle}</p>
@@ -617,42 +798,6 @@ const FamilyDashboard = () => {
             relation={createdInvite.relation}
           />
         ) : null}
-      </Modal>
-
-      <Modal
-        open={showAlerts}
-        onClose={() => setShowAlerts(false)}
-        title="Household health alerts"
-        description="Review the items that need follow-up right now."
-        size="md"
-        footer={
-          <Button variant="secondary" onClick={() => setShowAlerts(false)}>
-            Close
-          </Button>
-        }
-      >
-        {healthAlerts.length === 0 ? (
-          <EmptyState
-            icon={<TriangleAlert size={18} />}
-            heading="No alerts at the moment"
-            description="As overdue reminders or missing records appear, they will show up here."
-          />
-        ) : (
-          <div className="dashboard-stack">
-            {healthAlerts.map((alert) => (
-              <article
-                key={alert.id}
-                className={`dashboard-alert-row ${alert.level === "danger" ? "is-danger" : "is-warning"}`}
-              >
-                <TriangleAlert size={16} />
-                <div>
-                  <strong>{alert.title}</strong>
-                  <p>{alert.subtitle}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
       </Modal>
 
       <Modal

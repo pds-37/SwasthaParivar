@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
+  ArrowRight,
   Bell,
   BellRing,
   ChevronLeft,
   ChevronRight,
   CircleHelp,
+  ClipboardList,
   FileText,
   HeartPulse,
   Home,
@@ -15,6 +17,8 @@ import {
   MessageSquareText,
   Moon,
   Settings,
+  ShieldCheck,
+  Sparkles,
   SunMedium,
   Users,
 } from "lucide-react";
@@ -50,6 +54,8 @@ const secondaryLinks = [
   { path: "/remedies", label: "Remedies", icon: Leaf },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
+
+const guideStepIcons = [Users, ClipboardList, Sparkles];
 
 const Navigation = ({ variant = "app" }) => {
   const { user, logout } = useAuth();
@@ -412,16 +418,31 @@ const Navigation = ({ variant = "app" }) => {
         title="How to use SwasthaParivar"
         description="A quick guide to getting the most useful reminders, reports, remedies, and AI support."
         size="md"
+        className="app-guide-modal"
+        footer={
+          <Button variant="primary" rightIcon={<ArrowRight size={16} />} onClick={() => setGuideOpen(false)}>
+            Get Started
+          </Button>
+        }
       >
         <div className="app-guide">
           <div className="app-guide__grid">
-            {howToUseSteps.map((step, index) => (
-              <article key={step.title} className="app-guide__card card">
-                <span className="app-guide__step">Step {index + 1}</span>
-                <h3>{step.title}</h3>
-                <p>{step.text}</p>
-              </article>
-            ))}
+            {howToUseSteps.map((step, index) => {
+              const StepIcon = guideStepIcons[index] || ShieldCheck;
+
+              return (
+                <article key={step.title} className="app-guide__card card">
+                  <div className="app-guide__card-top">
+                    <span className="app-guide__icon">
+                      <StepIcon size={18} />
+                    </span>
+                    <span className="app-guide__step">Step {index + 1}</span>
+                  </div>
+                  <h3>{step.title}</h3>
+                  <p>{step.text}</p>
+                </article>
+              );
+            })}
           </div>
           <div className="app-guide__note">
             <CircleHelp size={16} />

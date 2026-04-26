@@ -59,16 +59,27 @@
 }
 
 .health-metric small,
+.health-metric__range,
 .health-metric p {
   display: block;
   margin-top: var(--space-2);
   color: var(--color-text-secondary);
 }
 
+.health-metric__range {
+  color: var(--color-primary-strong);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
 .health-content {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 0.8fr);
   gap: var(--space-5);
+}
+
+.health-content--empty {
+  grid-template-columns: 1fr;
 }
 
 .health-snapshot-list,

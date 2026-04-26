@@ -48,6 +48,37 @@
   min-height: min(100%, calc(100vh - 2rem));
 }
 
+.ui-modal-close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.ui-modal-close:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+  border-color: var(--color-primary-soft-strong);
+}
+
+.ui-modal-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 0.25rem var(--color-focus-ring);
+}
+
 .ui-modal-drag-region {
   flex-shrink: 0;
 }
@@ -71,6 +102,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
+  padding-right: calc(var(--space-5) + 2.75rem);
 }
 
 .ui-modal-title {
@@ -152,6 +184,10 @@
   .ui-modal-body,
   .ui-modal-footer {
     padding-inline: var(--space-4);
+  }
+
+  .ui-modal-header {
+    padding-right: calc(var(--space-4) + 2.75rem);
   }
 
   .ui-modal-footer {

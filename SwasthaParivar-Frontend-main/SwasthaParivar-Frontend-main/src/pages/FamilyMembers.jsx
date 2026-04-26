@@ -10,6 +10,18 @@ import { Button, EmptyState, Modal, PullToRefresh, Skeleton } from "../component
 import { useFamilyStore } from "../store/family-store";
 import "./FamilyMembers.css";
 
+const getMemberRisk = (member = {}) => {
+  if (member.childSensitive || member.allergies?.length) {
+    return { level: "high", label: "Elevated care risk" };
+  }
+
+  if (member.conditions?.length || member.medications?.length) {
+    return { level: "medium", label: "Moderate care risk" };
+  }
+
+  return { level: "low", label: "Stable care profile" };
+};
+
 const FamilyMembers = () => {
   const navigate = useNavigate();
   const { members, loading, createMember, createInvite, deleteMember, refreshMembers } = useFamilyStore();
@@ -107,6 +119,7 @@ const FamilyMembers = () => {
           <div className="family-grid">
             {members.map((member) => {
               const canDeleteMember = member.profileType !== "self" && !member.linkedUserId;
+              const risk = getMemberRisk(member);
 
               return (
                 <article key={member._id} className="family-card card card-hover">
@@ -119,7 +132,14 @@ const FamilyMembers = () => {
                       </div>
                     </div>
 
-                    {member.childSensitive ? <span className="badge badge--warning">Sensitive</span> : null}
+                    <div className="family-card__status">
+                      <span
+                        className={`family-risk-dot family-risk-dot--${risk.level}`}
+                        aria-label={risk.label}
+                        title={risk.label}
+                      />
+                      {member.childSensitive ? <span className="badge badge--warning">Sensitive</span> : null}
+                    </div>
                   </div>
 
                   <div className="family-card__meta">
@@ -145,10 +165,10 @@ const FamilyMembers = () => {
                   </div>
 
                   <div className="family-card__actions">
-                    <Button variant="ghost" onClick={() => navigate(`/health/${member._id}`)}>
+                    <Button variant="secondary" onClick={() => navigate(`/health/${member._id}`)}>
                       Health records
                     </Button>
-                    <Button variant="secondary" onClick={() => navigate(`/family/${member._id}`)}>
+                    <Button variant="primary" onClick={() => navigate(`/family/${member._id}`)}>
                       Open profile
                     </Button>
                     {canDeleteMember ? (

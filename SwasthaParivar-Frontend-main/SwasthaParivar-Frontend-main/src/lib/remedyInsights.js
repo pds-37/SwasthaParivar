@@ -1,64 +1,55 @@
 const CONDITION_TAG_MAP = {
-  cold: ["Cold", "Cough", "Immunity", "Respiratory", "Throat"],
-  cough: ["Cough", "Throat", "Respiratory"],
-  digestion: ["Digestion", "Detox", "Metabolic"],
-  diabetes: ["Metabolic", "Digestion", "Hydration"],
-  hypertension: ["Relaxation", "Sleep", "Hydration", "Inflammation"],
-  pain: ["Pain", "Inflammation", "Relaxation"],
+  acidity: ["Digestion", "Hydration", "Nausea"],
   anxiety: ["Relaxation", "Sleep"],
-  stress: ["Relaxation", "Sleep"],
+  asthma: ["Respiratory", "Cold"],
+  bloating: ["Digestion", "Detox"],
+  cold: ["Cold", "Cough", "Immunity", "Respiratory", "Throat"],
+  constipation: ["Digestion", "Detox"],
+  cough: ["Cough", "Throat", "Respiratory"],
+  diabetes: ["Metabolic", "Digestion", "Hydration"],
+  digestion: ["Digestion", "Detox", "Metabolic"],
+  fatigue: ["Hydration", "Immunity", "Metabolic"],
+  hair: ["Hair", "Immunity", "Skin"],
+  headache: ["Hydration", "Relaxation"],
+  hypertension: ["Relaxation", "Sleep", "Hydration", "Inflammation"],
+  indigestion: ["Digestion", "Detox", "Nausea"],
+  insomnia: ["Sleep", "Relaxation"],
+  nausea: ["Nausea", "Digestion", "Hydration"],
+  pain: ["Pain", "Inflammation", "Relaxation"],
+  pcos: ["Metabolic", "Digestion", "Skin"],
+  pregnancy: ["Digestion", "Hydration", "Sleep"],
+  pregnant: ["Digestion", "Hydration", "Sleep"],
   skin: ["Skin", "Hydration", "Detox"],
+  sleep: ["Sleep", "Relaxation"],
+  sore: ["Throat", "Cold"],
+  stress: ["Relaxation", "Sleep"],
+  throat: ["Throat", "Cough", "Respiratory"],
+  weight: ["Metabolic", "Digestion", "Hydration"],
 };
 
-const SAFETY_RULES = [
-  {
-    key: "highSugar",
-    matches: /honey|banana/i,
-    message:
-      "Contains naturally sweet ingredients that may not be ideal when blood sugar is elevated.",
-  },
-  {
-    key: "highBp",
-    matches: /licorice|mulethi|salt/i,
-    message:
-      "May not suit elevated blood pressure without clinical guidance.",
-  },
-  {
-    key: "highHeartRate",
-    matches: /black pepper|long pepper|ajwain|cinnamon/i,
-    message:
-      "Uses warming spices that can feel too stimulating when heart rate is already high.",
-  },
-  {
-    key: "childSensitive",
-    matches: /trikatu|neem|licorice|mulethi/i,
-    message:
-      "Stronger herbs should be used carefully for younger children and only with guardian or clinician guidance.",
-  },
-];
-
-const PRIORITY_TAGS = [
-  "All",
-  "Cold",
-  "Cough",
-  "Detox",
-  "Digestion",
-  "Hair",
-  "Hydration",
-  "Immunity",
-  "Inflammation",
-  "Metabolic",
-  "Nasal",
-  "Nausea",
-  "Oral",
-  "Pain",
-  "Relaxation",
-  "Respiratory",
-  "Skin",
-  "Sleep",
-  "Stress",
-  "Throat",
-];
+const TAG_FAMILY_MAP = {
+  All: [],
+  Cold: ["Cold", "Cough", "Respiratory", "Throat", "Immunity"],
+  Cough: ["Cough", "Cold", "Respiratory", "Throat"],
+  Detox: ["Detox", "Digestion", "Hydration", "Metabolic", "Skin"],
+  Digestion: ["Digestion", "Detox", "Metabolic", "Nausea"],
+  Hair: ["Hair", "Skin", "Immunity", "Metabolic"],
+  Hydration: ["Hydration", "Skin", "Metabolic", "Digestion"],
+  Immunity: ["Immunity", "Cold", "Cough", "Hair", "Skin"],
+  Inflammation: ["Inflammation", "Pain", "Relaxation"],
+  Metabolic: ["Metabolic", "Digestion", "Hydration", "Detox"],
+  Nasal: ["Nasal", "Respiratory", "Cold", "Cough"],
+  Nausea: ["Nausea", "Digestion", "Hydration"],
+  Oral: ["Oral"],
+  Pain: ["Pain", "Inflammation", "Relaxation"],
+  Relaxation: ["Relaxation", "Sleep", "Pain"],
+  Respiratory: ["Respiratory", "Cold", "Cough", "Throat", "Nasal"],
+  Skin: ["Skin", "Hydration", "Detox", "Hair"],
+  Sleep: ["Sleep", "Relaxation"],
+  Stress: ["Stress", "Relaxation", "Sleep"],
+  Throat: ["Throat", "Cough", "Cold", "Respiratory"],
+  Women: ["Women", "Digestion", "Relaxation"],
+};
 
 const QUERY_STOP_WORDS = new Set([
   "and",
@@ -92,7 +83,7 @@ const QUERY_INTENT_RULES = [
   {
     pattern: /\b(weight loss|lose weight|fat loss|slimming|slow metabolism|belly fat)\b/i,
     priorityTags: ["Metabolic"],
-    tags: ["Metabolic", "Hydration"],
+    tags: ["Metabolic", "Hydration", "Digestion"],
     keywords: ["metabolic", "detox", "digestion", "sluggishness"],
     reason: "Supports metabolic balance goals",
   },
@@ -133,7 +124,49 @@ const QUERY_INTENT_RULES = [
   },
 ];
 
-const unique = (items) => Array.from(new Set(items.filter(Boolean)));
+const SERIOUS_SYMPTOM_RULES = [
+  {
+    label: "Chest pain needs medical review",
+    regex: /\b(chest pain|tight chest|pressure in chest)\b/i,
+    guidance: "Home remedies are not the right first step for chest pain.",
+  },
+  {
+    label: "Breathing difficulty needs urgent help",
+    regex: /\b(shortness of breath|breathing issue|cannot breathe|can't breathe|breathless|wheezing)\b/i,
+    guidance: "Breathing issues should go to Family AI or medical care, not remedies.",
+  },
+  {
+    label: "High fever needs clinician review",
+    regex: /\b(fever\s*>\s*103|fever above 103|103\s*f|104\s*f|105\s*f|very high fever)\b/i,
+    guidance: "High fever is outside the safe home-remedy flow.",
+  },
+  {
+    label: "Confusion or fainting needs urgent help",
+    regex: /\b(confusion|confused|fainting|fainted|unconscious)\b/i,
+    guidance: "This symptom needs urgent assessment instead of a remedy card.",
+  },
+  {
+    label: "Bleeding needs medical review",
+    regex: /\b(bleeding|blood in stool|blood in vomit|vomiting blood)\b/i,
+    guidance: "Bleeding symptoms should skip remedies and go to medical guidance.",
+  },
+];
+
+const ACTIVE_INGREDIENT_EXCLUSIONS = [
+  /\bwater\b/i,
+  /\bwarm water\b/i,
+  /\bhot water\b/i,
+  /\bmilk\b/i,
+  /\bplant milk\b/i,
+  /\bghee\b/i,
+];
+
+const NUTRIENT_TERMS = /\b(zinc|iron|vitamin|calcium|protein|fiber)\b/i;
+const STRONG_SPICE_PATTERN = /\b(black pepper|long pepper|trikatu|ajwain|clove|cinnamon|red chilli|red chili|green chilli|green chili)\b/i;
+const SWEETENER_PATTERN = /\b(honey|jaggery|sugar syrup|sugar)\b/i;
+const BLOOD_THINNER_PATTERN = /\b(warfarin|apixaban|rivaroxaban|blood thinner|aspirin|clopidogrel)\b/i;
+
+const unique = (items = []) => Array.from(new Set(items.filter(Boolean)));
 
 const titleCase = (value = "") =>
   value
@@ -142,53 +175,37 @@ const titleCase = (value = "") =>
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join(" ");
 
+const normalizeText = (value = "") => String(value || "").trim().toLowerCase();
+
+const normalizeList = (value) => {
+  if (Array.isArray(value)) {
+    return unique(value.map((item) => normalizeText(item)).filter(Boolean));
+  }
+
+  if (typeof value === "string") {
+    return unique(
+      value
+        .split(/[,\n]/)
+        .map((item) => normalizeText(item))
+        .filter(Boolean)
+    );
+  }
+
+  return [];
+};
+
 const tokenizeQuery = (value = "") =>
   unique(
-    String(value || "")
-      .toLowerCase()
+    normalizeText(value)
       .replace(/[^a-z0-9\s]/g, " ")
       .split(/\s+/)
       .filter((token) => token.length > 2 && !QUERY_STOP_WORDS.has(token))
   );
 
-const resolveQueryIntent = (query = "") => {
-  const normalized = String(query || "").trim().toLowerCase();
-  const tags = [];
-  const priorityTags = [];
-  const keywords = [];
-  const reasons = [];
-  const tokens = tokenizeQuery(normalized);
-
-  QUERY_INTENT_RULES.forEach((rule) => {
-    if (!rule.pattern.test(normalized)) return;
-    tags.push(...rule.tags);
-    priorityTags.push(...(rule.priorityTags || rule.tags.slice(0, 1)));
-    keywords.push(...(rule.keywords || []));
-    reasons.push(rule.reason);
-  });
-
-  PRIORITY_TAGS.filter((tag) => tag !== "All").forEach((tag) => {
-    const normalizedTag = tag.toLowerCase();
-    if (normalized.includes(normalizedTag) || tokens.includes(normalizedTag)) {
-      tags.push(tag);
-      reasons.push(`${tag} support matches the search focus`);
-    }
-  });
-
-  return {
-    query: normalized,
-    tokens,
-    priorityTags: unique(priorityTags.map(titleCase)),
-    tags: unique(tags.map(titleCase)),
-    keywords: unique(keywords),
-    reasons: unique(reasons),
-  };
-};
-
 const getLatestEntry = (entries = []) =>
   entries
     .slice()
-    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0] || null;
+    .sort((a, b) => new Date(b?.date || 0) - new Date(a?.date || 0))[0] || null;
 
 const parseBloodPressure = (value) => {
   if (typeof value !== "string") return null;
@@ -205,6 +222,197 @@ const numberValue = (entry) => {
   return Number.isFinite(value) ? value : null;
 };
 
+const getTagFamily = (tag = "All") => {
+  const normalizedTag = titleCase(tag);
+  return unique([normalizedTag, ...(TAG_FAMILY_MAP[normalizedTag] || [])]);
+};
+
+const resolveQueryIntent = (query = "") => {
+  const normalized = normalizeText(query);
+  const tags = [];
+  const priorityTags = [];
+  const keywords = [];
+  const reasons = [];
+  const tokens = tokenizeQuery(normalized);
+
+  QUERY_INTENT_RULES.forEach((rule) => {
+    if (!rule.pattern.test(normalized)) return;
+    tags.push(...rule.tags);
+    priorityTags.push(...(rule.priorityTags || rule.tags.slice(0, 1)));
+    keywords.push(...(rule.keywords || []));
+    reasons.push(rule.reason);
+  });
+
+  Object.keys(TAG_FAMILY_MAP)
+    .filter((tag) => tag !== "All")
+    .forEach((tag) => {
+      const normalizedTag = tag.toLowerCase();
+      if (normalized.includes(normalizedTag) || tokens.includes(normalizedTag)) {
+        tags.push(tag);
+        reasons.push(`${tag} support matches the search focus`);
+      }
+    });
+
+  return {
+    query: normalized,
+    tokens,
+    priorityTags: unique(priorityTags.map(titleCase)),
+    tags: unique(tags.map(titleCase)),
+    keywords: unique(keywords.map(normalizeText)),
+    reasons: unique(reasons),
+  };
+};
+
+const ageBandFromAge = (age = 0) => {
+  if (age > 0 && age < 2) return "under2";
+  if (age >= 2 && age <= 5) return "2to5";
+  if (age >= 6 && age <= 12) return "6to12";
+  if (age >= 60) return "60plus";
+  return "adult";
+};
+
+const getDosageProfile = (age = 0) => {
+  const ageBand = ageBandFromAge(age);
+
+  switch (ageBand) {
+    case "under2":
+      return {
+        ageBand,
+        label: "Under 2 years",
+        multiplier: 0.1,
+        short: "Only very gentle, clinician-approved options.",
+        detail: "Avoid honey and strong spices. Use pediatric guidance before trying any ingestible home remedy.",
+        serving: "A few safe sips only if already clinician-approved",
+      };
+    case "2to5":
+      return {
+        ageBand,
+        label: "2-5 years",
+        multiplier: 0.25,
+        short: "Use 1/4 adult dose.",
+        detail: "Keep flavors mild and start with small portions.",
+        serving: "About 1/4 cup or 1-2 teaspoons, depending on the remedy",
+      };
+    case "6to12":
+      return {
+        ageBand,
+        label: "6-12 years",
+        multiplier: 0.5,
+        short: "Use 1/2 adult dose.",
+        detail: "Choose milder preparations and avoid over-spicing.",
+        serving: "About 1/2 cup or half an adult portion",
+      };
+    case "60plus":
+      return {
+        ageBand,
+        label: "60+ years",
+        multiplier: 0.75,
+        short: "Use 3/4 adult dose with extra caution.",
+        detail: "Start smaller if digestion is delicate or medicines are already active.",
+        serving: "About 3/4 cup or 3/4 of an adult portion",
+      };
+    default:
+      return {
+        ageBand,
+        label: "Adult",
+        multiplier: 1,
+        short: "Use the full adult dose.",
+        detail: "Standard adult portion unless a clinician has advised otherwise.",
+        serving: "1 cup or 1 adult portion",
+      };
+  }
+};
+
+const formatListSummary = (items = [], emptyLabel = "None saved") => {
+  if (!items.length) return emptyLabel;
+  return items.map(titleCase).join(", ");
+};
+
+const splitSymptoms = (value = "") =>
+  unique(
+    String(value || "")
+      .split(/,|\/| and /i)
+      .map((part) => titleCase(normalizeText(part)))
+      .filter(Boolean)
+  );
+
+const hasIngredient = (ingredients = [], pattern) =>
+  ingredients.some((ingredient) => pattern.test(normalizeText(ingredient)));
+
+const getRemedyFormat = (remedy) => {
+  const haystack = `${remedy?.name || ""} ${(remedy?.steps || []).join(" ")}`.toLowerCase();
+  if (/gargle/.test(haystack)) return "gargle";
+  if (/massage|oil pulling|topical|rinse/.test(haystack)) return "external";
+  if (/shot/.test(haystack)) return "shot";
+  if (/snack|eat/.test(haystack)) return "food";
+  return "drink";
+};
+
+const buildDosageGuidance = (remedy, dosageProfile) => {
+  const format = getRemedyFormat(remedy);
+
+  if (format === "gargle") {
+    return {
+      short: "Use warm, not hot, water for gargling.",
+      detail: `${dosageProfile.label}: 1 to 2 gentle gargles at a time. Do not swallow unless the recipe clearly says so.`,
+    };
+  }
+
+  if (format === "external") {
+    return {
+      short: "Small external application only.",
+      detail: `${dosageProfile.label}: test a small amount first and stop if there is irritation.`,
+    };
+  }
+
+  if (format === "shot") {
+    if (dosageProfile.ageBand === "under2") {
+      return {
+        short: "Avoid concentrated shots in children under 2.",
+        detail: "Use pediatric guidance instead of concentrated remedy shots.",
+      };
+    }
+
+    if (dosageProfile.ageBand === "2to5") {
+      return {
+        short: "About 1/4 tablespoon at a time.",
+        detail: "Keep it very mild and avoid sharp or spicy shots.",
+      };
+    }
+
+    if (dosageProfile.ageBand === "6to12") {
+      return {
+        short: "About 1/2 tablespoon at a time.",
+        detail: "Start with a smaller portion if the taste is strong.",
+      };
+    }
+
+    if (dosageProfile.ageBand === "60plus") {
+      return {
+        short: "About 3/4 tablespoon at a time.",
+        detail: "Start smaller if digestion is sensitive or medicines are active.",
+      };
+    }
+
+    return {
+      short: "About 1 tablespoon at a time.",
+      detail: "Use the standard adult portion unless told otherwise.",
+    };
+  }
+
+  if (format === "food") {
+    return {
+      short: dosageProfile.short,
+      detail: `${dosageProfile.label}: use ${dosageProfile.serving}.`,
+    };
+  }
+
+  return {
+    short: dosageProfile.short,
+    detail: `${dosageProfile.label}: use ${dosageProfile.serving}.`,
+  };
+};
+
 const buildMemberSignal = (member) => {
   const health = member?.health || {};
   const bp = parseBloodPressure(getLatestEntry(health.bloodPressure)?.value);
@@ -213,67 +421,113 @@ const buildMemberSignal = (member) => {
   const heartRate = numberValue(getLatestEntry(health.heartRate));
   const steps = numberValue(getLatestEntry(health.steps));
   const age = Number(member?.age || 0);
-  const conditions = Array.isArray(member?.conditions) ? member.conditions : [];
-
+  const conditions = normalizeList(member?.conditions);
+  const allergies = normalizeList(member?.allergies);
+  const medications = normalizeList(member?.medications);
+  const avoidedIngredients = normalizeList(member?.baselinePreferences?.avoidedIngredients);
+  const dosage = getDosageProfile(age);
   const recommendedTags = [];
   const concerns = [];
+
   const flags = {
+    childSensitive: Boolean(member?.childSensitive) || (age > 0 && age < 12),
+    infant: age > 0 && age < 2,
+    elderly: age >= 60,
+    pregnant: member?.pregnancyStatus === "pregnant",
     highBp: false,
     highSugar: false,
+    diabetes: false,
     poorSleep: false,
     highHeartRate: false,
     lowActivity: false,
-    childSensitive: age > 0 && age < 12,
+    bloodThinner: medications.some((entry) => BLOOD_THINNER_PATTERN.test(entry)),
   };
 
   if (bp && (bp.systolic >= 140 || bp.diastolic >= 90)) {
     flags.highBp = true;
-    concerns.push("Recent blood pressure looks elevated");
+    concerns.push("BP-sensitive profile");
     recommendedTags.push("Relaxation", "Sleep", "Hydration", "Inflammation");
   }
 
   if (sugar !== null && sugar >= 140) {
     flags.highSugar = true;
-    concerns.push("Blood sugar is trending high");
+    concerns.push("Sugar-sensitive profile");
+    recommendedTags.push("Metabolic", "Digestion", "Hydration");
+  }
+
+  if (conditions.some((entry) => entry.includes("diabet") || entry.includes("sugar"))) {
+    flags.diabetes = true;
+    concerns.push("Diabetes profile");
     recommendedTags.push("Metabolic", "Digestion", "Hydration");
   }
 
   if (sleep !== null && sleep < 6) {
     flags.poorSleep = true;
-    concerns.push("Recent sleep is low");
+    concerns.push("Low recent sleep");
     recommendedTags.push("Sleep", "Relaxation");
   }
 
   if (heartRate !== null && heartRate > 100) {
     flags.highHeartRate = true;
-    concerns.push("Heart rate is on the higher side");
+    concerns.push("Higher recent heart rate");
     recommendedTags.push("Relaxation", "Hydration");
   }
 
   if (steps !== null && steps < 4000) {
     flags.lowActivity = true;
-    concerns.push("Activity has been low lately");
+    concerns.push("Low recent activity");
     recommendedTags.push("Metabolic", "Pain", "Inflammation");
   }
 
-  if (age >= 60) {
-    recommendedTags.push("Pain", "Sleep", "Hydration", "Immunity");
-  }
-
-  if (flags.childSensitive) {
+  if (flags.infant) {
+    concerns.push("Infant profile");
+    recommendedTags.push("Cold", "Hydration");
+  } else if (flags.childSensitive) {
+    concerns.push("Child-sensitive profile");
     recommendedTags.push("Immunity", "Cold", "Cough");
   }
 
+  if (flags.elderly) {
+    concerns.push("Elder-safe dosing profile");
+    recommendedTags.push("Pain", "Sleep", "Hydration", "Immunity");
+  }
+
+  if (flags.pregnant) {
+    concerns.push("Pregnancy safety profile");
+    recommendedTags.push("Digestion", "Hydration", "Sleep");
+  }
+
+  if (flags.bloodThinner) {
+    concerns.push("Blood-thinner interaction profile");
+  }
+
   conditions.forEach((condition) => {
-    const normalized = String(condition).trim().toLowerCase();
-    recommendedTags.push(...(CONDITION_TAG_MAP[normalized] || []));
+    recommendedTags.push(...(CONDITION_TAG_MAP[condition] || []));
   });
+
+  const profileBullets = [
+    age > 0 ? `Age ${age} (${dosage.label.toLowerCase()} dosing)` : "Age not saved",
+    `Conditions: ${formatListSummary(conditions)}`,
+    `Allergies: ${formatListSummary(allergies)}`,
+    `Medications: ${formatListSummary(medications)}`,
+  ];
+
+  if (member?.pregnancyStatus && member.pregnancyStatus !== "not_applicable") {
+    profileBullets.push(`Pregnancy: ${titleCase(member.pregnancyStatus.replace(/_/g, " "))}`);
+  }
 
   return {
     memberId: member?._id || "family",
     memberName: member?.name || "Family member",
+    age,
+    dosage,
+    conditions,
+    allergies,
+    medications,
+    avoidedIngredients,
     concerns: unique(concerns),
-    recommendedTags: unique(recommendedTags),
+    recommendedTags: unique(recommendedTags.map(titleCase)),
+    profileBullets,
     flags,
   };
 };
@@ -287,14 +541,19 @@ export const buildRemedyContext = (members = [], selectedMemberId = "family") =>
   const signals = focusMembers.map(buildMemberSignal);
   const tagFrequency = new Map();
   const summaryPills = [];
+  const profileFacts = [];
 
   signals.forEach((signal) => {
     signal.recommendedTags.forEach((tag) => {
       tagFrequency.set(tag, (tagFrequency.get(tag) || 0) + 1);
     });
 
-    signal.concerns.slice(0, 2).forEach((concern) => {
+    signal.concerns.forEach((concern) => {
       summaryPills.push(`${signal.memberName}: ${concern}`);
+    });
+
+    signal.profileBullets.slice(0, 2).forEach((item) => {
+      profileFacts.push(`${signal.memberName}: ${item}`);
     });
   });
 
@@ -303,36 +562,73 @@ export const buildRemedyContext = (members = [], selectedMemberId = "family") =>
     .map(([tag]) => tag)
     .slice(0, 6);
 
-  const highLevelFlags = signals.reduce(
+  const flags = signals.reduce(
     (acc, signal) => ({
+      childSensitive: acc.childSensitive || signal.flags.childSensitive,
+      infant: acc.infant || signal.flags.infant,
+      elderly: acc.elderly || signal.flags.elderly,
+      pregnant: acc.pregnant || signal.flags.pregnant,
       highBp: acc.highBp || signal.flags.highBp,
       highSugar: acc.highSugar || signal.flags.highSugar,
+      diabetes: acc.diabetes || signal.flags.diabetes,
       poorSleep: acc.poorSleep || signal.flags.poorSleep,
       highHeartRate: acc.highHeartRate || signal.flags.highHeartRate,
       lowActivity: acc.lowActivity || signal.flags.lowActivity,
-      childSensitive: acc.childSensitive || signal.flags.childSensitive,
+      bloodThinner: acc.bloodThinner || signal.flags.bloodThinner,
     }),
     {
+      childSensitive: false,
+      infant: false,
+      elderly: false,
+      pregnant: false,
       highBp: false,
       highSugar: false,
+      diabetes: false,
       poorSleep: false,
       highHeartRate: false,
       lowActivity: false,
-      childSensitive: false,
+      bloodThinner: false,
     }
   );
+
+  const focusLabel =
+    selectedMemberId === "family"
+      ? "Whole family"
+      : focusMembers[0]?.name || "Selected member";
+
+  const focusDetailLabel =
+    selectedMemberId === "family"
+      ? `${signals.length || members.length || 0} saved profiles`
+      : focusMembers[0]?.name || "Selected member";
+
+  const defaultDosage = signals[0]?.dosage || getDosageProfile(0);
+  const profileCheckedText =
+    selectedMemberId === "family"
+      ? `Checked ${signals.length || members.length || 0} saved family profiles before ranking remedies.`
+      : `Checked ${focusLabel}'s saved profile before ranking remedies.`;
 
   return {
     selectedMemberId,
     focusMembers,
     signals,
     recommendedTags,
-    summaryPills: unique(summaryPills).slice(0, 4),
-    flags: highLevelFlags,
-    focusLabel:
-      selectedMemberId === "family"
-        ? "Whole family"
-        : focusMembers[0]?.name || "Selected member",
+    summaryPills: unique(summaryPills).slice(0, 6),
+    profileFacts: unique(profileFacts).slice(0, 6),
+    flags,
+    focusLabel,
+    focusDetailLabel,
+    focusNames: unique(signals.map((signal) => signal.memberName)),
+    conditions: unique(signals.flatMap((signal) => signal.conditions)),
+    allergies: unique(signals.flatMap((signal) => signal.allergies)),
+    medications: unique(signals.flatMap((signal) => signal.medications)),
+    avoidedIngredients: unique(signals.flatMap((signal) => signal.avoidedIngredients)),
+    dosageProfile: defaultDosage,
+    profileCheckedText,
+    riskCount: unique(summaryPills).length,
+    clearProfile:
+      unique(summaryPills).length === 0
+        ? `No active risk flags were detected for ${focusLabel.toLowerCase()} from saved profile data.`
+        : "",
   };
 };
 
@@ -345,13 +641,126 @@ export const getAllRemedyTags = (remedies = [], contextTags = []) => {
 
   contextTags.forEach((tag) => discovered.add(titleCase(tag)));
 
-  const rest = Array.from(discovered).filter((tag) => !PRIORITY_TAGS.includes(tag));
+  const priorityTags = Object.keys(TAG_FAMILY_MAP);
+  const rest = Array.from(discovered).filter((tag) => !priorityTags.includes(tag));
 
-  return [...PRIORITY_TAGS, ...rest.sort((a, b) => a.localeCompare(b))];
+  return [...priorityTags, ...rest.sort((a, b) => a.localeCompare(b))];
 };
 
-export const getRemedyInsight = (remedy, context, query = "") => {
-  const queryText = query.trim().toLowerCase();
+export const getSeriousSymptomMatch = (value = "") => {
+  const normalized = normalizeText(value);
+  if (!normalized) return null;
+  return (
+    SERIOUS_SYMPTOM_RULES.find((rule) => rule.regex.test(normalized)) || null
+  );
+};
+
+const buildActiveIngredients = (ingredients = []) => {
+  const filtered = ingredients.filter((ingredient) => {
+    const normalized = normalizeText(ingredient);
+    if (!normalized) return false;
+    if (NUTRIENT_TERMS.test(normalized)) return false;
+    return !ACTIVE_INGREDIENT_EXCLUSIONS.some((pattern) => pattern.test(normalized));
+  });
+
+  return unique((filtered.length ? filtered : ingredients).slice(0, 4).map(titleCase));
+};
+
+const buildTargetSymptoms = (remedy) =>
+  unique([
+    ...splitSymptoms(remedy?.symptoms || ""),
+    ...((remedy?.tags || []).map(titleCase)),
+  ]).slice(0, 4);
+
+const isGingerHeavy = (remedy) => {
+  const ingredients = remedy?.ingredients || [];
+  const ingredientsText = ingredients.map(normalizeText).join(" ");
+
+  if (/ginger juice/.test(ingredientsText)) return true;
+
+  return (
+    hasIngredient(ingredients, /\bginger\b/i) &&
+    hasIngredient(ingredients, /\b(black pepper|ajwain|cinnamon|long pepper|trikatu)\b/i)
+  );
+};
+
+const evaluateRemedySafety = (remedy, context) => {
+  const ingredients = remedy?.ingredients || [];
+  const ingredientText = ingredients.map(normalizeText).join(" ");
+  const avoidReasons = [];
+  const cautionReasons = [];
+
+  const allergyMatch = context.allergies.find((allergy) =>
+    ingredients.some((ingredient) => {
+      const normalizedIngredient = normalizeText(ingredient);
+      return normalizedIngredient.includes(allergy) || allergy.includes(normalizedIngredient);
+    })
+  );
+
+  if (allergyMatch) {
+    avoidReasons.push(`Avoid for ${context.focusLabel.toLowerCase()}: ingredient conflicts with saved allergy "${titleCase(allergyMatch)}".`);
+  }
+
+  if ((context.flags.diabetes || context.flags.highSugar) && SWEETENER_PATTERN.test(ingredientText)) {
+    avoidReasons.push("Removed for diabetes or high-sugar profiles because it contains honey, jaggery, or another sweetener.");
+  }
+
+  if (context.flags.infant && /\bhoney\b/i.test(ingredientText)) {
+    avoidReasons.push("Removed for children under 2 because honey is not safe at this age.");
+  }
+
+  if (context.flags.infant && STRONG_SPICE_PATTERN.test(ingredientText)) {
+    avoidReasons.push("Removed for children under 2 because strong spices are not safe in this remedy flow.");
+  }
+
+  if (context.flags.pregnant && /\bpapaya\b/i.test(ingredientText)) {
+    avoidReasons.push("Removed for pregnancy profiles because papaya is filtered out here.");
+  }
+
+  if (context.flags.pregnant && /\bsesame|til\b/i.test(ingredientText)) {
+    avoidReasons.push("Removed for pregnancy profiles because sesame-heavy remedies are filtered out here.");
+  }
+
+  if (context.flags.pregnant && isGingerHeavy(remedy)) {
+    avoidReasons.push("Removed for pregnancy profiles because this is a stronger ginger-based remedy.");
+  } else if (context.flags.pregnant && /\bginger\b/i.test(ingredientText)) {
+    cautionReasons.push("Pregnancy profile: keep ginger mild and confirm with a clinician if symptoms persist.");
+  }
+
+  if (context.flags.bloodThinner && /\b(turmeric|ginger)\b/i.test(ingredientText)) {
+    cautionReasons.push("Blood-thinner profile: turmeric and ginger can interact with current medicines.");
+  }
+
+  if (context.flags.highBp && /\b(licorice|mulethi)\b/i.test(ingredientText)) {
+    cautionReasons.push("BP-sensitive profile: licorice can worsen blood pressure control.");
+  }
+
+  if (context.flags.highBp && /\b(rock salt|salt)\b/i.test(ingredientText)) {
+    cautionReasons.push("BP-sensitive profile: extra salt needs caution.");
+  }
+
+  if (context.flags.highHeartRate && STRONG_SPICE_PATTERN.test(ingredientText)) {
+    cautionReasons.push("Higher recent heart rate: keep strong warming spices mild.");
+  }
+
+  context.avoidedIngredients.forEach((ingredient) => {
+    if (ingredientText.includes(ingredient)) {
+      cautionReasons.push(`Saved preference: ${titleCase(ingredient)} is on the avoided ingredient list.`);
+    }
+  });
+
+  const status = avoidReasons.length > 0 ? "avoid" : cautionReasons.length > 0 ? "caution" : "safe";
+
+  return {
+    status,
+    avoidReasons: unique(avoidReasons),
+    cautionReasons: unique(cautionReasons),
+    contraindications: unique([...avoidReasons, ...cautionReasons]).slice(0, 4),
+  };
+};
+
+export const decorateRemedyForContext = (remedy, context, query = "") => {
+  const queryText = normalizeText(query);
   const queryIntent = resolveQueryIntent(queryText);
   const tags = (remedy.tags || []).map(titleCase);
   const tagSet = new Set(tags);
@@ -360,13 +769,13 @@ export const getRemedyInsight = (remedy, context, query = "") => {
   const nameText = String(remedy.name || "").toLowerCase();
   const searchableText = `${nameText} ${symptomsText} ${ingredientsText} ${tags.join(" ").toLowerCase()}`;
   const reasons = [];
-  const warnings = [];
+  const safety = evaluateRemedySafety(remedy, context);
   let score = Number(remedy.rating || 0);
   let queryMatchScore = 0;
 
   context.recommendedTags.forEach((tag) => {
     if (tagSet.has(titleCase(tag))) {
-      reasons.push(`${tag} support matches recent health needs`);
+      reasons.push(`${tag} support matches the saved profile`);
       score += 3;
     }
   });
@@ -396,79 +805,142 @@ export const getRemedyInsight = (remedy, context, query = "") => {
     if (!tagSet.has(titleCase(tag))) return;
     score += 6;
     queryMatchScore += 6;
-    reasons.push(
-      queryIntent.reasons[0] || `${tag} support matches the current search`
-    );
+    reasons.push(queryIntent.reasons[0] || `${tag} support matches the current search`);
   });
 
   queryIntent.priorityTags.forEach((tag) => {
     if (!tagSet.has(titleCase(tag))) return;
     score += 5;
     queryMatchScore += 5;
-    reasons.push(`${tag} is the closest match for this search`);
+    reasons.push(`${tag} is the closest safe match for this search`);
   });
 
   queryIntent.keywords.forEach((keyword) => {
-    if (!searchableText.includes(keyword.toLowerCase())) return;
+    if (!searchableText.includes(keyword)) return;
     score += 2;
     queryMatchScore += 2;
   });
 
-  SAFETY_RULES.forEach((rule) => {
-    if (context.flags[rule.key] && rule.matches.test(ingredientsText)) {
-      warnings.push(rule.message);
-      score -= 4;
-    }
-  });
+  if (safety.status === "safe") {
+    score += 3;
+  } else if (safety.status === "caution") {
+    score -= 1;
+  } else {
+    score -= 100;
+  }
 
-  context.summaryPills.forEach((pill) => {
-    const focusWord = pill.split(":")[1]?.trim().toLowerCase() || "";
-    if (focusWord && symptomsText.includes(focusWord.split(" ")[0])) {
-      reasons.push("May support an active family concern");
-      score += 2;
-    }
-  });
+  const dosage = buildDosageGuidance(remedy, context.dosageProfile);
+  const targetSymptoms = buildTargetSymptoms(remedy);
+  const activeIngredients = buildActiveIngredients(remedy.ingredients || []);
+  const familyAwareTag =
+    safety.status === "safe"
+      ? `Safe for ${context.focusLabel.toLowerCase()}`
+      : safety.status === "caution"
+        ? `Use with caution for ${context.focusLabel.toLowerCase()}`
+        : `Not suitable for ${context.focusLabel.toLowerCase()}`;
 
   return {
-    score,
-    queryMatchScore,
-    reasons: unique(reasons).slice(0, 3),
-    warnings: unique([...warnings, ...(remedy.warnings || [])]),
+    ...remedy,
+    source: remedy.source || "catalog",
+    tags,
+    insight: {
+      score,
+      queryMatchScore,
+      reasons: unique(reasons).slice(0, 3),
+      warnings: safety.cautionReasons,
+      contraindications: safety.contraindications,
+      safetyStatus: safety.status,
+      familyAwareTag,
+      activeIngredients,
+      targetSymptoms,
+      dosage,
+      matchesActiveTag: false,
+      fallbackMatch: false,
+    },
   };
 };
 
+const matchesTagSelection = (remedy, activeTag = "All", queryIntent = null) => {
+  if (activeTag === "All") return true;
+  const acceptedTags = new Set(getTagFamily(activeTag));
+
+  (queryIntent?.tags || []).forEach((tag) => {
+    getTagFamily(tag).forEach((relatedTag) => acceptedTags.add(relatedTag));
+  });
+
+  return remedy.tags.some((tag) => acceptedTags.has(titleCase(tag)));
+};
+
 export const buildCatalog = (remedies, context, query = "", activeTag = "All") => {
-  const normalizedQuery = query.trim().toLowerCase();
-
-  return remedies
-    .map((remedy) => {
-      const insight = getRemedyInsight(remedy, context, normalizedQuery);
-      return {
-        ...remedy,
-        tags: (remedy.tags || []).map(titleCase),
-        insight,
-      };
-    })
-    .filter((remedy) => {
-      const matchesQuery = !normalizedQuery || remedy.insight.queryMatchScore > 0;
-
-      const matchesTag =
-        activeTag === "All" ||
-        remedy.tags.includes(activeTag) ||
-        remedy.insight.reasons.some((reason) =>
-          reason.toLowerCase().includes(activeTag.toLowerCase())
-        );
-
-      return matchesQuery && matchesTag;
-    })
+  const normalizedQuery = normalizeText(query);
+  const queryIntent = resolveQueryIntent(normalizedQuery);
+  const decorated = remedies
+    .map((remedy) => decorateRemedyForContext(remedy, context, normalizedQuery))
+    .filter((remedy) => remedy.insight.safetyStatus !== "avoid")
     .sort((a, b) => {
       if (b.insight.score !== a.insight.score) return b.insight.score - a.insight.score;
       return Number(b.rating || 0) - Number(a.rating || 0);
     });
+
+  if (!normalizedQuery && activeTag === "All") {
+    return decorated.map((remedy) => ({
+      ...remedy,
+      insight: {
+        ...remedy.insight,
+        matchesActiveTag: true,
+      },
+    }));
+  }
+
+  const exactMatches = decorated.filter((remedy) => {
+    const matchesQuery = !normalizedQuery || remedy.insight.queryMatchScore > 0;
+    const matchesTag = matchesTagSelection(remedy, activeTag, queryIntent);
+    return matchesQuery && matchesTag;
+  });
+
+  const exactIds = new Set(exactMatches.map((remedy) => remedy.id));
+  const results = [...exactMatches];
+
+  if (results.length < 6) {
+    const relatedMatches = decorated.filter((remedy) => {
+      if (exactIds.has(remedy.id)) return false;
+      if (matchesTagSelection(remedy, activeTag, queryIntent)) return true;
+      if (!normalizedQuery) return false;
+      if (remedy.insight.queryMatchScore > 0) return true;
+      return remedy.insight.targetSymptoms.some((symptom) =>
+        queryIntent.tokens.some((token) => normalizeText(symptom).includes(token))
+      );
+    });
+
+    relatedMatches.forEach((remedy) => {
+      if (results.length < 6) {
+        results.push(remedy);
+      }
+    });
+  }
+
+  if (!results.length) {
+    return decorated.slice(0, 6).map((remedy) => ({
+      ...remedy,
+      insight: {
+        ...remedy.insight,
+        fallbackMatch: true,
+      },
+    }));
+  }
+
+  return results.map((remedy) => ({
+    ...remedy,
+    insight: {
+      ...remedy.insight,
+      matchesActiveTag: exactIds.has(remedy.id),
+      fallbackMatch: !exactIds.has(remedy.id),
+    },
+  }));
 };
 
 export const getSuggestedSeed = (query, activeTag, context) => {
-  if (query.trim()) return query.trim();
+  if (String(query || "").trim()) return String(query).trim();
   if (activeTag && activeTag !== "All") return activeTag;
   if (context.recommendedTags.length > 0) return context.recommendedTags[0];
   return "daily immunity";
