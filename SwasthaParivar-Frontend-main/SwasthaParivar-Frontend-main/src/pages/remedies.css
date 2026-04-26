@@ -146,6 +146,36 @@
   color: inherit;
 }
 
+.hero-panel__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero-panel__actions .action-button {
+  width: 100%;
+}
+
+.hero-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.hero-feedback svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.hero-feedback--warning {
+  background: color-mix(in srgb, var(--color-warning) 14%, var(--surface));
+  color: var(--color-warning);
+}
+
 .action-button--primary:hover {
   background: var(--brand-dark);
 }
@@ -314,6 +344,10 @@
   margin: 6px 0 0;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.generated-remedy-section {
+  margin-top: 20px;
 }
 
 .remedies-grid {
@@ -701,6 +735,16 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1080px) {
