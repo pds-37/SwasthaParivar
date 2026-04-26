@@ -20,7 +20,6 @@ import {
 import api from "../lib/api";
 import AiDisclaimer from "../components/ai/AiDisclaimer";
 import FollowUpChips from "../components/ai/FollowUpChips";
-import RiskBadge from "../components/ai/RiskBadge";
 import ProfileAvatar from "../components/common/ProfileAvatar";
 import { Button, Select } from "../components/ui";
 import EmptyState from "../components/common/EmptyState";
@@ -1074,11 +1073,6 @@ const AIChat = () => {
                 >
                   <div className={`ai-chat-bubble ${message.sender === "user" ? "is-user" : "is-ai"}`}>
                     {message.attachment ? <img src={message.attachment} alt="attachment" loading="lazy" /> : null}
-                    {message.sender === "ai" ? (
-                      <div className="ai-chat-bubble__meta">
-                        <RiskBadge level={message.riskLevel} />
-                      </div>
-                    ) : null}
                     {message.sender === "ai" && message.riskLevel && message.riskLevel !== "LOW" ? (
                       <AiDisclaimer riskLevel={message.riskLevel} />
                     ) : null}
@@ -1121,9 +1115,6 @@ const AIChat = () => {
                   >
                     {streamingText ? (
                       <>
-                        <div className="ai-chat-bubble__meta">
-                          <RiskBadge level={streamMeta.riskLevel} />
-                        </div>
                         {streamMeta.riskLevel && streamMeta.riskLevel !== "LOW" ? (
                           <AiDisclaimer riskLevel={streamMeta.riskLevel} />
                         ) : null}

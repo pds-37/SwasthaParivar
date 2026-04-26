@@ -30,6 +30,163 @@ const createGradient = (from = "var(--color-primary-strong)", to = "var(--color-
 
 const uniqueTextList = (items = []) => Array.from(new Set(items.filter(Boolean)));
 
+const LOCAL_GENERATOR_TEMPLATES = [
+  {
+    match: /(cold|cough|throat|respiratory|congestion|flu)/i,
+    name: "Tulsi Ginger Comfort Brew",
+    description:
+      "A warm kitchen remedy for throat comfort, light congestion support, and gentle immunity care.",
+    symptoms: "Cold, cough, throat irritation, mild congestion",
+    ingredients: ["Tulsi leaves", "Fresh ginger", "Warm water", "Black pepper"],
+    steps: [
+      "Lightly crush the tulsi leaves and ginger.",
+      "Simmer them in water for 8 to 10 minutes.",
+      "Add a very small pinch of black pepper, strain, and sip warm.",
+      "Use once or twice daily and stop if it feels too heating.",
+    ],
+    rating: 4.9,
+    tags: ["Cold", "Cough", "Immunity"],
+    timeMins: 10,
+    difficulty: "Easy",
+    ayurveda:
+      "Tulsi and ginger help support Agni while easing Kapha heaviness in the chest and throat.",
+    bestFor: ["Cold support", "Throat comfort", "Immune balance"],
+    colorFrom: "#56b88f",
+    colorTo: "#127a54",
+  },
+  {
+    match: /(sleep|stress|anxiety|insomnia|relax)/i,
+    name: "Cardamom Calm Night Cup",
+    description:
+      "A simple evening remedy to support relaxation and easier wind-down before sleep.",
+    symptoms: "Stress, restless evenings, light sleep difficulty",
+    ingredients: ["Plant milk or milk", "Cardamom", "Nutmeg"],
+    steps: [
+      "Warm the milk gently without boiling it hard.",
+      "Add crushed cardamom and a pinch of nutmeg.",
+      "Simmer briefly, strain if needed, and drink warm 30 minutes before bed.",
+    ],
+    rating: 4.8,
+    tags: ["Sleep", "Relaxation"],
+    timeMins: 8,
+    difficulty: "Easy",
+    ayurveda:
+      "This warming night cup can help settle Vata and support a calmer transition into sleep.",
+    bestFor: ["Sleep support", "Evening calm", "Stress relief"],
+    colorFrom: "#8b6dd8",
+    colorTo: "#5c4bb7",
+  },
+  {
+    match: /(digestion|bloating|gas|constipation|metabolic|stomach)/i,
+    name: "Cumin Coriander Digestive Infusion",
+    description:
+      "A gentle digestive infusion for bloating, sluggish digestion, and post-meal heaviness.",
+    symptoms: "Bloating, gas, slow digestion, post-meal heaviness",
+    ingredients: ["Cumin seeds", "Coriander seeds", "Fennel seeds", "Warm water"],
+    steps: [
+      "Lightly crush the seeds.",
+      "Simmer them in water for 8 minutes.",
+      "Strain and sip warm after meals.",
+    ],
+    rating: 4.7,
+    tags: ["Digestion", "Metabolic"],
+    timeMins: 9,
+    difficulty: "Easy",
+    ayurveda:
+      "This classic blend supports Agni without being overly sharp, making it useful for digestive complaints.",
+    bestFor: ["Digestion", "Bloating", "Metabolic balance"],
+    colorFrom: "#f2b349",
+    colorTo: "#d08a16",
+  },
+  {
+    match: /(pain|joint|inflammation|stiff|body ache)/i,
+    name: "Turmeric Recovery Drink",
+    description:
+      "A warm anti-inflammatory comfort drink for mild pain, soreness, and recovery support.",
+    symptoms: "Mild pain, inflammation, post-activity soreness",
+    ingredients: ["Plant milk or milk", "Turmeric", "Fresh ginger", "Black pepper"],
+    steps: [
+      "Warm the milk gently.",
+      "Whisk in turmeric and grated ginger.",
+      "Add a tiny pinch of black pepper, simmer briefly, and drink warm.",
+    ],
+    rating: 4.8,
+    tags: ["Pain", "Inflammation"],
+    timeMins: 9,
+    difficulty: "Easy",
+    ayurveda:
+      "Turmeric and ginger help support circulation and can reduce Ama-related heaviness after strain.",
+    bestFor: ["Inflammation support", "Recovery", "Comfort"],
+    colorFrom: "#f0ab3d",
+    colorTo: "#df7c18",
+  },
+  {
+    match: /(hydration|skin|pitta|heat|summer)/i,
+    name: "Coriander Cooling Water",
+    description:
+      "A light cooling drink to support hydration and reduce internal heat during warmer days.",
+    symptoms: "Heat, low hydration, feeling overheated",
+    ingredients: ["Coriander seeds", "Water", "Fresh mint"],
+    steps: [
+      "Soak coriander seeds in water for several hours or overnight.",
+      "Strain, add a little fresh mint, and sip through the day.",
+    ],
+    rating: 4.7,
+    tags: ["Hydration", "Skin"],
+    timeMins: 5,
+    difficulty: "Easy",
+    ayurveda:
+      "This lighter cooling preparation can help when Pitta feels high or hydration is low.",
+    bestFor: ["Hydration", "Cooling support", "Skin comfort"],
+    colorFrom: "#56bdd6",
+    colorTo: "#327fcb",
+  },
+  {
+    match: /(weight loss|lose weight|fat loss|slimming|slow metabolism|belly fat)/i,
+    name: "Cumin Lemon Metabolic Water",
+    description:
+      "A light kitchen remedy for sluggish digestion, post-meal heaviness, and gentle metabolic support.",
+    symptoms: "Weight balance, sluggish digestion, post-meal heaviness",
+    ingredients: ["Cumin seeds", "Warm water", "Lemon"],
+    steps: [
+      "Lightly crush the cumin seeds and simmer them in water for 6 to 8 minutes.",
+      "Let the drink cool slightly, then add a squeeze of lemon.",
+      "Sip it warm after meals or in the morning if it feels comfortable.",
+    ],
+    rating: 4.7,
+    tags: ["Metabolic", "Digestion", "Detox"],
+    timeMins: 8,
+    difficulty: "Easy",
+    ayurveda:
+      "Cumin and lemon can help support Agni and reduce digestive heaviness when paired with balanced meals.",
+    bestFor: ["Metabolic support", "Digestive lightness", "Weight-balance routines"],
+    colorFrom: "#f0ab3d",
+    colorTo: "#d08a16",
+  },
+  {
+    match: /(zinc deficiency|low zinc|zinc deficient|hair fall|hair loss|weak roots|skin dullness)/i,
+    name: "Curry Leaf Sesame Nourish Drink",
+    description:
+      "A nourishment-focused drink that supports hair, skin, and daily food-based wellness when the body feels undernourished.",
+    symptoms: "Low nourishment, hair fall, weak roots, skin dullness",
+    ingredients: ["Curry leaves", "Black sesame seeds", "Warm water", "Fresh ginger"],
+    steps: [
+      "Wash the curry leaves and lightly crush them with a small piece of ginger.",
+      "Blend or simmer them with warm water and a spoon of black sesame seeds.",
+      "Strain if needed and drink fresh in small portions.",
+    ],
+    rating: 4.8,
+    tags: ["Hair", "Skin", "Immunity"],
+    timeMins: 10,
+    difficulty: "Easy",
+    ayurveda:
+      "Curry leaves and black sesame are traditionally used to support nourishment, hair strength, and tissue rebuilding.",
+    bestFor: ["Hair nourishment", "Skin support", "Daily nourishment"],
+    colorFrom: "#1f9c90",
+    colorTo: "#0d6a65",
+  },
+];
+
 const toTitleCase = (value = "") =>
   String(value || "").replace(/\b\w/g, (character) => character.toUpperCase());
 
@@ -56,35 +213,104 @@ const normalizeGeneratedRemedy = (payload, seedText) => ({
   source: payload?.source || "ai",
 });
 
-const buildLocalGeneratedRemedy = ({ seedText, context, activeTag }) => {
-  const localMatches = buildCatalog(REMEDIES_DATA, context, seedText, activeTag || "All");
+const applyContextSafety = (remedy, context) => {
+  const adjusted = {
+    ...remedy,
+    ingredients: [...(remedy.ingredients || [])],
+    steps: [...(remedy.steps || [])],
+    warnings: [...(remedy.warnings || [])],
+  };
+
+  if (context.flags.highSugar) {
+    adjusted.ingredients = adjusted.ingredients.filter(
+      (ingredient) => !/honey|banana/i.test(ingredient)
+    );
+    adjusted.warnings.push(
+      "Avoided very sweet ingredients because recent blood sugar looks elevated."
+    );
+  }
+
+  if (context.flags.highBp) {
+    adjusted.ingredients = adjusted.ingredients.filter(
+      (ingredient) => !/licorice|mulethi|salt/i.test(ingredient)
+    );
+    adjusted.warnings.push(
+      "Avoid stronger blood-pressure-sensitive ingredients like licorice or extra salt."
+    );
+  }
+
+  if (context.flags.highHeartRate) {
+    adjusted.warnings.push(
+      "Use warming spices in small amounts because recent heart rate has been high."
+    );
+  }
+
+  if (context.flags.childSensitive) {
+    adjusted.warnings.push(
+      "For younger children, keep the preparation mild and confirm portions with a clinician."
+    );
+  }
+
+  adjusted.warnings = uniqueTextList(adjusted.warnings);
+  return adjusted;
+};
+
+const buildTemplateGeneratedRemedy = ({ seedText, context, activeTag }) => {
+  const normalizedSeed = String(seedText || "").trim();
+  const matchedTemplate =
+    LOCAL_GENERATOR_TEMPLATES.find((template) => template.match.test(normalizedSeed)) || null;
+
+  if (matchedTemplate) {
+    return applyContextSafety(
+      {
+        ...matchedTemplate,
+        id: `guided-${Date.now()}`,
+        source: "guided-local",
+      },
+      context
+    );
+  }
+
+  const localMatches = buildCatalog(REMEDIES_DATA, context, normalizedSeed, activeTag || "All");
   const baseRemedy =
     localMatches[0] ||
-    buildCatalog(REMEDIES_DATA, context, seedText, "All")[0] ||
+    buildCatalog(REMEDIES_DATA, context, normalizedSeed, "All")[0] ||
     REMEDIES_DATA[0];
 
+  return applyContextSafety(
+    {
+      ...baseRemedy,
+      id: `guided-${Date.now()}`,
+      name: baseRemedy?.name || `${toTitleCase(normalizedSeed)} Support Remedy`,
+      description:
+        baseRemedy?.description ||
+        `A conservative locally selected remedy for ${normalizedSeed}, adjusted for ${context.focusLabel.toLowerCase()}.`,
+      symptoms: baseRemedy?.symptoms || normalizedSeed,
+      tags: uniqueTextList([...(baseRemedy?.tags || []), toTitleCase(normalizedSeed)]).slice(0, 4),
+      bestFor: uniqueTextList([
+        ...(Array.isArray(baseRemedy?.bestFor) ? baseRemedy.bestFor : []),
+        toTitleCase(normalizedSeed),
+        context.focusLabel,
+      ]).slice(0, 4),
+      ayurveda:
+        baseRemedy?.ayurveda ||
+        "This guided remedy keeps the recommendation practical and conservative for the selected health focus.",
+      source: "guided-local",
+    },
+    context
+  );
+};
+
+const buildLocalGeneratedRemedy = ({ seedText, context, activeTag }) => {
+  const guidedRemedy = buildTemplateGeneratedRemedy({ seedText, context, activeTag });
+
   return {
-    ...baseRemedy,
-    id: `local-${Date.now()}`,
-    name: baseRemedy?.name || `${toTitleCase(seedText)} Support Remedy`,
-    description:
-      baseRemedy?.description ||
-      `A conservative locally selected remedy for ${seedText}, adjusted for ${context.focusLabel.toLowerCase()}.`,
-    symptoms: baseRemedy?.symptoms || seedText,
-    tags: uniqueTextList([...(baseRemedy?.tags || []), toTitleCase(seedText)]).slice(0, 4),
+    ...guidedRemedy,
     warnings: uniqueTextList([
-      ...(baseRemedy?.warnings || []),
-      "Live remedy generation is unavailable right now, so this fallback was built from the local remedy library.",
+      ...(guidedRemedy?.warnings || []),
+      "This remedy was generated from the local remedy library so it stays available even when live services are slow.",
       "Get medical advice if symptoms are severe, unusual, or getting worse.",
     ]),
-    bestFor: uniqueTextList([
-      ...(Array.isArray(baseRemedy?.bestFor) ? baseRemedy.bestFor : []),
-      toTitleCase(seedText),
-      context.focusLabel,
-    ]).slice(0, 4),
-    ayurveda:
-      baseRemedy?.ayurveda ||
-      "This fallback keeps the recommendation practical and conservative when live AI generation is unavailable.",
     source: "local-fallback",
   };
 };
@@ -338,8 +564,15 @@ export default function Remedies() {
     const loadMembers = async () => {
       try {
         const data = await api.get("/members");
+        const normalizedMembers = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.members)
+            ? data.members
+            : Array.isArray(data?.data?.members)
+              ? data.data.members
+              : [];
         if (!cancelled) {
-          setMembers(Array.isArray(data) ? data : []);
+          setMembers(normalizedMembers);
         }
       } catch (error) {
         console.error("Failed to load family members for remedies", error);
@@ -419,22 +652,20 @@ export default function Remedies() {
     setGeneratedRemedy(null);
 
     try {
-      const response = await api.post("/remedies/generate", {
-        query: suggestedSeed,
-        memberId: selectedMemberId,
+      const remedyPayload = buildTemplateGeneratedRemedy({
+        seedText: suggestedSeed,
+        context,
+        activeTag,
       });
-      const remedyPayload =
-        response?.remedy || buildLocalGeneratedRemedy({ seedText: suggestedSeed, context, activeTag });
-
       const normalized = normalizeGeneratedRemedy(remedyPayload, suggestedSeed);
       setGeneratedRemedy({
         ...normalized,
         insight: {
           score: 999,
-          reasons: remedyPayload?.bestFor?.length
+          reasons: normalized?.bestFor?.length
             ? remedyPayload.bestFor.slice(0, 3)
             : [`Created for ${context.focusLabel.toLowerCase()}`],
-          warnings: remedyPayload?.warnings || [],
+          warnings: normalized?.warnings || [],
         },
       });
     } catch (error) {
@@ -573,8 +804,8 @@ export default function Remedies() {
           {aiBusy ? (
             <div className="generator-state">
               <Loader2 className="spin" size={34} />
-              <h3>Consulting Ancient Wisdom...</h3>
-              <p>Using Gemini to craft a personalized Ayurvedic remedy for "{suggestedSeed}".</p>
+              <h3>Building your remedy...</h3>
+              <p>Matching symptom keywords, safety context, and remedy patterns for "{suggestedSeed}".</p>
             </div>
           ) : generatedRemedy ? (
             <>
@@ -595,7 +826,7 @@ export default function Remedies() {
               </div>
               <h3>Create Custom Remedy</h3>
               <p>
-                Search a symptom above, then generate a new remedy tailored to the current focus with built-in caution checks.
+                Search a symptom above, then generate a focused remedy using the local remedy engine with built-in caution checks.
               </p>
               <button className="action-button action-button--primary" onClick={handleGenerateRemedy}>
                 <Sparkles size={14} />
