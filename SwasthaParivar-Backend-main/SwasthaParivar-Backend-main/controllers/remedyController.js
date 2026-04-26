@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import FamilyMember from "../models/familymembermodel.js";
 import householdService from "../services/household/HouseholdService.js";
+import { REMEDY_CATALOG } from "../services/care/remedyCatalog.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { logger } from "../utils/logger.js";
 
@@ -17,6 +18,23 @@ const MODEL_CANDIDATES = [
 ];
 const NON_REMEDY_QUERY_PATTERN =
   /\b(zinc deficiency|low zinc|zinc deficient|iron deficiency|low iron|anemi[ae]|vitamin deficiency|b12 deficiency|vitamin b12 deficiency)\b/i;
+const QUERY_STOP_WORDS = new Set([
+  "and",
+  "for",
+  "the",
+  "with",
+  "from",
+  "into",
+  "your",
+  "daily",
+  "light",
+  "gentle",
+  "support",
+  "issue",
+  "problem",
+  "remedy",
+  "remedies",
+]);
 
 const TEMPLATE_LIBRARY = [
   {
@@ -175,6 +193,34 @@ const TEMPLATE_LIBRARY = [
   },
 ];
 
+const FALLBACK_QUERY_HINTS = [
+  {
+    pattern: /\b(cold|cough|throat|respiratory|congestion|flu|sore throat|tonsil)\b/i,
+    tokens: ["cough", "cold", "sore throat", "congestion"],
+    preferredIds: ["tulsi-ginger-brew", "warm-salt-gargle"],
+  },
+  {
+    pattern: /\b(acidity|acid reflux|heartburn|gas|bloating|indigestion|stomach|constipation|loose motion|diarrhea|nausea|vomit)\b/i,
+    tokens: ["bloating", "indigestion", "acidity", "nausea"],
+    preferredIds: ["cumin-coriander-fennel", "ajwain-water", "coriander-cooling-water"],
+  },
+  {
+    pattern: /\b(pain|joint|muscle|body ache|body pain|stiff|inflammation|cramp|headache)\b/i,
+    tokens: ["joint pain", "fatigue", "stress"],
+    preferredIds: ["golden-milk"],
+  },
+  {
+    pattern: /\b(stress|sleep|insomnia|anxiety|restless|fatigue|weakness)\b/i,
+    tokens: ["stress", "sleep trouble", "fatigue"],
+    preferredIds: ["golden-milk"],
+  },
+  {
+    pattern: /\b(heat|hydration|dehydration|skin|rash|acne|summer|pitta)\b/i,
+    tokens: ["acidity", "fatigue", "nausea"],
+    preferredIds: ["coriander-cooling-water"],
+  },
+];
+
 function getModel() {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured");
@@ -185,6 +231,18 @@ function getModel() {
 
 function parseJsonResponse(rawText) {
   return JSON.parse(String(rawText || "").replace(JSON_FENCE_PATTERN, "").trim());
+}
+
+function tokenizeQuery(value = "") {
+  return Array.from(
+    new Set(
+      String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter((token) => token.length > 2 && !QUERY_STOP_WORDS.has(token))
+    )
+  );
 }
 
 function getCandidateModels() {
@@ -354,29 +412,93 @@ async function buildFocusContext(userId, selectedMemberId) {
 }
 
 function chooseTemplate(query = "") {
-  return (
-    TEMPLATE_LIBRARY.find((template) => template.match.test(query)) || {
-      name: "Daily Tulsi Wellness Brew",
-      description:
-        "A balanced everyday Ayurvedic drink for light immunity and daily wellness support.",
-      symptoms: "General immunity, seasonal wellness, low energy",
-      ingredients: ["Tulsi leaves", "Fresh ginger", "Warm water"],
-      steps: [
-        "Lightly crush the tulsi and ginger.",
-        "Simmer in water for 8 minutes.",
-        "Strain and drink warm once daily.",
-      ],
-      rating: 4.8,
-      tags: ["Immunity", "Daily Wellness"],
+  const directTemplate = TEMPLATE_LIBRARY.find((template) => template.match.test(query));
+  if (directTemplate) return directTemplate;
+
+  const normalizedQuery = String(query || "").toLowerCase();
+  const queryTokens = tokenizeQuery(normalizedQuery);
+  const preferredIds = new Set();
+
+  FALLBACK_QUERY_HINTS.forEach((hint) => {
+    if (!hint.pattern.test(normalizedQuery)) return;
+
+    hint.tokens.forEach((token) => {
+      tokenizeQuery(token).forEach((part) => queryTokens.push(part));
+    });
+
+    (hint.preferredIds || []).forEach((id) => preferredIds.add(id));
+  });
+
+  const rankedFallback = REMEDY_CATALOG.map((remedy) => {
+    const searchable = [
+      remedy.name,
+      remedy.description,
+      ...(remedy.symptomTags || []),
+      ...(remedy.tags || []),
+      ...(remedy.ingredients || []),
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    let score = preferredIds.has(remedy.id) ? 6 : 0;
+
+    (remedy.symptomTags || []).forEach((symptom) => {
+      if (normalizedQuery.includes(String(symptom || "").toLowerCase())) {
+        score += 5;
+      }
+    });
+
+    queryTokens.forEach((token) => {
+      if (searchable.includes(token)) {
+        score += 2;
+      }
+    });
+
+    return { remedy, score };
+  }).sort((a, b) => b.score - a.score);
+
+  if (rankedFallback[0]?.score > 0) {
+    const best = rankedFallback[0].remedy;
+    return {
+      name: best.name,
+      description: best.description,
+      symptoms: (best.symptomTags || []).join(", "),
+      ingredients: [...(best.ingredients || [])],
+      steps: [...(best.steps || [])],
+      rating: 4.7,
+      tags: [...(best.tags || [])],
       timeMins: 8,
       difficulty: "Easy",
       ayurveda:
-        "This simple brew supports Agni and keeps seasonal Kapha accumulation in check.",
-      bestFor: ["Daily wellness", "Seasonal support"],
-      colorFrom: "#1f9c90",
-      colorTo: "#0d6a65",
-    }
-  );
+        best.substitutes?.[0] ||
+        "A practical home-prep option based on the closest safe remedy pattern.",
+      bestFor: [...(best.symptomTags || [])],
+      colorFrom: best.colorFrom,
+      colorTo: best.colorTo,
+    };
+  }
+
+  return {
+    name: "Daily Tulsi Wellness Brew",
+    description:
+      "A balanced everyday Ayurvedic drink for light immunity and daily wellness support.",
+    symptoms: "General immunity, seasonal wellness, low energy",
+    ingredients: ["Tulsi leaves", "Fresh ginger", "Warm water"],
+    steps: [
+      "Lightly crush the tulsi and ginger.",
+      "Simmer in water for 8 minutes.",
+      "Strain and drink warm once daily.",
+    ],
+    rating: 4.8,
+    tags: ["Immunity", "Daily Wellness"],
+    timeMins: 8,
+    difficulty: "Easy",
+    ayurveda:
+      "This simple brew supports Agni and keeps seasonal Kapha accumulation in check.",
+    bestFor: ["Daily wellness", "Seasonal support"],
+    colorFrom: "#1f9c90",
+    colorTo: "#0d6a65",
+  };
 }
 
 function applySafetyAdjustments(remedy, context) {

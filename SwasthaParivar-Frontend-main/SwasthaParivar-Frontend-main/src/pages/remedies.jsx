@@ -32,6 +32,7 @@ const createGradient = (from = "var(--color-primary-strong)", to = "var(--color-
   `linear-gradient(135deg, ${from}, ${to})`;
 
 const uniqueTextList = (items = []) => Array.from(new Set(items.filter(Boolean)));
+const GENERIC_WELLNESS_QUERY_PATTERN = /\b(immunity|immune|wellness|seasonal|low energy)\b/i;
 
 const LOCAL_GENERATOR_TEMPLATES = [
   {
@@ -270,10 +271,60 @@ const applyContextSafety = (remedy, context) => {
   return adjusted;
 };
 
-const buildLocalGeneratedRemedy = ({ seedText, context }) => {
+const buildGeneratedFromCatalogMatch = (match, seedText, context) => {
+  if (!match) return null;
+
+  const localSource = match.insight?.fallbackMatch ? "guided-local-match" : "guided-local";
+  const supportingNote = match.insight?.fallbackMatch
+    ? `This is the nearest safe kitchen match I found for ${seedText}.`
+    : `This was mapped to the closest safe remedy pattern for ${seedText}.`;
+
+  return normalizeGeneratedRemedy(
+    applyContextSafety(
+      {
+        ...match,
+        id: `${localSource}-${match.id}-${Date.now()}`,
+        description: match.description || `A family-aware local remedy for ${seedText}.`,
+        warnings: uniqueTextList([...(match.warnings || []), supportingNote]),
+        source: localSource,
+      },
+      context
+    ),
+    seedText,
+    localSource
+  );
+};
+
+const isGenericWellnessRemedy = (remedy, seedText) => {
+  const searchable = [remedy?.name, remedy?.description, remedy?.symptoms]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (!searchable) return false;
+
+  const isGenericCard =
+    searchable.includes("daily tulsi wellness brew") ||
+    searchable.includes("daily wellness support") ||
+    searchable.includes("general immunity") ||
+    searchable.includes("seasonal wellness");
+
+  return isGenericCard && !GENERIC_WELLNESS_QUERY_PATTERN.test(String(seedText || ""));
+};
+
+const buildLocalGeneratedRemedy = ({ seedText, context, activeTag }) => {
+  const catalogMatches = buildCatalog(REMEDIES_DATA, context, seedText, activeTag);
+  const bestCatalogMatch = catalogMatches[0];
+
+  if (bestCatalogMatch) {
+    return buildGeneratedFromCatalogMatch(bestCatalogMatch, seedText, context);
+  }
+
+  const exactTemplate = LOCAL_GENERATOR_TEMPLATES.slice(0, -1).find((entry) =>
+    entry.match.test(seedText)
+  );
   const template =
-    LOCAL_GENERATOR_TEMPLATES.find((entry) => entry.match.test(seedText)) ||
-    LOCAL_GENERATOR_TEMPLATES[LOCAL_GENERATOR_TEMPLATES.length - 1];
+    exactTemplate || LOCAL_GENERATOR_TEMPLATES[LOCAL_GENERATOR_TEMPLATES.length - 1];
 
   return normalizeGeneratedRemedy(
     applyContextSafety(
@@ -737,12 +788,15 @@ export default function Remedies() {
         seedText,
         "guided-api"
       );
-      const decorated = decorateRemedyForContext(normalized, context, seedText);
+      const generatedBase = isGenericWellnessRemedy(normalized, seedText)
+        ? buildLocalGeneratedRemedy({ seedText, context, activeTag })
+        : normalized;
+      const decorated = decorateRemedyForContext(generatedBase, context, seedText);
       setGeneratedRemedy(decorated);
       setOpenRecipe(decorated);
       notify.success("Generated a new remedy");
     } catch (error) {
-      const fallback = buildLocalGeneratedRemedy({ seedText, context });
+      const fallback = buildLocalGeneratedRemedy({ seedText, context, activeTag });
       const decorated = decorateRemedyForContext(fallback, context, seedText);
       setGeneratedRemedy(decorated);
       setOpenRecipe(decorated);
