@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -161,7 +161,7 @@ const LOCAL_GENERATOR_TEMPLATES = [
     colorTo: "#d08a16",
   },
   {
-    match: /(zinc deficiency|low zinc|zinc deficient|hair fall|hair loss|weak roots|skin dullness)/i,
+    match: /(hair fall|hair loss|weak roots|skin dullness)/i,
     name: "Curry Leaf Nourish Drink",
     description:
       "A nourishment-focused drink that supports hair, skin, and daily food-based wellness when the body feels undernourished.",
@@ -579,6 +579,7 @@ export default function Remedies() {
   const [aiBusy, setAiBusy] = useState(false);
   const [generatedRemedy, setGeneratedRemedy] = useState(null);
   const [generatedError, setGeneratedError] = useState("");
+  const generatedSectionRef = useRef(null);
 
   const resetGeneratedState = () => {
     setGeneratedRemedy(null);
@@ -617,6 +618,15 @@ export default function Remedies() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (!generatedRemedy || !generatedSectionRef.current) return;
+
+    generatedSectionRef.current.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [generatedRemedy]);
 
   const context = useMemo(
     () => buildRemedyContext(members, selectedMemberId),
@@ -729,11 +739,13 @@ export default function Remedies() {
       );
       const decorated = decorateRemedyForContext(normalized, context, seedText);
       setGeneratedRemedy(decorated);
+      setOpenRecipe(decorated);
       notify.success("Generated a new remedy");
     } catch (error) {
       const fallback = buildLocalGeneratedRemedy({ seedText, context });
       const decorated = decorateRemedyForContext(fallback, context, seedText);
       setGeneratedRemedy(decorated);
+      setOpenRecipe(decorated);
       setGeneratedError(
         error?.message || "Live remedy generation is unavailable right now. Showing a guided local remedy instead."
       );
@@ -813,7 +825,7 @@ export default function Remedies() {
           <div className="hero-panel__actions">
             <button className="action-button action-button--primary" onClick={handleGenerateRemedy}>
               {aiBusy ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
-              Generate new remedy
+              Create custom remedy
             </button>
           </div>
 
@@ -862,6 +874,35 @@ export default function Remedies() {
         ))}
       </section>
 
+      {!seriousMatch && generatedRemedy ? (
+        <section ref={generatedSectionRef} className="generated-remedy-section">
+          <section className="remedies-results-header">
+            <div>
+              <div className="remedies-results-title">
+                <h2>Freshly generated</h2>
+                <span>1 custom remedy</span>
+              </div>
+              <p>
+                Built for {context.focusLabel.toLowerCase()} using the current symptom focus and family safety checks.
+              </p>
+            </div>
+            <button className="action-button action-button--ghost" onClick={resetGeneratedState}>
+              Dismiss
+            </button>
+          </section>
+
+          <section className="remedies-grid">
+            <RemedyCard
+              remedy={generatedRemedy}
+              onOpen={setOpenRecipe}
+              onShare={shareRemedy}
+              onToggleFavorite={handleToggleFavorite}
+              favorite={favorites.includes(generatedRemedy.id)}
+            />
+          </section>
+        </section>
+      ) : null}
+
       <section className="tag-strip">
         {tagOptions.map((tag) => (
           <button
@@ -896,35 +937,6 @@ export default function Remedies() {
 
       {!seriousMatch ? (
         <>
-          {generatedRemedy ? (
-            <section className="generated-remedy-section">
-              <section className="remedies-results-header">
-                <div>
-                  <div className="remedies-results-title">
-                    <h2>Freshly generated</h2>
-                    <span>1 custom remedy</span>
-                  </div>
-                  <p>
-                    Built for {context.focusLabel.toLowerCase()} using the current symptom focus and family safety checks.
-                  </p>
-                </div>
-                <button className="action-button action-button--ghost" onClick={resetGeneratedState}>
-                  Dismiss
-                </button>
-              </section>
-
-              <section className="remedies-grid">
-                <RemedyCard
-                  remedy={generatedRemedy}
-                  onOpen={setOpenRecipe}
-                  onShare={shareRemedy}
-                  onToggleFavorite={handleToggleFavorite}
-                  favorite={favorites.includes(generatedRemedy.id)}
-                />
-              </section>
-            </section>
-          ) : null}
-
           <section className="remedies-results-header">
             <div>
               <div className="remedies-results-title">

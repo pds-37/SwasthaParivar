@@ -15,6 +15,8 @@ const MODEL_CANDIDATES = [
   "gemini-1.5-pro-latest",
   "gemini-pro",
 ];
+const NON_REMEDY_QUERY_PATTERN =
+  /\b(zinc deficiency|low zinc|zinc deficient|iron deficiency|low iron|anemi[ae]|vitamin deficiency|b12 deficiency|vitamin b12 deficiency)\b/i;
 
 const TEMPLATE_LIBRARY = [
   {
@@ -150,7 +152,7 @@ const TEMPLATE_LIBRARY = [
     colorTo: "#d08a16",
   },
   {
-    match: /(zinc deficiency|low zinc|zinc deficient|hair fall|hair loss|weak roots|skin dullness)/i,
+    match: /(hair fall|hair loss|weak roots|skin dullness)/i,
     name: "Curry Leaf Sesame Nourish Drink",
     description:
       "A nourishment-focused drink that supports hair, skin, and daily food-based wellness when the body feels undernourished.",
@@ -528,6 +530,15 @@ export const generateRemedy = async (req, res) => {
   try {
     const query = String(req.body?.query || "").trim() || "daily immunity";
     const selectedMemberId = req.body?.memberId || "family";
+
+    if (NON_REMEDY_QUERY_PATTERN.test(query)) {
+      return sendError(res, {
+        status: 400,
+        code: "NON_REMEDY_QUERY",
+        message:
+          "Nutrient deficiencies should be handled with lab review, food guidance, or clinician advice instead of a home-remedy card.",
+      });
+    }
 
     const context = await buildFocusContext(req.userId, selectedMemberId);
     let remedy;

@@ -173,20 +173,6 @@ const QUERY_INTENT_RULES = [
     reason: "Supports nourishment and energy balance",
   },
   {
-    pattern: /\b(zinc deficiency|low zinc|zinc deficient)\b/i,
-    priorityTags: ["Hair", "Immunity"],
-    tags: ["Hair", "Skin", "Immunity"],
-    keywords: ["hair", "skin", "weak roots", "glow", "low nourishment"],
-    reason: "Supports hair, skin, and immunity nourishment",
-  },
-  {
-    pattern: /\b(iron deficiency|anemi[ae]|low iron)\b/i,
-    priorityTags: ["Immunity", "Metabolic"],
-    tags: ["Immunity", "Metabolic", "Hair"],
-    keywords: ["fatigue", "low energy", "hair"],
-    reason: "Supports energy and nourishment recovery",
-  },
-  {
     pattern: /\b(hair fall|hair loss|hair thinning|weak roots)\b/i,
     priorityTags: ["Hair"],
     tags: ["Hair", "Immunity", "Skin"],
@@ -227,6 +213,12 @@ const SERIOUS_SYMPTOM_RULES = [
     label: "Bleeding needs medical review",
     regex: /\b(bleeding|blood in stool|blood in vomit|vomiting blood)\b/i,
     guidance: "Bleeding symptoms should skip remedies and go to medical guidance.",
+  },
+  {
+    label: "Deficiency concerns need nutrition review",
+    regex: /\b(zinc deficiency|low zinc|zinc deficient|iron deficiency|low iron|anemi[ae]|vitamin deficiency|b12 deficiency|vitamin b12 deficiency)\b/i,
+    guidance:
+      "Nutrient deficiencies should be handled with lab review, food guidance, or clinician advice instead of a home-remedy card.",
   },
 ];
 
