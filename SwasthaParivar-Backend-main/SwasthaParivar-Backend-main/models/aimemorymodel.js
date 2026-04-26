@@ -63,6 +63,12 @@ const aiMemorySchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    contextKey: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
     title: {
       type: String,
       default: "New chat",
@@ -77,6 +83,7 @@ const aiMemorySchema = new mongoose.Schema(
 
 // Index allows finding all threads for a specific member efficiently
 aiMemorySchema.index({ ownerId: 1, member: 1 });
+aiMemorySchema.index({ ownerId: 1, contextKey: 1, updatedAt: -1 });
 
 export default mongoose.models.AIMemory ||
   mongoose.model("AIMemory", aiMemorySchema);

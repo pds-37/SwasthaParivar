@@ -50,24 +50,26 @@ export const aiVoiceTranscriptionSchema = z.object({
 
 export const aiMemoryQuerySchema = z.object({
   member: z.string().trim().max(120).optional(),
+  contextKey: z.string().trim().max(120).optional(),
 });
 
 export const aiMemoryBodySchema = z.object({
   threadId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid thread ID").optional(),
   title: z.string().trim().max(120).optional(),
   member: z.string().trim().min(1).max(120),
+  contextKey: z.string().trim().min(1).max(120).optional(),
   messages: z.array(
     z.object({
       sender: z.enum(["user", "ai"]),
-      text: z.string().trim().max(4000),
+      text: z.string().trim().max(12000),
       ts: z.number().optional(),
-      attachment: z.string().optional().nullable(),
-      riskLevel: z.string().trim().max(20).optional(),
-      followUpPrompt: z.string().trim().max(240).optional().nullable(),
+      attachment: z.string().max(2_000_000).optional().nullable(),
+      riskLevel: z.string().trim().max(32).optional(),
+      followUpPrompt: z.string().trim().max(400).optional().nullable(),
       suggestedReminder: z
         .object({
-          title: z.string().trim().max(120),
-          type: z.string().trim().max(40).optional(),
+          title: z.string().trim().max(160),
+          type: z.string().trim().max(60).optional(),
         })
         .optional()
         .nullable(),

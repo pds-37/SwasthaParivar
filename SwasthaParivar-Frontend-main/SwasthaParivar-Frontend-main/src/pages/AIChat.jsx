@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -139,6 +139,9 @@ const HEALTH_FALLBACK_KEYWORDS = [
 
 const CHAT_HISTORY_LIMIT = 15;
 const CHAT_HISTORY_TEXT_MAX = 2000;
+const MEMORY_THREAD_STORAGE_KEY = "swastha:last_thread_by_context";
+const MEMORY_MESSAGE_LIMIT = 40;
+const MEMORY_ATTACHMENT_PREVIEW_MAX = 250000;
 
 const fileToBase64Payload = (file) =>
   new Promise((resolve, reject) => {
@@ -171,6 +174,54 @@ const serializeHistoryForRequest = (entries = []) =>
     sender: sender === "user" ? "user" : "ai",
     text: String(text || "").trim().slice(0, CHAT_HISTORY_TEXT_MAX),
     ts,
+  }));
+
+const readStoredThreadSelections = () => {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const rawValue = localStorage.getItem(MEMORY_THREAD_STORAGE_KEY);
+    const parsedValue = rawValue ? JSON.parse(rawValue) : {};
+    return parsedValue && typeof parsedValue === "object" ? parsedValue : {};
+  } catch {
+    return {};
+  }
+};
+
+const persistThreadSelections = (value) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!value || !Object.keys(value).length) {
+    localStorage.removeItem(MEMORY_THREAD_STORAGE_KEY);
+    return;
+  }
+
+  localStorage.setItem(MEMORY_THREAD_STORAGE_KEY, JSON.stringify(value));
+};
+
+const serializeMessagesForMemory = (entries = []) =>
+  entries.slice(-MEMORY_MESSAGE_LIMIT).map((entry) => ({
+    sender: entry?.sender === "user" ? "user" : "ai",
+    text: String(entry?.text || "").trim().slice(0, 12000),
+    ts: Number.isFinite(entry?.ts) ? entry.ts : Date.now(),
+    attachment:
+      typeof entry?.attachment === "string" && entry.attachment.length <= MEMORY_ATTACHMENT_PREVIEW_MAX
+        ? entry.attachment
+        : null,
+    riskLevel: entry?.riskLevel ? String(entry.riskLevel).trim().slice(0, 32) : null,
+    followUpPrompt: entry?.followUpPrompt ? String(entry.followUpPrompt).trim().slice(0, 400) : null,
+    suggestedReminder: entry?.suggestedReminder?.title
+      ? {
+          title: String(entry.suggestedReminder.title).trim().slice(0, 160),
+          type: entry.suggestedReminder.type
+            ? String(entry.suggestedReminder.type).trim().slice(0, 60)
+            : "",
+        }
+      : null,
   }));
 
 const findMatches = (text, keywords) => {
@@ -350,7 +401,7 @@ const AIChat = () => {
     setSelectedMember,
     refreshMembers,
   } = useFamilyStore();
-  const { sidebarCollapsed, activeThreadId, setActiveThreadId } = useUIStore();
+  const { sidebarCollapsed } = useUIStore();
   const contexts = useMemo(
     () =>
       activeView === "self"
@@ -445,12 +496,33 @@ const AIChat = () => {
   const currentContext = contexts.find((item) => item.key === selectedContext) || contexts[0];
   const contextLabel = currentContext?.label || "All family";
   const memberValue = currentContext?.memberValue || "All family";
+  const contextThreadKey = currentContext?.memberId || "family";
   const activeMember = useMemo(
     () => userFamily.find((member) => member._id === currentContext?.memberId) || null,
     [currentContext?.memberId, userFamily]
   );
+  const [threadSelections, setThreadSelections] = useState(() => readStoredThreadSelections());
+  const [draftContextKey, setDraftContextKey] = useState(null);
+  const activeThreadId = threadSelections[contextThreadKey] || null;
+  const setStoredActiveThreadId = useCallback(
+    (nextThreadId, targetContextKey = contextThreadKey) => {
+      setThreadSelections((currentSelections) => {
+        const nextSelections = { ...currentSelections };
+
+        if (nextThreadId) {
+          nextSelections[targetContextKey] = nextThreadId;
+        } else {
+          delete nextSelections[targetContextKey];
+        }
+
+        persistThreadSelections(nextSelections);
+        return nextSelections;
+      });
+    },
+    [contextThreadKey]
+  );
   
-  const { threads, saveMemory, deleteThread } = useAIChat();
+  const { threads, saveMemory, deleteThread } = useAIChat(contextThreadKey, memberValue);
   const hasMessages = messages.length > 0;
   const isBusy = loading || isStreaming || voiceProcessing;
 
@@ -479,47 +551,74 @@ const AIChat = () => {
   }, [contexts, selectedContext]);
 
   useEffect(() => {
-    if (activeThreadId && threads) {
-      const thread = threads.find((t) => t._id === activeThreadId);
-      if (thread) {
-        setMessages(thread.messages || []);
-        const contextKey = contexts.find((c) => c.memberValue === thread.member)?.key || "family";
-        setSelectedContext(contextKey);
+    if (!threads.length) {
+      if (activeThreadId) {
+        setStoredActiveThreadId(null);
       }
+      setMessages([]);
+      return;
     }
-  }, [activeThreadId, threads, contexts]);
+
+    const activeThread = activeThreadId ? threads.find((thread) => thread._id === activeThreadId) : null;
+
+    if (activeThread) {
+      setMessages(activeThread.messages || []);
+      return;
+    }
+
+    if (draftContextKey === contextThreadKey) {
+      setMessages([]);
+      return;
+    }
+
+    const latestThread = threads[0] || null;
+    if (latestThread?._id && latestThread._id !== activeThreadId) {
+      setStoredActiveThreadId(latestThread._id);
+      return;
+    }
+
+    setMessages(latestThread?.messages || []);
+  }, [activeThreadId, contextThreadKey, draftContextKey, setStoredActiveThreadId, threads]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [isStreaming, loading, messages, streamingText]);
 
-  const conversationHistory = (threads || [])
-    .map((thread) => {
-      const lastMessage = thread.messages?.[thread.messages.length - 1];
-      const userMessageCount = thread.messages?.filter((m) => m?.sender === "user").length || 0;
+  const conversationHistory = useMemo(
+    () =>
+      (threads || [])
+        .map((thread) => {
+          const lastMessage = thread.messages?.[thread.messages.length - 1];
+          const userMessageCount = thread.messages?.filter((message) => message?.sender === "user").length || 0;
 
-      return {
-        _id: thread._id,
-        title: thread.title || "New chat",
-        member: thread.member,
-        updatedLabel: formatConversationTime(thread.updatedAt ? new Date(thread.updatedAt).getTime() : (lastMessage?.ts || 0)),
-        messageCount: userMessageCount,
-        ts: thread.updatedAt ? new Date(thread.updatedAt).getTime() : (lastMessage?.ts || 0),
-      };
-    })
-    .sort((a, b) => b.ts - a.ts);
+          return {
+            _id: thread._id,
+            title: thread.title || "New chat",
+            member: thread.member,
+            updatedLabel: formatConversationTime(
+              thread.updatedAt ? new Date(thread.updatedAt).getTime() : lastMessage?.ts || 0
+            ),
+            messageCount: userMessageCount,
+            ts: thread.updatedAt ? new Date(thread.updatedAt).getTime() : lastMessage?.ts || 0,
+          };
+        })
+        .sort((a, b) => b.ts - a.ts),
+    [threads]
+  );
 
   const persistConversation = async (nextMessages) => {
     try {
       const derivedTitle = getConversationTitle(nextMessages, `New ${contextLabel.toLowerCase()} chat`);
       const res = await saveMemory({
         ...(activeThreadId ? { threadId: activeThreadId } : {}),
+        contextKey: contextThreadKey,
         member: memberValue,
         title: derivedTitle,
-        messages: nextMessages,
+        messages: serializeMessagesForMemory(nextMessages),
       });
-      if (!activeThreadId && res?.threadId) {
-        setActiveThreadId(res.threadId);
+      if (res?.threadId) {
+        setStoredActiveThreadId(res.threadId);
+        setDraftContextKey(null);
       }
     } catch {
       // API call failed
@@ -546,7 +645,8 @@ const AIChat = () => {
   };
 
   const startNewChat = () => {
-    setActiveThreadId(null);
+    setStoredActiveThreadId(null);
+    setDraftContextKey(contextThreadKey);
     setMessages([]);
     setInput("");
     setAttachmentPreview(null);
@@ -833,7 +933,8 @@ const AIChat = () => {
                   type="button"
                   className="ai-chat-history__item"
                   onClick={() => {
-                    setActiveThreadId(conversation._id);
+                    setStoredActiveThreadId(conversation._id);
+                    setDraftContextKey(null);
                     setMobileHistoryOpen(false);
                   }}
                 >

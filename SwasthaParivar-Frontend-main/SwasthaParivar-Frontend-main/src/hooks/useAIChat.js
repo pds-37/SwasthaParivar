@@ -3,8 +3,19 @@ import useSWR from "swr";
 
 import api from "../lib/api";
 
-export const useAIChat = () => {
-  const swr = useSWR("/ai/memory", () => api.get("/ai/memory"));
+export const useAIChat = (contextKey, memberLabel) => {
+  const swrKey = useMemo(
+    () => ["/ai/memory", contextKey || "family", memberLabel || ""],
+    [contextKey, memberLabel]
+  );
+  const swr = useSWR(swrKey, ([, activeContextKey, activeMemberLabel]) =>
+    api.get("/ai/memory", {
+      params: {
+        ...(activeContextKey ? { contextKey: activeContextKey } : {}),
+        ...(activeMemberLabel ? { member: activeMemberLabel } : {}),
+      },
+    })
+  );
 
   const threads = useMemo(() => {
     if (Array.isArray(swr.data?.threads)) return swr.data.threads;

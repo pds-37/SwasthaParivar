@@ -6,14 +6,81 @@ import { validate } from "../middleware/validate.js";
 import { aiMemoryBodySchema, aiMemoryQuerySchema } from "../validations/aiSchemas.js";
 
 const router = express.Router();
+const MEMORY_MESSAGE_LIMIT = 40;
+const MEMORY_ATTACHMENT_PREVIEW_MAX = 250000;
+
+const normalizeStoredMessages = (messages = []) =>
+  Array.isArray(messages)
+    ? messages
+        .map((message) => {
+          const text = String(message?.text || "").trim().slice(0, 12000);
+
+          if (!text) {
+            return null;
+          }
+
+          return {
+            sender: message?.sender === "user" ? "user" : "ai",
+            text,
+            ts: Number.isFinite(message?.ts) ? message.ts : Date.now(),
+            attachment:
+              typeof message?.attachment === "string" &&
+              message.attachment.length <= MEMORY_ATTACHMENT_PREVIEW_MAX
+                ? message.attachment
+                : null,
+            riskLevel: message?.riskLevel ? String(message.riskLevel).trim().slice(0, 32) : null,
+            followUpPrompt: message?.followUpPrompt
+              ? String(message.followUpPrompt).trim().slice(0, 400)
+              : null,
+            suggestedReminder: message?.suggestedReminder?.title
+              ? {
+                  title: String(message.suggestedReminder.title).trim().slice(0, 160),
+                  type: message.suggestedReminder.type
+                    ? String(message.suggestedReminder.type).trim().slice(0, 60)
+                    : "",
+                }
+              : null,
+          };
+        })
+        .filter(Boolean)
+        .slice(-MEMORY_MESSAGE_LIMIT)
+    : [];
+
+const serializeThread = (thread) => {
+  const normalizedThread = typeof thread?.toObject === "function" ? thread.toObject() : thread;
+
+  return {
+    _id: normalizedThread?._id,
+    member: normalizedThread?.member || "All family",
+    contextKey: normalizedThread?.contextKey || normalizedThread?.member || "family",
+    title: normalizedThread?.title || "New chat",
+    messages: normalizeStoredMessages(normalizedThread?.messages),
+    createdAt: normalizedThread?.createdAt || null,
+    updatedAt: normalizedThread?.updatedAt || null,
+  };
+};
 
 router.get("/", auth, validate(aiMemoryQuerySchema, "query"), async (req, res) => {
   try {
-    const threads = await AIMemory.find({ ownerId: req.userId }).sort({ updatedAt: -1 });
+    const { contextKey, member } = req.query || {};
+    const filter = { ownerId: req.userId };
+
+    if (contextKey && member) {
+      filter.$or = [{ contextKey }, { member }];
+    } else if (contextKey) {
+      filter.$or = [{ contextKey }, { member: contextKey }];
+    } else if (member) {
+      filter.$or = [{ contextKey: member }, { member }];
+    }
+
+    const threads = await AIMemory.find(filter)
+      .sort({ updatedAt: -1 })
+      .select("_id member contextKey title messages createdAt updatedAt")
+      .lean();
 
     return sendSuccess(res, {
       data: {
-        threads,
+        threads: threads.map(serializeThread),
       },
     });
   } catch (error) {
@@ -28,13 +95,24 @@ router.get("/", auth, validate(aiMemoryQuerySchema, "query"), async (req, res) =
 
 router.post("/", auth, validate(aiMemoryBodySchema), async (req, res) => {
   try {
-    const { threadId, member, title, messages } = req.body;
+    const { threadId, member, contextKey, title, messages } = req.body;
+    const safeMessages = normalizeStoredMessages(messages);
+    const safeContextKey = String(contextKey || member || "family").trim();
+    const safeMember = String(member || "All family").trim();
+    const safeTitle = String(title || "").trim() || "New chat";
     let memory;
 
     if (threadId) {
       memory = await AIMemory.findOneAndUpdate(
         { _id: threadId, ownerId: req.userId },
-        { $set: { messages, title: title || "New chat" } },
+        {
+          $set: {
+            member: safeMember,
+            contextKey: safeContextKey,
+            title: safeTitle,
+            messages: safeMessages,
+          },
+        },
         { new: true, runValidators: true }
       );
     }
@@ -42,18 +120,22 @@ router.post("/", auth, validate(aiMemoryBodySchema), async (req, res) => {
     if (!memory) {
       memory = await AIMemory.create({
         ownerId: req.userId,
-        member,
-        title: title || "New chat",
-        messages,
+        member: safeMember,
+        contextKey: safeContextKey,
+        title: safeTitle,
+        messages: safeMessages,
       });
     }
 
+    const serializedThread = serializeThread(memory);
+
     return sendSuccess(res, {
       data: {
-        threadId: memory._id,
-        member: memory.member,
-        title: memory.title,
-        messages: memory.messages,
+        threadId: serializedThread._id,
+        member: serializedThread.member,
+        contextKey: serializedThread.contextKey,
+        title: serializedThread.title,
+        messages: serializedThread.messages,
       },
     });
   } catch (error) {

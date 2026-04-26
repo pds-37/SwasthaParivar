@@ -297,14 +297,14 @@ const FamilyDashboard = () => {
           <div className="dashboard-overview__visual">
             <Motion.div
               className="dashboard-orbit dashboard-orbit--one"
-              initial={{ rotateX: 70, rotateZ: 0 }}
-              animate={{ rotateX: 70, rotateZ: 360 }}
+              initial={{ rotateX: 70, rotateZ: 0, y: -10 }}
+              animate={{ rotateX: 70, rotateZ: 360, y: -10 }}
               transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
             />
             <Motion.div
               className="dashboard-orbit dashboard-orbit--two"
-              initial={{ rotateX: 70, rotateZ: 0 }}
-              animate={{ rotateX: 70, rotateZ: -360 }}
+              initial={{ rotateX: 70, rotateZ: 0, y: -10 }}
+              animate={{ rotateX: 70, rotateZ: -360, y: -10 }}
               transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
             />
             <Motion.div
