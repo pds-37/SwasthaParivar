@@ -48,6 +48,7 @@ const TAG_FAMILY_MAP = {
   Sleep: ["Sleep", "Relaxation"],
   Stress: ["Stress", "Relaxation", "Sleep"],
   Throat: ["Throat", "Cough", "Cold", "Respiratory"],
+  Vata: ["Vata", "Sleep", "Relaxation", "Nasal"],
   Women: ["Women", "Digestion", "Relaxation"],
 };
 
@@ -73,6 +74,83 @@ const QUERY_STOP_WORDS = new Set([
 ]);
 
 const QUERY_INTENT_RULES = [
+  {
+    pattern: /\b(acidity|acid reflux|heartburn|burning stomach|gastric|gastritis)\b/i,
+    priorityTags: ["Digestion"],
+    tags: ["Digestion", "Nausea", "Hydration"],
+    keywords: ["indigestion", "bloating", "gas", "digestion", "fennel", "cumin", "ajwain"],
+    reason: "Targets acidity and upper-digestion discomfort",
+  },
+  {
+    pattern: /\b(gas|bloating|bloated|indigestion|stomach pain|stomach upset|heavy stomach)\b/i,
+    priorityTags: ["Digestion"],
+    tags: ["Digestion", "Detox", "Nausea"],
+    keywords: ["bloating", "gas", "indigestion", "digestion", "cumin", "fennel", "ajwain"],
+    reason: "Targets gas, bloating, and indigestion",
+  },
+  {
+    pattern: /\b(constipation|constipated|bowel|hard stool|motion problem)\b/i,
+    priorityTags: ["Digestion", "Detox"],
+    tags: ["Digestion", "Detox"],
+    keywords: ["constipation", "triphala", "bowel", "digestion"],
+    reason: "Targets constipation and bowel regularity",
+  },
+  {
+    pattern: /\b(cough|dry cough|wet cough|khansi)\b/i,
+    priorityTags: ["Cough", "Throat"],
+    tags: ["Cough", "Throat", "Cold", "Respiratory"],
+    keywords: ["cough", "throat", "licorice", "mulethi", "ginger", "honey"],
+    reason: "Targets cough and throat irritation",
+  },
+  {
+    pattern: /\b(runny nose|blocked nose|stuffy nose|nasal|congestion|sinus)\b/i,
+    priorityTags: ["Nasal", "Respiratory"],
+    tags: ["Nasal", "Respiratory", "Cold"],
+    keywords: ["congestion", "sinus", "steam", "nasal"],
+    reason: "Targets nasal congestion and sinus discomfort",
+  },
+  {
+    pattern: /\b(cold|flu|sardi)\b/i,
+    priorityTags: ["Cold", "Respiratory"],
+    tags: ["Cold", "Cough", "Respiratory", "Throat", "Nasal"],
+    keywords: ["cold", "tulsi", "ginger"],
+    reason: "Targets cold, congestion, and sinus discomfort",
+  },
+  {
+    pattern: /\b(sore throat|throat pain|throat irritation|tonsil|mouth ulcer|mouth ulcers)\b/i,
+    priorityTags: ["Throat", "Oral"],
+    tags: ["Throat", "Cough", "Cold", "Oral"],
+    keywords: ["throat", "gargle", "licorice", "mulethi", "salt", "turmeric"],
+    reason: "Targets throat and oral irritation",
+  },
+  {
+    pattern: /\b(headache|head ache|migraine|head pain)\b/i,
+    priorityTags: ["Hydration", "Relaxation"],
+    tags: ["Hydration", "Relaxation", "Sleep"],
+    keywords: ["hydration", "cooling", "coconut", "rest"],
+    reason: "Supports hydration and relaxation for mild headache patterns",
+  },
+  {
+    pattern: /\b(fever|viral fever|temperature|body heat)\b/i,
+    priorityTags: ["Hydration", "Immunity"],
+    tags: ["Hydration", "Immunity", "Cold"],
+    keywords: ["hydration", "coconut", "immunity", "cold"],
+    reason: "Supports hydration and comfort during mild fever patterns",
+  },
+  {
+    pattern: /\b(joint pain|body pain|body ache|muscle pain|stiffness|knee pain|back pain)\b/i,
+    priorityTags: ["Pain", "Inflammation"],
+    tags: ["Pain", "Inflammation", "Relaxation"],
+    keywords: ["pain", "stiffness", "massage", "turmeric", "mustard"],
+    reason: "Targets mild pain, stiffness, and inflammation",
+  },
+  {
+    pattern: /\b(nausea|vomit|vomiting|motion sickness|queasy)\b/i,
+    priorityTags: ["Nausea", "Digestion"],
+    tags: ["Nausea", "Digestion", "Hydration"],
+    keywords: ["nausea", "ginger", "lemon", "digestion"],
+    reason: "Targets nausea and unsettled stomach",
+  },
   {
     pattern: /\b(immunity|immune|low immunity|frequent cold|seasonal weakness)\b/i,
     priorityTags: ["Immunity"],
@@ -222,6 +300,40 @@ const numberValue = (entry) => {
   return Number.isFinite(value) ? value : null;
 };
 
+const deriveAgeFromDate = (value) => {
+  if (!value) return 0;
+
+  const birthDate = new Date(value);
+  if (Number.isNaN(birthDate.getTime())) return 0;
+
+  const now = new Date();
+  let age = now.getFullYear() - birthDate.getFullYear();
+  const birthdayPassed =
+    now.getMonth() > birthDate.getMonth() ||
+    (now.getMonth() === birthDate.getMonth() && now.getDate() >= birthDate.getDate());
+
+  if (!birthdayPassed) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : 0;
+};
+
+const resolveMemberAge = (member) => {
+  const directAge = Number(member?.age);
+  if (Number.isFinite(directAge) && directAge >= 0) {
+    return directAge;
+  }
+
+  return deriveAgeFromDate(
+    member?.dateOfBirth ||
+      member?.dob ||
+      member?.birthDate ||
+      member?.birthday ||
+      member?.profile?.dateOfBirth
+  );
+};
+
 const getTagFamily = (tag = "All") => {
   const normalizedTag = titleCase(tag);
   return unique([normalizedTag, ...(TAG_FAMILY_MAP[normalizedTag] || [])]);
@@ -323,6 +435,18 @@ const getDosageProfile = (age = 0) => {
   }
 };
 
+const getMostConservativeDosage = (signals = []) => {
+  const dosageProfiles = signals
+    .map((signal) => signal?.dosage)
+    .filter((profile) => profile && Number.isFinite(profile.multiplier));
+
+  if (!dosageProfiles.length) return getDosageProfile(0);
+
+  return dosageProfiles.reduce((lowest, profile) =>
+    profile.multiplier < lowest.multiplier ? profile : lowest
+  );
+};
+
 const formatListSummary = (items = [], emptyLabel = "None saved") => {
   if (!items.length) return emptyLabel;
   return items.map(titleCase).join(", ");
@@ -420,7 +544,7 @@ const buildMemberSignal = (member) => {
   const sleep = numberValue(getLatestEntry(health.sleep));
   const heartRate = numberValue(getLatestEntry(health.heartRate));
   const steps = numberValue(getLatestEntry(health.steps));
-  const age = Number(member?.age || 0);
+  const age = resolveMemberAge(member);
   const conditions = normalizeList(member?.conditions);
   const allergies = normalizeList(member?.allergies);
   const medications = normalizeList(member?.medications);
@@ -433,7 +557,9 @@ const buildMemberSignal = (member) => {
     childSensitive: Boolean(member?.childSensitive) || (age > 0 && age < 12),
     infant: age > 0 && age < 2,
     elderly: age >= 60,
-    pregnant: member?.pregnancyStatus === "pregnant",
+    pregnant:
+      member?.pregnancyStatus === "pregnant" ||
+      conditions.some((entry) => entry.includes("pregnan")),
     highBp: false,
     highSugar: false,
     diabetes: false,
@@ -601,7 +727,7 @@ export const buildRemedyContext = (members = [], selectedMemberId = "family") =>
       ? `${signals.length || members.length || 0} saved profiles`
       : focusMembers[0]?.name || "Selected member";
 
-  const defaultDosage = signals[0]?.dosage || getDosageProfile(0);
+  const defaultDosage = getMostConservativeDosage(signals);
   const profileCheckedText =
     selectedMemberId === "family"
       ? `Checked ${signals.length || members.length || 0} saved family profiles before ranking remedies.`
@@ -802,9 +928,13 @@ export const decorateRemedyForContext = (remedy, context, query = "") => {
   });
 
   queryIntent.tags.forEach((tag) => {
-    if (!tagSet.has(titleCase(tag))) return;
-    score += 6;
-    queryMatchScore += 6;
+    const normalizedTag = titleCase(tag);
+    const isPriority = queryIntent.priorityTags.includes(normalizedTag);
+    if (!tagSet.has(normalizedTag)) return;
+    score += isPriority ? 6 : 2;
+    if (isPriority) {
+      queryMatchScore += 6;
+    }
     reasons.push(queryIntent.reasons[0] || `${tag} support matches the current search`);
   });
 
@@ -861,12 +991,13 @@ export const decorateRemedyForContext = (remedy, context, query = "") => {
 };
 
 const matchesTagSelection = (remedy, activeTag = "All", queryIntent = null) => {
-  if (activeTag === "All") return true;
   const acceptedTags = new Set(getTagFamily(activeTag));
 
   (queryIntent?.tags || []).forEach((tag) => {
     getTagFamily(tag).forEach((relatedTag) => acceptedTags.add(relatedTag));
   });
+
+  if (activeTag === "All" && acceptedTags.size === 1) return true;
 
   return remedy.tags.some((tag) => acceptedTags.has(titleCase(tag)));
 };
@@ -904,9 +1035,21 @@ export const buildCatalog = (remedies, context, query = "", activeTag = "All") =
   if (results.length < 6) {
     const relatedMatches = decorated.filter((remedy) => {
       if (exactIds.has(remedy.id)) return false;
-      if (matchesTagSelection(remedy, activeTag, queryIntent)) return true;
-      if (!normalizedQuery) return false;
+      if (!normalizedQuery) return matchesTagSelection(remedy, activeTag, queryIntent);
+
+      if (queryIntent.priorityTags.length > 0) {
+        const hasPriorityTag = remedy.tags.some((tag) =>
+          queryIntent.priorityTags.includes(titleCase(tag))
+        );
+
+        return hasPriorityTag || (
+          remedy.insight.queryMatchScore > 0 &&
+          matchesTagSelection(remedy, activeTag, queryIntent)
+        );
+      }
+
       if (remedy.insight.queryMatchScore > 0) return true;
+
       return remedy.insight.targetSymptoms.some((symptom) =>
         queryIntent.tokens.some((token) => normalizeText(symptom).includes(token))
       );
@@ -937,11 +1080,4 @@ export const buildCatalog = (remedies, context, query = "", activeTag = "All") =
       fallbackMatch: !exactIds.has(remedy.id),
     },
   }));
-};
-
-export const getSuggestedSeed = (query, activeTag, context) => {
-  if (String(query || "").trim()) return String(query).trim();
-  if (activeTag && activeTag !== "All") return activeTag;
-  if (context.recommendedTags.length > 0) return context.recommendedTags[0];
-  return "daily immunity";
 };

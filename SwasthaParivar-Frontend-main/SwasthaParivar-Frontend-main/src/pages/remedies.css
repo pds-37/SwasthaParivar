@@ -117,9 +117,7 @@
 }
 
 .hero-field select,
-.search-shell,
-.generator-input,
-.generator-textarea {
+.search-shell {
   width: 100%;
   min-height: 46px;
   border-radius: 14px;
@@ -130,20 +128,13 @@
   color: inherit;
 }
 
-.generator-textarea {
-  min-height: 90px;
-  resize: vertical;
-}
-
 .search-shell {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.search-shell input,
-.generator-input,
-.generator-textarea {
+.search-shell input {
   border: none;
   outline: none;
   background: transparent;
@@ -155,24 +146,6 @@
   color: inherit;
 }
 
-.generate-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border: none;
-  min-height: 46px;
-  border-radius: 14px;
-  padding: 0 18px;
-  background: var(--brand);
-  color: var(--color-brand-on-dark);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: var(--shadow-md);
-}
-
-.generate-button:hover,
 .action-button--primary:hover {
   background: var(--brand-dark);
 }
@@ -299,6 +272,50 @@
   color: var(--muted);
 }
 
+.triage-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.remedies-results-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.remedies-results-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.remedies-results-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.remedies-results-title span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.remedies-results-header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .remedies-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
@@ -307,74 +324,12 @@
   align-items: start;
 }
 
-.generator-card,
 .remedy-card {
   border-radius: 22px;
   background: var(--surface);
   border: 1px solid var(--border);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-}
-
-.generator-card {
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(145deg, var(--hero-from) 0%, var(--hero-to) 100%);
-  color: var(--color-brand-on-dark);
-}
-
-.generator-form {
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.generator-form__header {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-}
-
-.generator-form__header h3,
-.generator-state h3 {
-  margin: 0;
-  font-size: 1.4rem;
-  letter-spacing: 0;
-}
-
-.generator-form__header p,
-.generator-state p {
-  margin: 4px 0 0;
-  line-height: 1.6;
-  font-size: 0.95rem;
-  color: color-mix(in srgb, var(--color-brand-on-dark) 84%, transparent);
-}
-
-.generator-inline-note {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.generator-orb {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--color-brand-on-dark) 18%, transparent);
-  color: var(--color-brand-on-dark);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-brand-on-dark) 26%, transparent);
-}
-
-.generator-state {
-  min-height: 220px;
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 14px;
 }
 
 .remedy-card {
@@ -390,7 +345,7 @@
 
 .remedy-card__hero {
   position: relative;
-  min-height: 120px;
+  min-height: 96px;
   padding: 16px;
   display: flex;
   justify-content: space-between;
@@ -482,12 +437,11 @@
   margin: 0;
   color: var(--muted);
   line-height: 1.6;
-  min-height: 56px;
+  min-height: 44px;
   font-size: 0.92rem;
 }
 
 .remedy-card__tags,
-.ingredient-preview,
 .detail-pill-row {
   display: flex;
   flex-wrap: wrap;
@@ -495,7 +449,6 @@
 }
 
 .remedy-card__tags span,
-.ingredient-preview span,
 .detail-pill {
   padding: 7px 10px;
   border-radius: 999px;
@@ -509,25 +462,12 @@
   color: var(--color-primary-strong);
 }
 
-.remedy-card__fact {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.fact-label,
 .detail-card__label {
   font-size: 0.76rem;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--muted);
   letter-spacing: 0.04em;
-}
-
-.fact-copy {
-  margin: 0;
-  color: var(--text-soft);
-  line-height: 1.5;
 }
 
 .remedy-card__reasons,
@@ -548,6 +488,13 @@
   border-radius: 16px;
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.info-callout svg,
+.warning-callout svg,
+.safe-callout svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
 }
 
 .info-callout,
@@ -756,16 +703,6 @@
   gap: 10px;
 }
 
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @media (max-width: 1080px) {
   .remedies-hero,
   .context-strip {
@@ -774,6 +711,10 @@
 
   .triage-panel {
     grid-template-columns: 1fr;
+  }
+
+  .triage-panel__actions {
+    justify-content: flex-start;
   }
 }
 
@@ -795,13 +736,17 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .remedies-results-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .remedies-grid,
   .facts-grid,
   .remedy-modal__grid {
     grid-template-columns: 1fr;
   }
 
-  .generator-form__header,
   .context-card {
     align-items: flex-start;
   }

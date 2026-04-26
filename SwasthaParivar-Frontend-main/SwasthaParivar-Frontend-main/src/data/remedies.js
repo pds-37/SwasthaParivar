@@ -1,5 +1,5 @@
 // client/src/data/remedies.js
-// Ultra Pro dataset (30 items). You can extend later.
+// Ultra Pro dataset. You can extend later.
 // Each remedy has: id, name, symptoms, ingredients[], steps[], rating, tags[], timeMins, difficulty, ayurveda, colorFrom, colorTo
 
 const REMEDIES = [
@@ -78,7 +78,7 @@ const REMEDIES = [
   {
     id: "r5",
     name: "Cumin-Coriander-Fennel (CCF) Infusion",
-    symptoms: "Bloating, gas, indigestion",
+    symptoms: "Acidity, bloating, gas, indigestion",
     ingredients: ["Cumin", "Coriander", "Fennel", "Water"],
     steps: [
       "Roast the spices lightly and boil in water for 8–10 minutes.",
@@ -198,7 +198,7 @@ const REMEDIES = [
   {
     id: "r12",
     name: "Fennel Tea",
-    symptoms: "Bloating, menstrual cramps, digestion",
+    symptoms: "Acidity, bloating, menstrual cramps, digestion",
     ingredients: ["Fennel seeds", "Water"],
     steps: ["Crush seeds, boil for 5 minutes, strain and drink."],
     rating: 4.7,
@@ -229,7 +229,7 @@ const REMEDIES = [
   {
     id: "r14",
     name: "Ajwain Hot Water",
-    symptoms: "Indigestion, sore throat",
+    symptoms: "Acidity, gas, indigestion, sore throat",
     ingredients: ["Ajwain (carom seeds)", "Water"],
     steps: ["Boil ajwain for 3-4 minutes and drink warm."],
     rating: 4.5,
@@ -346,7 +346,7 @@ const REMEDIES = [
   {
     id: "r22",
     name: "Coconut Water + Lemon",
-    symptoms: "Hydration, skin glow",
+    symptoms: "Headache, hydration, skin glow",
     ingredients: ["Coconut water", "Lemon"],
     steps: ["Mix and drink fresh."],
     rating: 4.8,
@@ -470,6 +470,41 @@ const REMEDIES = [
     ayurveda: "Gentle detox and bowel regulator.",
     colorFrom: "var(--color-primary)",
     colorTo: "var(--color-primary-soft-strong)"
+  },
+  {
+    id: "r31",
+    name: "Amla Hair Strength Drink",
+    symptoms: "Hair fall, weak roots, low nourishment",
+    ingredients: ["Amla powder", "Warm water"],
+    steps: [
+      "Mix amla powder into warm water until smooth.",
+      "Sip after food, starting with a small amount if digestion is sensitive."
+    ],
+    rating: 4.7,
+    tags: ["Hair", "Immunity"],
+    timeMins: 3,
+    difficulty: "Very Easy",
+    ayurveda: "Amla supports Rasayana nourishment, hair strength, and scalp vitality.",
+    colorFrom: "var(--color-success)",
+    colorTo: "var(--color-primary)"
+  },
+  {
+    id: "r32",
+    name: "Coconut-Curry Leaf Hair Oil",
+    symptoms: "Hair fall, weak roots, dry scalp",
+    ingredients: ["Coconut oil", "Curry leaves"],
+    steps: [
+      "Warm coconut oil with curry leaves on very low heat until fragrant.",
+      "Cool completely, strain, and massage a small amount into the scalp.",
+      "Leave for 30 minutes, then wash out gently."
+    ],
+    rating: 4.7,
+    tags: ["Hair"],
+    timeMins: 12,
+    difficulty: "Easy",
+    ayurveda: "A topical nourishment routine for dry scalp and weak roots.",
+    colorFrom: "var(--color-primary-soft-strong)",
+    colorTo: "var(--color-success)"
   }
 ];
 
