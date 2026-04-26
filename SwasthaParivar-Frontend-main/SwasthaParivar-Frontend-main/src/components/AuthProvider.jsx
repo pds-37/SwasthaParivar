@@ -106,7 +106,6 @@ export const AuthProvider = ({ children }) => {
               },
             });
           }
-          recoverableFailure = false;
           if (!cancelled) {
             dispatch({ type: "AUTH_LOADING", payload: false });
           }
