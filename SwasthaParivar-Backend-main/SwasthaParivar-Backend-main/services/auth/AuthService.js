@@ -118,10 +118,10 @@ class AuthService {
     return crypto.createHash("sha256").update(token).digest("hex");
   }
 
-  buildGoogleAuthUrl({ state }) {
+  buildGoogleAuthUrl({ state, redirectUri }) {
     const params = new URLSearchParams({
       client_id: appConfig.googleClientId,
-      redirect_uri: appConfig.googleRedirectUri,
+      redirect_uri: redirectUri,
       response_type: "code",
       scope: "openid email profile",
       access_type: "offline",
@@ -133,7 +133,7 @@ class AuthService {
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }
 
-  async exchangeGoogleCode(code) {
+  async exchangeGoogleCode(code, redirectUri) {
     const response = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
@@ -143,7 +143,7 @@ class AuthService {
         code,
         client_id: appConfig.googleClientId,
         client_secret: appConfig.googleClientSecret,
-        redirect_uri: appConfig.googleRedirectUri,
+        redirect_uri: redirectUri,
         grant_type: "authorization_code",
       }),
     });
@@ -333,8 +333,8 @@ class AuthService {
     return { status: 200, data: await this.buildSession(user) };
   }
 
-  async loginWithGoogle({ code }) {
-    if (!this.isGoogleAuthConfigured()) {
+  async loginWithGoogle({ code, redirectUri }) {
+    if (!this.isGoogleAuthConfigured() || !redirectUri) {
       return {
         status: 503,
         error: { code: "GOOGLE_AUTH_NOT_CONFIGURED", message: "Google sign-in is not configured" },
@@ -348,7 +348,7 @@ class AuthService {
       };
     }
 
-    const tokenPayload = await this.exchangeGoogleCode(code);
+    const tokenPayload = await this.exchangeGoogleCode(code, redirectUri);
     const profile = await this.fetchGoogleProfile(tokenPayload.access_token);
 
     const email = this.normalizeEmail(profile?.email);

@@ -179,6 +179,7 @@ CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 CLIENT_URLS=http://localhost:5173,http://127.0.0.1:5173
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
+# Optional override. If omitted, the backend derives the callback URL from the current host.
 GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback
 VAPID_PUBLIC_KEY=your_vapid_public_key
 VAPID_PRIVATE_KEY=your_vapid_private_key
@@ -233,6 +234,7 @@ CORS_ORIGINS=https://your-frontend-domain
 CLIENT_URLS=https://your-frontend-domain
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
+# Optional override. If omitted, the backend derives the callback URL from the current host.
 GOOGLE_REDIRECT_URI=https://your-backend-domain/api/auth/google/callback
 VAPID_PUBLIC_KEY=your_vapid_public_key
 VAPID_PRIVATE_KEY=your_vapid_private_key
@@ -247,7 +249,9 @@ REDIS_URL=your_redis_url_optional
 
 1. Create a Google OAuth Web Client in [Google Console](https://console.cloud.google.com)
 2. Add your frontend origin under **Authorized JavaScript Origins**
-3. Add your backend callback under **Authorized Redirect URIs**
+3. Add every backend callback you actually use under **Authorized Redirect URIs**
+   - Local: `http://localhost:5000/api/auth/google/callback`
+   - Render example: `https://your-backend-domain/api/auth/google/callback`
 4. Set home, privacy, and terms URLs under Google Branding
 5. Add your Gmail as a test user while the app is in testing mode
 

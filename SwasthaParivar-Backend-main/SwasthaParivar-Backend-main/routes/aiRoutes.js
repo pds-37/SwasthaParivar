@@ -1,7 +1,12 @@
 import express from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import auth from "../middleware/auth.js";
-import { analyzeAttachment, chatWithAI, listAIInsights } from "../controllers/aiController.js";
+import {
+  analyzeAttachment,
+  chatWithAI,
+  listAIInsights,
+  transcribeVoiceInput,
+} from "../controllers/aiController.js";
 import { streamChatWithAI } from "../controllers/aiStreamController.js";
 import appConfig from "../config/AppConfig.js";
 import { requireFeature } from "../middleware/planGuard.js";
@@ -13,6 +18,7 @@ import {
   aiChatSchema,
   aiInsightQuerySchema,
   aiStreamingChatSchema,
+  aiVoiceTranscriptionSchema,
 } from "../validations/aiSchemas.js";
 
 const router = express.Router();
@@ -64,6 +70,13 @@ router.post(
   validate(aiStreamingChatSchema),
   requireFeature("aiChat"),
   streamChatWithAI
+);
+router.post(
+  "/voice/transcribe",
+  auth,
+  aiRateLimiter.middleware(),
+  validate(aiVoiceTranscriptionSchema),
+  transcribeVoiceInput
 );
 router.post("/attachments", auth, aiRateLimiter.middleware(), validate(aiAttachmentSchema), analyzeAttachment);
 

@@ -1,10 +1,10 @@
 export const PLAN_LIMITS = {
   free: {
-    maxMembers: 3,
-    aiChatsPerDay: 10,
-    recordHistoryDays: 30,
-    reportAiAnalysis: false,
-    trendAlerts: false,
+    maxMembers: Number.POSITIVE_INFINITY,
+    aiChatsPerDay: Number.POSITIVE_INFINITY,
+    recordHistoryDays: Number.POSITIVE_INFINITY,
+    reportAiAnalysis: true,
+    trendAlerts: true,
   },
   pro: {
     maxMembers: Number.POSITIVE_INFINITY,
@@ -51,4 +51,3 @@ export const getPlanLimits = (userOrPlan = "free") =>
       ? normalizePlan(userOrPlan)
       : getEffectivePlan(userOrPlan)
   ] || PLAN_LIMITS.free;
-

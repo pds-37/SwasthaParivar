@@ -46,6 +46,23 @@ const authReducer = (state, action) => {
   }
 };
 
+const SESSION_BOOTSTRAP_DELAYS_MS = [0, 1200, 2200, 3500, 5000, 7000];
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isRecoverableBootstrapError = (error) => {
+  const status = error?.status || error?.response?.status;
+
+  return (
+    status === undefined ||
+    status === null ||
+    status === 408 ||
+    status === 425 ||
+    status === 429 ||
+    status >= 500
+  );
+};
+
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, null, () => {
     const stored = parseStoredUser();
@@ -63,27 +80,57 @@ export const AuthProvider = ({ children }) => {
     const bootstrap = async () => {
       dispatch({ type: "AUTH_LOADING", payload: true });
 
-      try {
-        const data = await api.get("/auth/session", { skipAuth: true });
-        if (!cancelled && data?.user) {
-          localStorage.removeItem("token");
-          localStorage.setItem("user", JSON.stringify(data.user));
-          dispatch({
-            type: "AUTH_SET",
-            payload: {
-              user: data.user,
-            },
-          });
+      const hasStoredUser = Boolean(parseStoredUser().user);
+
+      for (let attempt = 0; attempt < SESSION_BOOTSTRAP_DELAYS_MS.length; attempt += 1) {
+        if (cancelled) {
+          return;
         }
-      } catch {
-        if (!cancelled) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          dispatch({ type: "AUTH_CLEAR" });
+
+        if (attempt > 0) {
+          await sleep(SESSION_BOOTSTRAP_DELAYS_MS[attempt]);
+          if (cancelled) {
+            return;
+          }
         }
-      } finally {
-        if (!cancelled) {
-          dispatch({ type: "AUTH_LOADING", payload: false });
+
+        try {
+          const data = await api.get("/auth/session", { skipAuth: true });
+          if (!cancelled && data?.user) {
+            localStorage.removeItem("token");
+            localStorage.setItem("user", JSON.stringify(data.user));
+            dispatch({
+              type: "AUTH_SET",
+              payload: {
+                user: data.user,
+              },
+            });
+          }
+          recoverableFailure = false;
+          if (!cancelled) {
+            dispatch({ type: "AUTH_LOADING", payload: false });
+          }
+          return;
+        } catch (error) {
+          if (
+            isRecoverableBootstrapError(error) &&
+            hasStoredUser &&
+            attempt < SESSION_BOOTSTRAP_DELAYS_MS.length - 1
+          ) {
+            continue;
+          }
+
+          if (!cancelled) {
+            if (!(isRecoverableBootstrapError(error) && hasStoredUser)) {
+              localStorage.removeItem("token");
+              localStorage.removeItem("user");
+              dispatch({ type: "AUTH_CLEAR" });
+            }
+
+            dispatch({ type: "AUTH_LOADING", payload: false });
+          }
+
+          return;
         }
       }
     };

@@ -57,16 +57,20 @@ export function useStreamingChat() {
 
     if (!response.ok || !response.body) {
       let errorMessage = "Could not start the AI stream.";
+      let errorData = null;
 
       try {
-        const data = await response.json();
-        errorMessage = data?.message || data?.error?.message || errorMessage;
+        errorData = await response.json();
+        errorMessage = errorData?.message || errorData?.error?.message || errorMessage;
       } catch {
         // Ignore JSON parsing errors for non-SSE failures.
       }
 
       setIsStreaming(false);
-      throw new Error(errorMessage);
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      error.data = errorData;
+      throw error;
     }
 
     const reader = response.body.getReader();
@@ -78,6 +82,7 @@ export function useStreamingChat() {
       followUpPrompt: null,
       suggestedReminder: null,
       fallback: false,
+      quotaExceeded: false,
     };
 
     try {

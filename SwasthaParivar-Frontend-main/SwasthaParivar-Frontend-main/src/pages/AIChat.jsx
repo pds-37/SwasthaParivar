@@ -406,14 +406,40 @@ const AIChat = () => {
   } = useStreamingChat();
   const {
     listening,
+    processing: voiceProcessing,
     supported: voiceSupported,
     start: startVoiceInput,
     stop: stopVoiceInput,
-  } = useVoiceInput((transcript) => {
-    setInput((current) => (current ? `${current} ${transcript}` : transcript));
-    trackEvent("voice_input_completed", {
-      language,
-    });
+  } = useVoiceInput({
+    onResult: (transcript) => {
+      setInput((current) => (current ? `${current} ${transcript}` : transcript));
+      trackEvent("voice_input_completed", {
+        language,
+      });
+    },
+    onError: (message, details = {}) => {
+      notify.error(message);
+      trackEvent("voice_input_failed", {
+        language,
+        source: details.source || "voice-input",
+        reason: details.reason || "unknown",
+      });
+    },
+    transcribeAudio: async ({ audioData, mimeType, language: voiceLanguage }) => {
+      const response = await api.post(
+        "/ai/voice/transcribe",
+        {
+          audioData,
+          mimeType,
+          language: voiceLanguage,
+        },
+        {
+          suppressErrorToast: true,
+        }
+      );
+
+      return response?.transcript || "";
+    },
   });
 
   const currentContext = contexts.find((item) => item.key === selectedContext) || contexts[0];
@@ -426,7 +452,7 @@ const AIChat = () => {
   
   const { threads, saveMemory, deleteThread } = useAIChat();
   const hasMessages = messages.length > 0;
-  const isBusy = loading || isStreaming;
+  const isBusy = loading || isStreaming || voiceProcessing;
 
   useEffect(() => {
     if (activeView === "self" && selfMember?._id) {
@@ -500,18 +526,18 @@ const AIChat = () => {
     }
   };
 
-  const handleVoiceToggle = () => {
+  const handleVoiceToggle = async () => {
     if (!voiceSupported) {
-      notify.error("Voice input is not supported in this browser. Try Chrome.");
+      notify.error("Voice input is not supported on this device.");
       return;
     }
 
     if (listening) {
-      stopVoiceInput();
+      await stopVoiceInput();
       return;
     }
 
-    const started = startVoiceInput(VOICE_LANGUAGE_CODES[language] || "en-IN");
+    const started = await startVoiceInput(VOICE_LANGUAGE_CODES[language] || "en-IN");
     if (started) {
       trackEvent("voice_input_started", {
         language,
@@ -680,11 +706,10 @@ const AIChat = () => {
         String(response?.reply || "").trim() ||
         buildClientHealthFallbackReply(trimmed, contextLabel);
 
-      // If the backend flagged this as a fallback response, prepend a notice
       if (response?.quotaExceeded) {
-        replyText = `> ⚠️ *AI quota temporarily exceeded. Showing pre-built guidance below. For personalized answers, please try again later.*\n\n${replyText}`;
+        replyText = `> Warning: *The AI provider quota is temporarily exceeded. Showing pre-built guidance below. For a personalized answer, please try again later.*\n\n${replyText}`;
       } else if (response?.fallback) {
-        replyText = `> ℹ️ *AI service is temporarily unavailable. Showing pre-built guidance below.*\n\n${replyText}`;
+        replyText = `> Notice: *The AI service is temporarily unavailable. Showing pre-built guidance below.*\n\n${replyText}`;
       }
 
       const nextMessages = [
@@ -698,8 +723,27 @@ const AIChat = () => {
       ];
       setMessages(nextMessages);
       persistConversation(nextMessages);
-    } catch {
-      const fallbackMessage = `> ℹ️ *Could not reach the AI service right now. Here is pre-built guidance:*\n\n${buildClientHealthFallbackReply(trimmed, contextLabel)}`;
+    } catch (error) {
+      let fallbackMessage = `> Notice: *Could not reach the AI service right now. Here is pre-built guidance:*\n\n${buildClientHealthFallbackReply(trimmed, contextLabel)}`;
+      const status = error?.status || null;
+      const serverMessage = String(error?.message || "").trim();
+      const upgradeRequired = Boolean(error?.data?.upgradeRequired);
+
+      if (status === 429) {
+        if (/AI chats for today/i.test(serverMessage)) {
+          fallbackMessage = upgradeRequired
+            ? `> Warning: *${serverMessage}* Free-plan chat is capped per day. Please try again tomorrow or upgrade the plan to continue.`
+            : `> Warning: *${serverMessage}* Please try again tomorrow.`;
+        } else {
+          fallbackMessage = `> Warning: *${serverMessage || "Too many AI chat requests right now."}* Please wait a minute and try again.`;
+        }
+      } else if (status === 403) {
+        fallbackMessage = `> Warning: *${serverMessage || "This account does not currently have access to AI chat."}*`;
+      } else if (status === 401) {
+        fallbackMessage = `> Warning: *${serverMessage || "Your session has expired."}* Please sign in again and retry your question.`;
+      } else if (serverMessage) {
+        fallbackMessage = `> Notice: *${serverMessage}*\n\n${buildClientHealthFallbackReply(trimmed, contextLabel)}`;
+      }
       const nextMessages = [
         ...history,
         createAiMessage(fallbackMessage),
@@ -1058,8 +1102,14 @@ const AIChat = () => {
                     type="button"
                     className={`ai-chat-composer__icon ${listening ? "is-listening" : ""}`}
                     onClick={handleVoiceToggle}
-                    disabled={isBusy}
-                    aria-label={listening ? "Stop voice input" : "Start voice input"}
+                    disabled={voiceProcessing || loading || isStreaming}
+                    aria-label={
+                      listening
+                        ? "Stop voice input"
+                        : voiceProcessing
+                          ? "Transcribing voice input"
+                          : "Start voice input"
+                    }
                   >
                     <Mic size={18} />
                   </button>

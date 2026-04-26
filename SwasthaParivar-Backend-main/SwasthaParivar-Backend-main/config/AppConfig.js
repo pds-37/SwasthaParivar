@@ -47,7 +47,7 @@ class AppConfig {
   }
 
   get hasGoogleAuth() {
-    return Boolean(this.googleClientId && this.googleClientSecret && this.googleRedirectUri);
+    return Boolean(this.googleClientId && this.googleClientSecret);
   }
 
   parseOrigins(rawValue = "") {

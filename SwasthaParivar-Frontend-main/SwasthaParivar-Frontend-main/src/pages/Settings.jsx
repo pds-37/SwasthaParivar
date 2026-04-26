@@ -148,13 +148,13 @@ const Settings = () => {
     <div className="settings-page">
       <div className="app-shell settings-shell">
         <section className="settings-hero">
+          <span className="eyebrow">
+            <UserCircle2 size={16} />
+            Account settings
+          </span>
           <div className="settings-hero__identity">
             <ProfileAvatar name={user?.fullName} src={user?.avatarUrl} size="lg" />
-            <div>
-              <span className="eyebrow">
-                <UserCircle2 size={16} />
-                Account settings
-              </span>
+            <div className="settings-hero__copy">
               <h1 className="text-h2">Manage profile, privacy, notifications, and theme.</h1>
               <p className="text-body-md">
                 Everything that shapes the SwasthaParivar experience for you and your household lives here.
@@ -215,7 +215,7 @@ const Settings = () => {
                 </strong>
                 <p>
                   {currentPlan === "free"
-                    ? "Free includes 3 family profiles, 30 days of health history, and 10 AI chats per day."
+                    ? "Launch access currently includes unlimited AI chats, family profiles, and AI report tools while paid plans are being finalized."
                     : "Premium care is unlocked for your account, including AI reports and deeper history access."}
                 </p>
               </div>
@@ -228,8 +228,8 @@ const Settings = () => {
                     })
                   )
                 }
-              >
-                {currentPlan === "free" ? "See Pro benefits" : "Review plans"}
+                >
+                {currentPlan === "free" ? "See upcoming plans" : "Review plans"}
               </Button>
             </div>
 
@@ -283,7 +283,7 @@ const Settings = () => {
                   Paste a household invite code here if someone invited you into their family workspace.
                 </p>
               </div>
-              <span className="badge badge--primary">
+              <span className="badge badge--primary settings-section__badge-lifted">
                 <Users size={14} />
                 Household
               </span>

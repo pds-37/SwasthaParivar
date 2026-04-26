@@ -8,12 +8,12 @@ const plans = [
   {
     name: "Free",
     price: "Rs 0",
-    subtitle: "Good for getting started",
+    subtitle: "Launch access with core care tools unlocked",
     features: [
-      "Up to 3 family profiles",
-      "30 days of health history",
-      "10 AI chats per day",
-      "Basic reminders and reports",
+      "Unlimited family profiles during launch",
+      "Full health history during launch",
+      "Unlimited AI health chats during launch",
+      "AI report analysis and trend alerts during launch",
     ],
   },
   {
@@ -32,14 +32,15 @@ const plans = [
   },
   {
     name: "Family",
-    price: "Rs 399 / month",
-    subtitle: "Built for shared households",
+    price: "Coming soon",
+    subtitle: "Shared-household billing is on the way",
     features: [
       "Everything in Pro",
       "Shared family workspace",
       "Supports up to 5 users",
       "Ideal for coordinated caregiving",
     ],
+    comingSoon: true,
   },
 ];
 
@@ -62,7 +63,7 @@ const Pricing = () => (
       </span>
       <h1 className="text-h1">Choose the plan that matches your family's care rhythm.</h1>
       <p className="text-body-lg">
-        SwasthaParivar starts free, then scales into AI-assisted family care when you need deeper support.
+        Core features are unlocked during launch while paid plans and household billing are being finalized.
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
         <Button as={Link} to="/dashboard" leftIcon={<HeartHandshake size={16} />}>

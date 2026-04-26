@@ -1,14 +1,22 @@
 import mongoose from "mongoose";
 import Reminder from "../models/remindermodel.js";
 import AIInsight from "../models/aiinsightmodel.js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { triageHealthAttachment } from "../services/ai/reportReviewService.js";
+import { generateGeminiText } from "../services/ai/geminiService.js";
 import householdService from "../services/household/HouseholdService.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 import { logger } from "../utils/logger.js";
 
 const JSON_FENCE_PATTERN = /```json|```/gi;
+const SUPPORTED_AUDIO_MIME_TYPES = new Set([
+  "audio/wav",
+  "audio/mp3",
+  "audio/aiff",
+  "audio/aac",
+  "audio/ogg",
+  "audio/flac",
+]);
 
 function parseJsonResponse(rawText) {
   try {
@@ -20,6 +28,21 @@ function parseJsonResponse(rawText) {
 
 function escapeRegex(value = "") {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeAudioMimeType(value = "") {
+  const normalized = String(value || "").split(";", 1)[0].trim().toLowerCase();
+
+  switch (normalized) {
+    case "audio/x-wav":
+      return "audio/wav";
+    case "audio/mpeg":
+      return "audio/mp3";
+    case "audio/x-aiff":
+      return "audio/aiff";
+    default:
+      return normalized;
+  }
 }
 
 const SYMPTOM_KEYWORDS = [
@@ -174,124 +197,9 @@ const HEALTH_SCOPE_PATTERNS = [
   /^(hi|hello|hey|greetings|good morning|good afternoon|good evening|thanks|thank you|ok|okay)$/i,
 ];
 
-function getModel() {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured");
-  }
-
-  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-}
-
-function getCandidateModels() {
-  const list = [
-    process.env.GEMINI_MODEL,
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-pro",
-    "gemini-1.5-pro-latest",
-    "gemini-pro",
-    "gemini-1.0-pro",
-  ].filter((value, index, array) => value && array.indexOf(value) === index);
-  return list;
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function tryGenerateOnce(genAI, modelName, formattedParts) {
-  const model = genAI.getGenerativeModel({ model: modelName });
-  const result = await model.generateContent(formattedParts);
-  const text = result?.response?.text?.()?.trim();
-  if (!text) {
-    throw new Error(`Empty AI response from ${modelName}`);
-  }
-  return text;
-}
-
 async function generateWithGemini(parts, { mode = "text" } = {}) {
-  const genAI = getModel();
-  const models = getCandidateModels();
-  let lastError = null;
-  let isQuotaExhausted = false;
-
-  const formattedParts = typeof parts === "string" ? [{ text: parts }] : parts;
-
-  logger.info({
-    route: "ai",
-    mode,
-    attemptingModels: models,
-  });
-
-  for (const modelName of models) {
-    // Try up to 2 attempts per model with backoff for 429
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const text = await tryGenerateOnce(genAI, modelName, formattedParts);
-
-        logger.info({
-          route: "ai",
-          mode,
-          model: modelName,
-          attempt,
-          success: true,
-        });
-
-        return text;
-      } catch (error) {
-        lastError = error;
-        const status = error?.status || error?.httpStatusCode;
-        const is429 = status === 429 || /quota|rate.limit|too many/i.test(error?.message || "");
-        const is404 = status === 404 || /not found/i.test(error?.message || "");
-
-        logger.warn({
-          route: "ai",
-          mode,
-          model: modelName,
-          attempt,
-          error: {
-            message: error?.message || "Gemini generation failed",
-            status,
-          },
-        });
-
-        if (is404) {
-          // Model doesn't exist, skip to next model immediately
-          break;
-        }
-
-        if (is429) {
-          isQuotaExhausted = true;
-          if (attempt === 0) {
-            // Wait before retry — extract delay from error or default to 5s
-            const retryMatch = String(error?.message || "").match(/retry in (\d+)/i);
-            const waitMs = retryMatch ? Math.min(Number(retryMatch[1]) * 1000, 15000) : 5000;
-            logger.info({ route: "ai", model: modelName, waitMs }, "Waiting before retry");
-            await sleep(waitMs);
-            continue;
-          }
-          // Second attempt also 429 — move to next model
-          break;
-        }
-
-        // Other errors — don't retry, move to next model
-        break;
-      }
-    }
-  }
-
-  logger.error({
-    route: "ai",
-    mode,
-    allModelsFailed: true,
-    isQuotaExhausted,
-    lastErrorMessage: lastError?.message,
-  });
-
-  const finalError = lastError || new Error("No Gemini model succeeded");
-  finalError.isQuotaExhausted = isQuotaExhausted;
-  throw finalError;
+  const result = await generateGeminiText(parts, { mode });
+  return result.text;
 }
 
 function isReminderQuery(text) {
@@ -880,6 +788,75 @@ const buildReminderScope = (householdId, userId) => ({
     ? [{ householdId }, { ownerId: userId, householdId: null }]
     : [{ ownerId: userId }],
 });
+
+export const transcribeVoiceInput = async (req, res) => {
+  const normalizedMimeType = normalizeAudioMimeType(req.body?.mimeType);
+
+  if (!SUPPORTED_AUDIO_MIME_TYPES.has(normalizedMimeType)) {
+    return sendError(res, {
+      status: 400,
+      code: "UNSUPPORTED_AUDIO_FORMAT",
+      message: "Only WAV, MP3, AIFF, AAC, OGG, and FLAC audio are supported.",
+    });
+  }
+
+  try {
+    const transcript = await generateWithGemini(
+      [
+        {
+          text: [
+            "Generate a plain text transcript of the spoken audio.",
+            "Return only the transcript with no markdown, labels, or commentary.",
+            "Keep the original spoken language.",
+            req.body?.language ? `Expected spoken language: ${req.body.language}.` : "",
+          ]
+            .filter(Boolean)
+            .join(" "),
+        },
+        {
+          inlineData: {
+            mimeType: normalizedMimeType,
+            data: req.body.audioData,
+          },
+        },
+      ],
+      { mode: "audio-transcription" }
+    );
+
+    const cleanedTranscript = String(transcript || "")
+      .replace(/```/g, "")
+      .trim();
+
+    if (!cleanedTranscript) {
+      return sendError(res, {
+        status: 502,
+        code: "TRANSCRIPTION_EMPTY",
+        message: "Could not transcribe the recorded audio.",
+      });
+    }
+
+    return sendSuccess(res, {
+      data: {
+        transcript: cleanedTranscript,
+      },
+    });
+  } catch (error) {
+    logger.error({
+      route: "ai-voice-transcription",
+      userId: req.userId,
+      error: {
+        message: error?.message || "Voice transcription failed",
+        stack: error?.stack || null,
+      },
+    });
+
+    return sendError(res, {
+      status: 503,
+      code: "VOICE_TRANSCRIPTION_FAILED",
+      message: "Voice transcription is unavailable right now.",
+    });
+  }
+};
 
 export const chatWithAI = async (req, res) => {
   try {

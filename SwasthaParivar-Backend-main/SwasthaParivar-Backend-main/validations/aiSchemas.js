@@ -42,6 +42,12 @@ export const aiAttachmentSchema = z.object({
   member: z.string().trim().max(120).optional(),
 });
 
+export const aiVoiceTranscriptionSchema = z.object({
+  audioData: z.string().min(100).max(15_000_000),
+  mimeType: z.string().trim().min(1).max(64),
+  language: z.string().trim().max(12).optional(),
+});
+
 export const aiMemoryQuerySchema = z.object({
   member: z.string().trim().max(120).optional(),
 });

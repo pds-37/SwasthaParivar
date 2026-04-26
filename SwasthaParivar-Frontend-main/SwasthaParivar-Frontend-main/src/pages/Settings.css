@@ -7,20 +7,21 @@
   gap: var(--space-6);
 }
 
+.settings-hero {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .settings-hero__identity {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
-.settings-hero__identity > div {
+.settings-hero__copy {
   display: grid;
   align-content: start;
-  gap: var(--space-4);
-}
-
-.settings-hero__identity .eyebrow {
-  margin-bottom: var(--space-2);
+  gap: var(--space-3);
 }
 
 .settings-grid {
@@ -40,6 +41,11 @@
   align-items: start;
   justify-content: space-between;
   gap: var(--space-4);
+}
+
+.settings-section__badge-lifted {
+  align-self: flex-start;
+  transform: translateY(-0.35rem);
 }
 
 .settings-section__head p,
@@ -228,7 +234,6 @@
 @media (max-width: 48rem) {
   .settings-hero__identity {
     align-items: start;
-    flex-direction: column;
   }
 
   .settings-section__head,

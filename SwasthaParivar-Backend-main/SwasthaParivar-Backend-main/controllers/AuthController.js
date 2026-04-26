@@ -76,6 +76,55 @@ const buildClientUrl = (origin, pathname, params = {}) => {
   return url.toString();
 };
 
+const normalizeAbsoluteUrl = (value = "") => {
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+};
+
+const resolveServerOrigin = (req) => {
+  const forwardedProto = String(req.get("x-forwarded-proto") || "")
+    .split(",")[0]
+    .trim();
+  const forwardedHost = String(req.get("x-forwarded-host") || "")
+    .split(",")[0]
+    .trim();
+  const host = forwardedHost || String(req.get("host") || "").split(",")[0].trim();
+  const protocol = forwardedProto || req.protocol || "http";
+
+  if (!host) {
+    return "";
+  }
+
+  return normalizeOrigin(`${protocol}://${host}`);
+};
+
+const resolveGoogleRedirectUri = (req) => {
+  const requestOrigin = resolveServerOrigin(req);
+  const requestRedirectUri = requestOrigin
+    ? normalizeAbsoluteUrl(new URL("/api/auth/google/callback", requestOrigin).toString())
+    : "";
+  const configuredRedirectUri = normalizeAbsoluteUrl(appConfig.googleRedirectUri);
+
+  if (!configuredRedirectUri) {
+    return requestRedirectUri;
+  }
+
+  if (!requestRedirectUri) {
+    return configuredRedirectUri;
+  }
+
+  if (configuredRedirectUri === requestRedirectUri) {
+    return configuredRedirectUri;
+  }
+
+  return requestRedirectUri;
+};
+
 const normalizeAuthErrorCode = (error, fallback = "google_auth_failed") => {
   const code = String(error?.code || "").trim();
   return code ? code.toLowerCase() : fallback;
@@ -184,8 +233,9 @@ class AuthController {
   async googleStart(req, res) {
     const clientOrigin = resolveClientOrigin(req, req.query.returnTo);
     const returnPath = normalizeClientPath(req.query.returnPath) || "/dashboard";
+    const googleRedirectUri = resolveGoogleRedirectUri(req);
 
-    if (!authService.isGoogleAuthConfigured()) {
+    if (!authService.isGoogleAuthConfigured() || !googleRedirectUri) {
       return res.redirect(
         buildClientUrl(clientOrigin, "/auth", {
           authError: "google_not_configured",
@@ -207,12 +257,13 @@ class AuthController {
       getGoogleCookieOptions(GOOGLE_COOKIE_MAX_AGE_MS)
     );
 
-    return res.redirect(authService.buildGoogleAuthUrl({ state }));
+    return res.redirect(authService.buildGoogleAuthUrl({ state, redirectUri: googleRedirectUri }));
   }
 
   async googleCallback(req, res) {
     const clientOrigin = resolveClientOrigin(req, req.cookies?.[GOOGLE_RETURN_COOKIE]);
     const returnPath = normalizeClientPath(req.cookies?.[GOOGLE_RETURN_PATH_COOKIE]) || "/dashboard";
+    const googleRedirectUri = resolveGoogleRedirectUri(req);
     const fail = (authError) => {
       clearGoogleCookies(res);
       clearAuthCookies(res);
@@ -223,6 +274,10 @@ class AuthController {
         })
       );
     };
+
+    if (!authService.isGoogleAuthConfigured() || !googleRedirectUri) {
+      return fail("google_not_configured");
+    }
 
     if (req.query.error) {
       return fail("google_cancelled");
@@ -235,7 +290,10 @@ class AuthController {
     clearGoogleCookies(res);
 
     try {
-      const result = await authService.loginWithGoogle({ code: req.query.code });
+      const result = await authService.loginWithGoogle({
+        code: req.query.code,
+        redirectUri: googleRedirectUri,
+      });
       if (result.error) {
         return fail(normalizeAuthErrorCode(result.error));
       }

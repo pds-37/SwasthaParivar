@@ -29,8 +29,8 @@ export default function UpgradePrompt({ open, onClose, featureName }) {
       onClose={onClose}
       size="sm"
       className="upgrade-prompt"
-      title="Pro is coming soon"
-      description={`${readableFeature} will be part of the upcoming Pro plan.`}
+      title="Paid plans are coming soon"
+      description={`${readableFeature} is available during launch while Pro and Family plans are being finalized.`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -51,8 +51,8 @@ export default function UpgradePrompt({ open, onClose, featureName }) {
         <span className="upgrade-prompt__icon">
           <Sparkles size={20} />
         </span>
-        <strong>Premium family care is on the way.</strong>
-        <p>Pro will add richer records, deeper AI support, and stronger household follow-up tools.</p>
+        <strong>Launch access is open right now.</strong>
+        <p>We are keeping core care tools available while the paid Pro and Family tiers are prepared.</p>
       </div>
 
       <div className="upgrade-prompt__features">

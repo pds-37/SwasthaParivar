@@ -1,5 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 import {
   assessRisk,
   buildFallbackResponse,
@@ -8,10 +6,9 @@ import {
   buildSuggestedReminder,
   triageCheck,
 } from "../aiOrchestrator.js";
+import { isGeminiQuotaError, startGeminiTextStream } from "../services/ai/geminiService.js";
 import householdService from "../services/household/HouseholdService.js";
 import { logger } from "../utils/logger.js";
-
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
 const chunkText = (text, size = 28) => {
   const normalized = String(text || "");
@@ -94,11 +91,16 @@ export const streamChatWithAI = async (req, res) => {
 
     let fullResponse = "";
     let usedFallback = false;
+    let quotaExceeded = false;
 
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
-      const streamResult = await model.generateContentStream(prompt);
+      const streamResult = await startGeminiTextStream(prompt, { mode: "chat-stream" });
+
+      logger.info({
+        route: "ai-chat-stream",
+        userId: req.userId,
+        model: streamResult.model,
+      });
 
       for await (const chunk of streamResult.stream) {
         const token = chunk.text();
@@ -115,11 +117,13 @@ export const streamChatWithAI = async (req, res) => {
       }
     } catch (error) {
       usedFallback = true;
+      quotaExceeded = Boolean(error?.isQuotaExhausted || isGeminiQuotaError(error));
       fullResponse = buildFallbackResponse(message, member, risk);
 
       logger.warn({
         route: "ai-chat-stream",
         userId: req.userId,
+        quotaExceeded,
         error: {
           message: error?.message || "Streaming failed, using fallback",
         },
@@ -143,6 +147,7 @@ export const streamChatWithAI = async (req, res) => {
       suggestedReminder,
       reply: fullResponse,
       fallback: usedFallback,
+      quotaExceeded,
     });
     return res.end();
   } catch (error) {
