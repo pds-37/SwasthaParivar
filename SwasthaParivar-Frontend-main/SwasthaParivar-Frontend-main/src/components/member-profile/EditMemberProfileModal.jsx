@@ -205,7 +205,7 @@ const EditMemberProfileModal = ({ member, saving = false, onClose, onSave }) => 
           </div>
 
           <Textarea
-            label="Conditions"
+            label="Health issues"
             placeholder="Diabetes, asthma, acidity..."
             value={form.conditions}
             onChange={(event) => handleChange("conditions", event.target.value)}

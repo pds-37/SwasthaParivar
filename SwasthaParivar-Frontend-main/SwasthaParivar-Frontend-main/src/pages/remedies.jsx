@@ -897,41 +897,7 @@ export default function Remedies() {
         </Motion.div>
       </section>
 
-      <Motion.section
-        className="context-strip"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <div className="context-card">
-          <div className="context-card__icon">
-            <Users size={18} />
-          </div>
-          <div>
-            <strong>{focusMembersLabel}</strong>
-            <p>{context.profileCheckedText}</p>
-          </div>
-        </div>
 
-        <div className="context-pills">
-          {context.summaryPills.length > 0 ? (
-            context.summaryPills.map((pill) => <span key={pill}>{pill}</span>)
-          ) : (
-            <span className="safe-pill">
-              <Sparkles size={14} style={{ display: "inline-block", verticalAlign: "text-bottom", marginRight: "4px" }} />
-              {context.clearProfile}
-            </span>
-          )}
-        </div>
-      </Motion.section>
-
-      <section className="profile-strip">
-        {context.profileFacts.map((fact) => (
-          <div key={fact} className="profile-pill">
-            {fact}
-          </div>
-        ))}
-      </section>
 
       {!seriousMatch && generatedRemedy ? (
         <section ref={generatedSectionRef} className="generated-remedy-section">

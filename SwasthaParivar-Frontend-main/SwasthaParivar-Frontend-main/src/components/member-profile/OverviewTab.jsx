@@ -10,9 +10,9 @@ const OverviewTab = ({ member, insights = [] }) => (
     </article>
 
     <article className="card member-profile__panel">
-      <h3 className="text-h4">Conditions</h3>
+      <h3 className="text-h4">Health issues</h3>
       <div className="member-profile__pill-row">
-        {(member.conditions?.length ? member.conditions : ["No active conditions saved"]).map((item) => (
+        {(member.conditions?.length ? member.conditions : ["No active health issues saved"]).map((item) => (
           <span key={item} className="badge badge--primary">
             {item}
           </span>
