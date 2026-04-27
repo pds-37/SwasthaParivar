@@ -9,12 +9,9 @@ import { logger } from "../utils/logger.js";
 const activeProfileStatusFilter = () => ({ $ne: "archived" });
 const JSON_FENCE_PATTERN = /```json|```/gi;
 const MODEL_CANDIDATES = [
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
-  "gemini-1.5-flash-latest",
-  "gemini-1.5-pro",
-  "gemini-1.5-pro-latest",
-  "gemini-pro",
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
+  "gemini-2.0-flash",
 ];
 const NON_REMEDY_QUERY_PATTERN =
   /\b(zinc deficiency|low zinc|zinc deficient|iron deficiency|low iron|anemi[ae]|vitamin deficiency|b12 deficiency|vitamin b12 deficiency)\b/i;
