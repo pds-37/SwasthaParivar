@@ -115,9 +115,9 @@ function generateRemedies() {
       const prepNameBase = timeMins > 10 ? (Math.random() > 0.5 ? 'Brew' : 'Decoction') : (Math.random() > 0.5 ? 'Remedy' : 'Infusion');
 
       library.push({
-        id: \`gen-\${sector.id}-\${idCounter++}\`,
-        name: \`\${selectedIngredients[0]} & \${selectedIngredients[1] || "Herb"} \${prepNameBase}\`,
-        description: \`A traditional Ayurvedic approach utilizing \${selectedIngredients[0].toLowerCase()} to manage \${selectedSymptoms.join(" and ")} naturally.\`,
+        id: `gen-${sector.id}-${idCounter++}`,
+        name: `${selectedIngredients[0]} & ${selectedIngredients[1] || "Herb"} ${prepNameBase}`,
+        description: `A traditional Ayurvedic approach utilizing ${selectedIngredients[0].toLowerCase()} to manage ${selectedSymptoms.join(" and ")} naturally.`,
         symptoms: selectedSymptoms.join(", "),
         ingredients: selectedIngredients,
         steps: [
