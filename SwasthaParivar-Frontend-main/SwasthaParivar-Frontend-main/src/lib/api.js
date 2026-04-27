@@ -52,12 +52,8 @@ apiClient.interceptors.request.use((config) => {
   const nextConfig = { ...config };
   const skipAuth = nextConfig.headers?.["x-skip-auth"];
 
-  // Cookie auth is the primary path; only fall back to a stored bearer token
-  // when a request explicitly disables credentials.
-  const token =
-    nextConfig.withCredentials === false
-      ? localStorage.getItem("token")
-      : null;
+  // Always attempt to use a stored bearer token if available
+  const token = localStorage.getItem("token");
 
   if (!skipAuth && token && !nextConfig.headers?.Authorization) {
     nextConfig.headers = {

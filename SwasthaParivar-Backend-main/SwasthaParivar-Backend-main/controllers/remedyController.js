@@ -414,9 +414,6 @@ async function buildFocusContext(userId, selectedMemberId) {
 async function searchLibrary(query = "") {
   const LibraryRemedy = mongoose.models.LibraryRemedy || (await import("../models/libraryremedymodel.js")).default;
 
-  const directTemplate = TEMPLATE_LIBRARY.find((template) => template.match.test(query));
-  if (directTemplate) return { ...directTemplate, source: "prebuilt" };
-
   const normalizedQuery = String(query || "").toLowerCase();
   const queryTokens = tokenizeQuery(normalizedQuery);
   const preferredIds = new Set();
@@ -432,7 +429,7 @@ async function searchLibrary(query = "") {
   });
 
   const dbRemedies = await LibraryRemedy.find({}).lean();
-  const combinedCatalog = [...REMEDY_CATALOG, ...dbRemedies];
+  const combinedCatalog = [...TEMPLATE_LIBRARY, ...REMEDY_CATALOG, ...dbRemedies];
 
   const rankedFallback = combinedCatalog.map((remedy) => {
     const searchable = [
@@ -463,7 +460,7 @@ async function searchLibrary(query = "") {
     return { remedy, score };
   }).sort((a, b) => b.score - a.score);
 
-  if (rankedFallback[0]?.score > 4) {
+  if (rankedFallback[0]?.score >= 7) {
     const best = rankedFallback[0].remedy;
     return {
       name: best.name,
@@ -495,39 +492,57 @@ function applySafetyAdjustments(remedy, context) {
     ingredients: [...(remedy.ingredients || [])],
     steps: [...(remedy.steps || [])],
     warnings: [...(remedy.warnings || [])],
+    insight: {
+      ...(remedy.insight || {}),
+      contraindications: [...(remedy.insight?.contraindications || [])],
+      dosage: {
+        short: remedy.insight?.dosage?.short || "Standard dose",
+        detail: remedy.insight?.dosage?.detail || "Follow standard preparation steps.",
+      },
+      reasons: [...(remedy.insight?.reasons || [])],
+      targetSymptoms: [...(remedy.insight?.targetSymptoms || remedy.tags || [])],
+      activeIngredients: [...(remedy.insight?.activeIngredients || [])],
+      familyAwareTag: remedy.insight?.familyAwareTag || "Safe for family",
+    },
   };
 
   if (context.flags.highSugar) {
     adjusted.ingredients = adjusted.ingredients.filter(
       (ingredient) => !/honey|banana/i.test(ingredient)
     );
-    adjusted.warnings.push(
-      "Avoided very sweet ingredients because recent blood sugar looks elevated."
-    );
+    const msg = "Avoided very sweet ingredients because recent blood sugar looks elevated.";
+    adjusted.warnings.push(msg);
+    adjusted.insight.contraindications.push(msg);
+    adjusted.insight.familyAwareTag = "Sugar-sensitive adjusted";
   }
 
   if (context.flags.highBp) {
     adjusted.ingredients = adjusted.ingredients.filter(
       (ingredient) => !/licorice|mulethi|salt/i.test(ingredient)
     );
-    adjusted.warnings.push(
-      "Avoid stronger blood-pressure-sensitive ingredients like licorice or extra salt."
-    );
+    const msg = "Avoided blood-pressure-sensitive ingredients like licorice or extra salt.";
+    adjusted.warnings.push(msg);
+    adjusted.insight.contraindications.push(msg);
+    adjusted.insight.familyAwareTag = "BP-sensitive adjusted";
   }
 
   if (context.flags.highHeartRate) {
-    adjusted.warnings.push(
-      "Use warming spices in small amounts because recent heart rate has been high."
-    );
+    const msg = "Use warming spices in small amounts because recent heart rate has been high.";
+    adjusted.warnings.push(msg);
+    adjusted.insight.contraindications.push(msg);
   }
 
   if (context.flags.childSensitive) {
-    adjusted.warnings.push(
-      "For younger children, keep the preparation mild and confirm portions with a clinician."
-    );
+    const msg = "For younger children, keep the preparation mild and confirm portions with a clinician.";
+    adjusted.warnings.push(msg);
+    adjusted.insight.contraindications.push(msg);
+    adjusted.insight.familyAwareTag = "Child-safe adjusted";
+    adjusted.insight.dosage.detail = `Half adult portion suggested for children. ${adjusted.insight.dosage.detail}`;
   }
 
   adjusted.warnings = Array.from(new Set(adjusted.warnings));
+  adjusted.insight.contraindications = Array.from(new Set(adjusted.insight.contraindications));
+  
   return adjusted;
 }
 
@@ -604,7 +619,18 @@ Return this exact shape:
   "tags": [""],
   "timeMins": 10,
   "difficulty": "Easy",
-  "ayurveda": "",
+  "ayurveda": "Ayurvedic perspective on why this works...",
+  "insight": {
+    "contraindications": ["Safety warnings based on risk flags"],
+    "dosage": {
+      "short": "e.g. 1 cup daily",
+      "detail": "Specific instructions on how/when to take it"
+    },
+    "reasons": ["Why this remedy fits the user's specific context"],
+    "targetSymptoms": ["Specific symptoms this addresses"],
+    "activeIngredients": ["Key therapeutic components"],
+    "familyAwareTag": "Status e.g. Child-Safe"
+  },
   "warnings": [""],
   "bestFor": [""],
   "colorFrom": "#1f9c90",

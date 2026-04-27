@@ -338,36 +338,7 @@ const buildLocalGeneratedRemedy = ({ seedText, context, activeTag }) => {
   );
 };
 
-const findCuratedRemedyMatch = ({ seedText, query, activeTag, context }) => {
-  const catalogMatches = buildCatalog(REMEDIES_DATA, context, seedText, activeTag);
-  const bestMatch = catalogMatches[0];
 
-  if (!bestMatch) {
-    return {
-      remedy: null,
-      error: "No safe remedy is available for this profile right now.",
-    };
-  }
-
-  const hasSymptomQuery = Boolean(String(query || "").trim());
-  if (hasSymptomQuery) {
-    const isTrustedSymptomMatch =
-      bestMatch.insight?.queryMatchScore > 0 && !bestMatch.insight?.fallbackMatch;
-
-    if (!isTrustedSymptomMatch) {
-      return {
-        remedy: null,
-        error:
-          "We do not have a trusted home-remedy match for this symptom yet. Try Family AI or clinician guidance instead.",
-      };
-    }
-  }
-
-  return {
-    remedy: bestMatch,
-    error: "",
-  };
-};
 
 const shareRemedy = async (remedy) => {
   const text = [
@@ -805,26 +776,12 @@ export default function Remedies() {
     setGeneratedError("");
     setGeneratedRemedy(null);
 
-    const { remedy: curatedRemedy, error } = findCuratedRemedyMatch({
-      seedText,
-      query,
-      activeTag,
-      context,
-    });
-
-    if (curatedRemedy) {
-      setGeneratedRemedy(curatedRemedy);
-      setOpenRecipe(curatedRemedy);
-      notify.success("Found a curated remedy match");
-      return;
-    }
-
     // Attempt internet search via backend if online
     try {
       if (!navigator.onLine) {
         throw new Error("Offline");
       }
-      notify.success("Searching the internet for the best remedy...");
+      notify.success("Searching for the best remedy...");
       const res = await api.post("/remedies/generate", {
         query: seedText,
         memberId: selectedMemberId,
@@ -847,7 +804,7 @@ export default function Remedies() {
         notify.success("Showing best offline remedy");
         return;
       }
-      setGeneratedError(error || "No remedy could be found or generated.");
+      setGeneratedError(err?.message || "No remedy could be found or generated.");
     }
   };
 
