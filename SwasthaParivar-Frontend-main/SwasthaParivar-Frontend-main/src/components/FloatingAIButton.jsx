@@ -27,12 +27,14 @@ const FloatingAIButton = () => {
       <span className="floating-ai-button__icon">
         <MessageSquareText size={18} />
       </span>
-      <span className="floating-ai-button__copy">
-        <strong>Ask AI</strong>
-        <small>Symptoms, medicines, reports</small>
-      </span>
-      <span className="floating-ai-button__spark">
-        <Sparkles size={14} />
+      <span className="floating-ai-button__content-wrapper">
+        <span className="floating-ai-button__copy">
+          <strong>Ask AI</strong>
+          <small>Symptoms, medicines, reports</small>
+        </span>
+        <span className="floating-ai-button__spark">
+          <Sparkles size={14} />
+        </span>
       </span>
     </button>
   );

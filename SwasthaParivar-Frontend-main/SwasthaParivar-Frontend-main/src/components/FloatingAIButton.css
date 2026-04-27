@@ -6,10 +6,9 @@
   min-height: 3.75rem;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: 0.875rem 1rem;
+  padding: 0.625rem;
   border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-border-subtle));
-  border-radius: calc(var(--radius-xl) + 0.25rem);
+  border-radius: 50rem;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--color-surface) 88%, transparent), color-mix(in srgb, var(--color-primary-soft) 74%, transparent)),
     color-mix(in srgb, var(--color-surface-overlay) 88%, transparent);
@@ -21,14 +20,35 @@
   transition:
     transform var(--transition-base),
     box-shadow var(--transition-base),
-    border-color var(--transition-base);
+    border-color var(--transition-base),
+    padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .floating-ai-button:hover {
   transform: translateY(-0.125rem);
   box-shadow: 0 1.5rem 3.25rem color-mix(in srgb, var(--color-primary) 18%, var(--color-shadow-strong));
   border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border));
+  padding: 0.625rem 1rem 0.625rem 0.625rem;
 }
+
+.floating-ai-button__content-wrapper {
+  display: flex;
+  align-items: center;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.floating-ai-button:hover .floating-ai-button__content-wrapper {
+  max-width: 300px;
+  opacity: 1;
+  margin-left: var(--space-3);
+  gap: var(--space-3);
+}
+
+
 
 .floating-ai-button__halo {
   position: absolute;
