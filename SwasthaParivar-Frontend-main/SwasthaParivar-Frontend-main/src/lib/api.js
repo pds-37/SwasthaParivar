@@ -92,8 +92,7 @@ apiClient.interceptors.response.use(
       status === 401 &&
       !originalRequest.__retry &&
       !isRefreshRequest &&
-      !isAuthEntry &&
-      !isAuthBootstrap
+      !isAuthEntry
     ) {
       originalRequest.__retry = true;
 

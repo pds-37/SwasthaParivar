@@ -57,10 +57,18 @@ export const getGeminiCandidateModels = (extraModels = []) =>
   );
 
 const runAcrossModels = async (executor, { mode = "text", modelCandidates = [] } = {}) => {
-  const genAI = getGeminiClient();
   const models = getGeminiCandidateModels(modelCandidates);
   let lastError = null;
   let isQuotaExhausted = false;
+
+  const apiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+
+  if (apiKeys.length === 0) {
+    throw new Error("No Gemini API key configured.");
+  }
 
   logger.info({
     route: "gemini",
@@ -68,55 +76,73 @@ const runAcrossModels = async (executor, { mode = "text", modelCandidates = [] }
     attemptingModels: models,
   });
 
-  for (const modelName of models) {
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await executor(model, modelName);
+  for (const apiKey of apiKeys) {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    let keyExhausted = false;
 
-        logger.info({
-          route: "gemini",
-          mode,
-          model: modelName,
-          attempt,
-          success: true,
-        });
+    for (const modelName of models) {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const result = await executor(model, modelName);
 
-        return result;
-      } catch (error) {
-        lastError = error;
-        const status = getErrorStatus(error);
-        const quotaError = isGeminiQuotaError(error);
+          logger.info({
+            route: "gemini",
+            mode,
+            model: modelName,
+            attempt,
+            success: true,
+          });
 
-        if (quotaError) {
-          isQuotaExhausted = true;
+          return result;
+        } catch (error) {
+          lastError = error;
+          const status = getErrorStatus(error);
+          const quotaError = isGeminiQuotaError(error);
+
+          logger.warn({
+            route: "gemini",
+            mode,
+            model: modelName,
+            attempt,
+            error: {
+              message: error?.message || "Gemini request failed",
+              status,
+            },
+          });
+
+          if (isMissingModelError(error)) {
+            break;
+          }
+
+          if (quotaError) {
+            keyExhausted = true;
+            break; // Break the attempt loop
+          }
+
+          if (attempt === 0) {
+            const waitMs = getRetryDelayMs(error);
+            logger.info({ route: "gemini", mode, model: modelName, waitMs }, "Waiting before Gemini retry");
+            await sleep(waitMs);
+            continue;
+          }
+
+          break; // Break attempt loop on other errors
         }
+      }
 
-        logger.warn({
-          route: "gemini",
-          mode,
-          model: modelName,
-          attempt,
-          error: {
-            message: error?.message || "Gemini request failed",
-            status,
-          },
-        });
-
-        if (isMissingModelError(error)) {
-          break;
-        }
-
-        if (quotaError && attempt === 0) {
-          const waitMs = getRetryDelayMs(error);
-          logger.info({ route: "gemini", mode, model: modelName, waitMs }, "Waiting before Gemini retry");
-          await sleep(waitMs);
-          continue;
-        }
-
-        break;
+      if (keyExhausted) {
+        break; // Break the model loop for this key
       }
     }
+
+    if (keyExhausted) {
+      isQuotaExhausted = true;
+      continue; // Try the next API key
+    }
+    
+    // If it reached here without returning and wasn't quota exhausted, it means all models failed (e.g. 503).
+    // Usually no point trying another key for 503s, but we will loop anyway just in case.
   }
 
   logger.error({

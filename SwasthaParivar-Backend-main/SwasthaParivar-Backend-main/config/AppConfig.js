@@ -17,9 +17,9 @@ class AppConfig {
     this.sentryEnvironment = env.SENTRY_ENVIRONMENT || this.nodeEnv;
     this.privacyPolicyVersion = env.PRIVACY_POLICY_VERSION || "v1.0";
     this.accessTokenTtl = "15m";
-    this.refreshTokenTtl = "7d";
+    this.refreshTokenTtl = "21d";
     this.accessTokenMaxAgeMs = 15 * 60 * 1000;
-    this.refreshTokenMaxAgeMs = 7 * 24 * 60 * 60 * 1000;
+    this.refreshTokenMaxAgeMs = 21 * 24 * 60 * 60 * 1000;
     this.cookieSameSite = env.COOKIE_SAME_SITE || (this.isProduction ? "none" : "strict");
     this.appVersion = env.APP_VERSION || env.RENDER_GIT_COMMIT || "1.0.0";
 

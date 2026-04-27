@@ -579,6 +579,8 @@ async function buildFallbackRemedy(query, context) {
   );
 }
 
+import { getGeminiCandidateModels, isGeminiQuotaError } from "../services/ai/geminiService.js";
+
 async function generateWithGemini(query, context) {
   const prompt = `
 You are generating one Ayurvedic-inspired home remedy for a family wellness app.
@@ -634,55 +636,82 @@ Return this exact shape:
   "colorTo": "#0d6a65"
 }
 `;
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+  
+  const apiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+
+  if (apiKeys.length === 0) {
+    throw new Error("No Gemini API key configured.");
+  }
+
+  const modelsToTry = getGeminiCandidateModels(["gemini-2.5-flash", "gemini-2.0-flash"]);
   let lastError = null;
 
-  for (const modelName of MODEL_CANDIDATES) {
-    try {
-      const model = genAI.getGenerativeModel({ 
-        model: modelName,
-        tools: [{ googleSearch: {} }]
-      });
-      const result = await model.generateContent([{ text: prompt }]);
-      const text = result?.response?.text?.()?.trim();
+  for (const apiKey of apiKeys) {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    let keyExhausted = false;
 
-      if (!text) {
-        throw new Error(`Empty remedy response from ${modelName}`);
+    for (const modelName of modelsToTry) {
+      try {
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
+          tools: [{ googleSearch: {} }]
+        });
+        const result = await model.generateContent([{ text: prompt }]);
+        const text = result?.response?.text?.()?.trim();
+
+        if (!text) {
+          throw new Error(`Empty remedy response from ${modelName}`);
+        }
+
+        const jsonStr = text.replace(JSON_FENCE_PATTERN, "").trim();
+        const parsed = JSON.parse(jsonStr);
+
+        return applySafetyAdjustments(
+          {
+            name: parsed?.name || "Custom Remedy",
+            description: parsed?.description || `A tailored remedy for ${query}.`,
+            symptoms: parsed?.symptoms || query,
+            ingredients: Array.isArray(parsed?.ingredients) ? parsed.ingredients : [],
+            steps: Array.isArray(parsed?.steps) ? parsed.steps : [],
+            rating: Number(parsed?.rating || 4.8),
+            tags: Array.isArray(parsed?.tags) ? parsed.tags : [query],
+            timeMins: Number(parsed?.timeMins || 10),
+            difficulty: parsed?.difficulty || "Easy",
+            ayurveda: parsed?.ayurveda || "",
+            warnings: Array.isArray(parsed?.warnings) ? parsed.warnings : [],
+            bestFor: Array.isArray(parsed?.bestFor) ? parsed.bestFor : [],
+            insight: parsed?.insight || {},
+            colorFrom: parsed?.colorFrom || "#1f9c90",
+            colorTo: parsed?.colorTo || "#0d6a65",
+            source: "internet",
+          },
+          context
+        );
+      } catch (error) {
+        lastError = error;
+        logger.warn({
+          route: "remedy-generate",
+          model: modelName,
+          error: {
+            message: error?.message || "Gemini remedy generation failed",
+          },
+        });
+        
+        // If quota is exhausted for this key, break out of model loop and try next API key
+        if (isGeminiQuotaError(error)) {
+          keyExhausted = true;
+          break;
+        }
       }
+    }
 
-      const jsonStr = text.replace(JSON_FENCE_PATTERN, "").trim();
-      const parsed = JSON.parse(jsonStr);
-
-      return applySafetyAdjustments(
-        {
-          name: parsed?.name || "Custom Remedy",
-          description: parsed?.description || `A tailored remedy for ${query}.`,
-          symptoms: parsed?.symptoms || query,
-          ingredients: Array.isArray(parsed?.ingredients) ? parsed.ingredients : [],
-          steps: Array.isArray(parsed?.steps) ? parsed.steps : [],
-          rating: Number(parsed?.rating || 4.8),
-          tags: Array.isArray(parsed?.tags) ? parsed.tags : [query],
-          timeMins: Number(parsed?.timeMins || 10),
-          difficulty: parsed?.difficulty || "Easy",
-          ayurveda: parsed?.ayurveda || "",
-          warnings: Array.isArray(parsed?.warnings) ? parsed.warnings : [],
-          bestFor: Array.isArray(parsed?.bestFor) ? parsed.bestFor : [],
-          insight: parsed?.insight || {},
-          colorFrom: parsed?.colorFrom || "#1f9c90",
-          colorTo: parsed?.colorTo || "#0d6a65",
-          source: "internet",
-        },
-        context
-      );
-    } catch (error) {
-      lastError = error;
-      logger.warn({
-        route: "remedy-generate",
-        model: modelName,
-        error: {
-          message: error?.message || "Gemini remedy generation failed",
-        },
-      });
+    if (!keyExhausted && !lastError) {
+       // If it finished models without quota error but still failed, we might want to break or continue
+       // But if it reached here without returning, it means all models failed (e.g. 503)
+       // Continuing to next API key might not help 503s, but let's try anyway.
     }
   }
 
@@ -753,8 +782,8 @@ export const generateRemedy = async (req, res) => {
           }).catch(err => console.error("Failed to save to LibraryRemedy", err));
           
         } catch (error) {
-          console.error("Gemini remedy generation failed, using fallback:", error.message);
-          remedy = await buildFallbackRemedy(query, context);
+          console.error("Gemini remedy generation failed:", error.message);
+          throw error;
         }
       }
 
