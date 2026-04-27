@@ -218,9 +218,6 @@ const Landing = () => {
           <Link to="/auth?mode=signin">Login</Link>
         </nav>
         <div className="landing-footer__meta">
-          <a href="https://x.com" target="_blank" rel="noreferrer">
-            X
-          </a>
           <a href="https://www.linkedin.com/in/priyanshu-tiwari-pds37/" target="_blank" rel="noreferrer">
             LinkedIn
           </a>

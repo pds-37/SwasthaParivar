@@ -86,9 +86,9 @@ const Terms = () => {
               Questions about these terms can be sent to the SwasthaParivar team at the address
               below.
             </p>
-            <a className="legal-contact" href="mailto:official.priyanshu.37@gmail.com">
+            <a className="legal-contact" href="mailto:swasthaparivar@gmail.com">
               <Mail size={16} />
-              official.priyanshu.37@gmail.com
+              swasthaparivar@gmail.com
             </a>
           </section>
         </article>

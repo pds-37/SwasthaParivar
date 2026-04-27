@@ -408,6 +408,16 @@
     min-height: auto;
   }
 
+  .landing-hero__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .landing-hero__actions > * {
+    width: 100%;
+    justify-content: center;
+  }
+
   .landing-hero__stats {
     grid-template-columns: 1fr;
   }
@@ -434,5 +444,19 @@
   .landing-cluster--accent {
     position: static;
     margin: var(--space-4);
+  }
+
+  .landing-cta {
+    padding: var(--space-6);
+  }
+
+  .landing-cta > a,
+  .landing-cta > button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .landing-footer {
+    padding-bottom: calc(var(--space-8) + env(safe-area-inset-bottom));
   }
 }

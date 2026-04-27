@@ -87,9 +87,9 @@ const Privacy = () => {
               If you have privacy questions, please contact the SwasthaParivar team using the email
               address below.
             </p>
-            <a className="legal-contact" href="mailto:official.priyanshu.37@gmail.com">
+            <a className="legal-contact" href="mailto:swasthaparivar@gmail.com">
               <Mail size={16} />
-              official.priyanshu.37@gmail.com
+              swasthaparivar@gmail.com
             </a>
           </section>
         </article>

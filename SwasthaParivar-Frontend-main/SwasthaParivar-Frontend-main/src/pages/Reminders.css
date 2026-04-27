@@ -190,9 +190,15 @@
     align-items: stretch;
   }
 
+  .reminders-hero__actions > button {
+    width: 100%;
+    justify-content: center;
+  }
+
   .reminders-view-toggle {
     width: 100%;
     justify-content: space-between;
+    display: flex;
   }
 
   .reminders-view-toggle button {
@@ -205,8 +211,14 @@
     grid-auto-flow: column;
     grid-auto-columns: minmax(4.75rem, 1fr);
     gap: var(--space-3);
-    overflow: auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
     padding-bottom: var(--space-2);
+  }
+
+  .reminders-mobile-week > button {
+    scroll-snap-align: start;
   }
 
   .reminders-month-grid {
