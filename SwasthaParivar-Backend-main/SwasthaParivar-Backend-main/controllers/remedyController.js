@@ -637,10 +637,10 @@ Return this exact shape:
   "colorTo": "#0d6a65"
 }
 `;
-  const genAI = getModel();
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
   let lastError = null;
 
-  for (const modelName of getCandidateModels()) {
+  for (const modelName of MODEL_CANDIDATES) {
     try {
       const model = genAI.getGenerativeModel({ 
         model: modelName,
@@ -653,7 +653,8 @@ Return this exact shape:
         throw new Error(`Empty remedy response from ${modelName}`);
       }
 
-      const parsed = parseJsonResponse(text);
+      const jsonStr = text.replace(JSON_FENCE_PATTERN, "").trim();
+      const parsed = JSON.parse(jsonStr);
 
       return applySafetyAdjustments(
         {
@@ -669,6 +670,7 @@ Return this exact shape:
           ayurveda: parsed?.ayurveda || "",
           warnings: Array.isArray(parsed?.warnings) ? parsed.warnings : [],
           bestFor: Array.isArray(parsed?.bestFor) ? parsed.bestFor : [],
+          insight: parsed?.insight || {},
           colorFrom: parsed?.colorFrom || "#1f9c90",
           colorTo: parsed?.colorTo || "#0d6a65",
           source: "internet",
