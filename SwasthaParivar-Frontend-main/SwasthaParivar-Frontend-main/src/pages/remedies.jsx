@@ -7,6 +7,7 @@ import {
   Leaf,
   Search,
   Share2,
+  ShieldCheck,
   Sparkles,
   Star,
   Users,
@@ -844,11 +845,14 @@ export default function Remedies() {
             Remedies
             <span className="hero-badge">Care Edition</span>
           </div>
-          <h1>Safe, context-aware family remedies.</h1>
+          <h1>Safe remedies, tailored for your family.</h1>
           <p>
-            Profile-aware filtering now checks age, conditions, allergies, pregnancy, medicines,
-            and saved household risk flags before ranking remedies for your family.
+            Smart filtering considers age, conditions, allergies, and medications to suggest what fits best.
           </p>
+          <div className="hero-trust-badge">
+            <ShieldCheck size={18} />
+            <span><strong>Safety-checked recommendations</strong></span>
+          </div>
         </Motion.div>
 
         <Motion.div
@@ -858,7 +862,7 @@ export default function Remedies() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <label className="hero-field">
-            <span>Who is it for?</span>
+            <span>👨‍👩‍👧 Who needs help today?</span>
             <select value={selectedMemberId} onChange={handleFocusChange}>
               <option value="family">Whole Family</option>
               {members.map((member) => (
@@ -870,11 +874,10 @@ export default function Remedies() {
           </label>
 
           <label className="hero-field hero-field--search">
-            <span>What symptoms?</span>
+            <span>🔍 What are the symptoms?</span>
             <div className="search-shell">
-              <Search size={18} />
               <input
-                placeholder="Try cough, digestion, sleep, sore throat..."
+                placeholder="Try: cough, acidity, headache, poor sleep..."
                 value={query}
                 onChange={handleQueryChange}
               />
@@ -882,10 +885,11 @@ export default function Remedies() {
           </label>
 
           <div className="hero-panel__actions">
-            <button className="action-button action-button--primary" onClick={handleGenerateRemedy}>
+            <button className="action-button action-button--primary action-button--glow" onClick={handleGenerateRemedy}>
               <Sparkles size={16} />
-              Find best safe remedy
+              Get personalized remedies
             </button>
+            <p className="hero-microcopy">Results are tailored to your inputs</p>
           </div>
 
           {generatedError ? (

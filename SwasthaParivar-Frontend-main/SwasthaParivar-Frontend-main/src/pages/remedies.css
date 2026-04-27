@@ -176,6 +176,41 @@
   color: var(--color-warning);
 }
 
+.hero-trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+  color: var(--color-brand-on-dark);
+  font-size: 0.9rem;
+}
+
+.hero-trust-badge svg {
+  color: color-mix(in srgb, var(--color-success) 80%, white);
+}
+
+.action-button--glow {
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--color-primary) 35%, transparent);
+  transition: box-shadow 0.3s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.action-button--glow:hover {
+  box-shadow: 0 6px 28px color-mix(in srgb, var(--color-primary) 60%, transparent);
+  transform: translateY(-1px);
+}
+
+.hero-microcopy {
+  margin: 10px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  text-align: center;
+  width: 100%;
+}
+
 .action-button--primary:hover {
   background: var(--brand-dark);
 }
