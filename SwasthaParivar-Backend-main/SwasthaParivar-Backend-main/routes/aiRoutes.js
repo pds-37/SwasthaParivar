@@ -1,5 +1,6 @@
 import express from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getApiKeys } from "../services/ai/geminiService.js";
 import auth from "../middleware/auth.js";
 import {
   analyzeAttachment,
@@ -33,7 +34,9 @@ router.get("/models", auth, async (req, res) => {
       });
     }
 
-    const genAI = new GoogleGenerativeAI(appConfig.geminiApiKey);
+    const apiKeys = getApiKeys();
+    if (apiKeys.length === 0) throw new Error("No Gemini API key");
+    const genAI = new GoogleGenerativeAI(apiKeys[0]);
     const models = await genAI.listModels();
     return sendSuccess(res, { data: models });
   } catch (error) {

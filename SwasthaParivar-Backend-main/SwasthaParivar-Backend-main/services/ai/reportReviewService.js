@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "../../utils/logger.js";
+import { getApiKeys, isGeminiQuotaError } from "./geminiService.js";
 
 const SUPPORTED_REVIEW_MIME_TYPES = ["application/pdf"];
 const MODEL_CANDIDATES = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
@@ -150,7 +151,8 @@ export const reviewHealthAttachment = async ({ base64Data, mimeType, fileName, m
     });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
+  const apiKeys = getApiKeys();
+  if (apiKeys.length === 0) {
     logger.warn({
       route: "report-review",
       msg: "GEMINI_API_KEY missing; skipping attachment review",
@@ -165,38 +167,47 @@ export const reviewHealthAttachment = async ({ base64Data, mimeType, fileName, m
     });
   }
 
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const prompt = buildReviewPrompt({ mimeType, fileName, memberLabel });
   let lastError = null;
 
-  for (const modelName of getCandidateModels()) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType,
+  for (const apiKey of apiKeys) {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    let keyExhausted = false;
+
+    for (const modelName of getCandidateModels()) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType,
+            },
           },
-        },
-      ]);
+        ]);
 
-      const text = result?.response?.text?.()?.trim();
-      if (!text) {
-        throw new Error(`Empty review response from ${modelName}`);
+        const text = result?.response?.text?.()?.trim();
+        if (!text) {
+          throw new Error(`Empty review response from ${modelName}`);
+        }
+
+        return normalizeReview(parseJsonPayload(text));
+      } catch (error) {
+        lastError = error;
+        logger.warn({
+          route: "report-review",
+          model: modelName,
+          error: {
+            message: error?.message || "Gemini report review failed",
+          },
+        });
+
+        if (isGeminiQuotaError(error)) {
+          keyExhausted = true;
+          break;
+        }
       }
-
-      return normalizeReview(parseJsonPayload(text));
-    } catch (error) {
-      lastError = error;
-      logger.warn({
-        route: "report-review",
-        model: modelName,
-        error: {
-          message: error?.message || "Gemini report review failed",
-        },
-      });
     }
   }
 
@@ -217,7 +228,8 @@ export const triageHealthAttachment = async ({ base64Data, mimeType, fileName, m
     });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
+  const apiKeys = getApiKeys();
+  if (apiKeys.length === 0) {
     logger.warn({
       route: "attachment-triage",
       msg: "GEMINI_API_KEY missing; skipping attachment triage",
@@ -231,38 +243,47 @@ export const triageHealthAttachment = async ({ base64Data, mimeType, fileName, m
     });
   }
 
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const prompt = buildAttachmentInsightPrompt({ mimeType, fileName, memberLabel });
   let lastError = null;
 
-  for (const modelName of getCandidateModels()) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType,
+  for (const apiKey of apiKeys) {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    let keyExhausted = false;
+
+    for (const modelName of getCandidateModels()) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType,
+            },
           },
-        },
-      ]);
+        ]);
 
-      const text = result?.response?.text?.()?.trim();
-      if (!text) {
-        throw new Error(`Empty attachment triage response from ${modelName}`);
+        const text = result?.response?.text?.()?.trim();
+        if (!text) {
+          throw new Error(`Empty attachment triage response from ${modelName}`);
+        }
+
+        return normalizeAttachmentInsight(parseJsonPayload(text));
+      } catch (error) {
+        lastError = error;
+        logger.warn({
+          route: "attachment-triage",
+          model: modelName,
+          error: {
+            message: error?.message || "Gemini attachment triage failed",
+          },
+        });
+
+        if (isGeminiQuotaError(error)) {
+          keyExhausted = true;
+          break;
+        }
       }
-
-      return normalizeAttachmentInsight(parseJsonPayload(text));
-    } catch (error) {
-      lastError = error;
-      logger.warn({
-        route: "attachment-triage",
-        model: modelName,
-        error: {
-          message: error?.message || "Gemini attachment triage failed",
-        },
-      });
     }
   }
 

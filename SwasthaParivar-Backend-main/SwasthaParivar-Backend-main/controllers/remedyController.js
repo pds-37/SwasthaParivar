@@ -218,13 +218,7 @@ const FALLBACK_QUERY_HINTS = [
   },
 ];
 
-function getModel() {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured");
-  }
 
-  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-}
 
 function parseJsonResponse(rawText) {
   return JSON.parse(String(rawText || "").replace(JSON_FENCE_PATTERN, "").trim());
@@ -579,7 +573,7 @@ async function buildFallbackRemedy(query, context) {
   );
 }
 
-import { getGeminiCandidateModels, isGeminiQuotaError } from "../services/ai/geminiService.js";
+import { getGeminiCandidateModels, isGeminiQuotaError, getApiKeys } from "../services/ai/geminiService.js";
 
 async function generateWithGemini(query, context) {
   const prompt = `
@@ -637,10 +631,7 @@ Return this exact shape:
 }
 `;
   
-  const apiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "")
-    .split(",")
-    .map((k) => k.trim())
-    .filter(Boolean);
+  const apiKeys = getApiKeys();
 
   if (apiKeys.length === 0) {
     throw new Error("No Gemini API key configured.");
@@ -783,7 +774,7 @@ export const generateRemedy = async (req, res) => {
           
         } catch (error) {
           console.error("Gemini remedy generation failed:", error.message);
-          throw error;
+          remedy = await buildFallbackRemedy(query, context);
         }
       }
 

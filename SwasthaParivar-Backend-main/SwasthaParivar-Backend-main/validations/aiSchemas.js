@@ -64,7 +64,7 @@ export const aiMemoryBodySchema = z.object({
       text: z.string().trim().max(12000),
       ts: z.number().optional(),
       attachment: z.string().max(2_000_000).optional().nullable(),
-      riskLevel: z.string().trim().max(32).optional(),
+      riskLevel: z.string().trim().max(32).optional().nullable(),
       followUpPrompt: z.string().trim().max(400).optional().nullable(),
       suggestedReminder: z
         .object({

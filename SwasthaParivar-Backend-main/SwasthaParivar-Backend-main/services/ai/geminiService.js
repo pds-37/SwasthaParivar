@@ -13,12 +13,26 @@ const DEFAULT_MODEL_CANDIDATES = [
   "gemini-1.5-pro",
 ];
 
-const getGeminiClient = () => {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured");
+export const getApiKeys = () => {
+  const keys = [];
+  
+  // From GEMINI_API_KEYS or GEMINI_API_KEY comma separated
+  const primaryKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+  keys.push(...primaryKeys);
+  
+  // From GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.startsWith("GEMINI_API_KEY")) {
+      const splitKeys = (value || "").split(",").map((k) => k.trim()).filter(Boolean);
+      keys.push(...splitKeys);
+    }
   }
 
-  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  // De-duplicate
+  return [...new Set(keys)];
 };
 
 const normalizeParts = (parts) => (typeof parts === "string" ? [{ text: parts }] : parts);
@@ -61,10 +75,7 @@ const runAcrossModels = async (executor, { mode = "text", modelCandidates = [] }
   let lastError = null;
   let isQuotaExhausted = false;
 
-  const apiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "")
-    .split(",")
-    .map((k) => k.trim())
-    .filter(Boolean);
+  const apiKeys = getApiKeys();
 
   if (apiKeys.length === 0) {
     throw new Error("No Gemini API key configured.");

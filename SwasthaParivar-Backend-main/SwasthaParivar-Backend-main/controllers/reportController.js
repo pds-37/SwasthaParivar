@@ -186,12 +186,23 @@ export const analyzeReport = async (req, res) => {
 
     const memberResult = await householdService.findAccessibleMember(req.userId, report.memberId);
     const memberLabel = memberResult?.member?.name || "Family member";
-    const review = await reviewHealthAttachment({
-      base64Data: report.fileBuffer.toString("base64"),
-      mimeType: report.mimeType,
-      fileName: report.originalName,
-      memberLabel,
-    });
+    let review;
+    try {
+      review = await reviewHealthAttachment({
+        base64Data: report.fileBuffer.toString("base64"),
+        mimeType: report.mimeType,
+        fileName: report.originalName,
+        memberLabel,
+      });
+    } catch (reviewError) {
+      review = {
+        isHealthReport: true,
+        summary: "I could not generate a summary for this report right now due to server load. Please check back later.",
+        confidence: "low",
+        reason: "AI report analysis is temporarily unavailable.",
+        documentType: "Health report",
+      };
+    }
 
     if (!review.isHealthReport) {
       return sendError(res, {

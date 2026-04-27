@@ -1035,12 +1035,27 @@ export const analyzeAttachment = async (req, res) => {
       });
     }
 
-    const review = await triageHealthAttachment({
-      base64Data: imageData,
-      mimeType,
-      fileName,
-      memberLabel: member,
-    });
+    let review;
+    try {
+      review = await triageHealthAttachment({
+        base64Data: imageData,
+        mimeType,
+        fileName,
+        memberLabel: member,
+      });
+    } catch (triageError) {
+      logger.warn({ route: "ai-attachment", error: triageError.message });
+      review = {
+        summary: "I'm having trouble analyzing images right now due to high server load. Please describe your health report or medicine in text, or try uploading it again later.",
+        attachmentType: "other",
+        isHealthReport: false,
+        isMedicineImage: false,
+        confidence: "low",
+        reason: "AI attachment analysis is temporarily unavailable.",
+        documentType: "",
+        medicineName: "",
+      };
+    }
 
     return sendSuccess(res, {
       data: {
