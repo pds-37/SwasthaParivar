@@ -684,7 +684,7 @@ export const generateRemedy = async (req, res) => {
     // 1. Try Cache Lookup (48h cache)
     const AIInsight = mongoose.models.AIInsight || (await import("../models/aiinsightmodel.js")).default;
     const recentCache = await AIInsight.findOne({
-      sourceMessage: \`remedy:\${query}\`,
+      sourceMessage: `remedy:${query}`,
       memberLabel: context.focusLabel,
       createdAt: { $gt: new Date(Date.now() - 48 * 60 * 60 * 1000) },
     }).sort({ createdAt: -1 });
@@ -711,7 +711,7 @@ export const generateRemedy = async (req, res) => {
           // 4. Save that remedy in library too so may use in future
           const LibraryRemedy = mongoose.models.LibraryRemedy || (await import("../models/libraryremedymodel.js")).default;
           await LibraryRemedy.create({
-            id: \`gen-\${Date.now()}\`,
+            id: `gen-${Date.now()}`,
             name: remedy.name,
             description: remedy.description,
             symptoms: remedy.symptoms,
@@ -739,7 +739,7 @@ export const generateRemedy = async (req, res) => {
           ownerId: req.userId,
           memberId: selectedMemberId !== "family" ? selectedMemberId : null,
           memberLabel: context.focusLabel,
-          sourceMessage: \`remedy:\${query}\`,
+          sourceMessage: `remedy:${query}`,
           adviceSummary: JSON.stringify(remedy),
           symptoms: [query],
         });

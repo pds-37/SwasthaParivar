@@ -1072,7 +1072,9 @@ const AIChat = () => {
                   className={`ai-chat-message ${message.sender === "user" ? "is-user" : "is-ai"}`}
                 >
                   <div className={`ai-chat-bubble ${message.sender === "user" ? "is-user" : "is-ai"}`}>
-                    {message.attachment ? <img src={message.attachment} alt="attachment" loading="lazy" /> : null}
+                    {message.attachment && message.attachment.startsWith("data:") ? (
+                      <img src={message.attachment} alt="attachment" loading="lazy" />
+                    ) : null}
                     {message.sender === "ai" && message.riskLevel && message.riskLevel !== "LOW" ? (
                       <AiDisclaimer riskLevel={message.riskLevel} />
                     ) : null}

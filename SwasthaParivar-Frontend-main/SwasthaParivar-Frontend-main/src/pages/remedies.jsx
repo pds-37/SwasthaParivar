@@ -827,7 +827,7 @@ export default function Remedies() {
       notify.success("Searching the internet for the best remedy...");
       const res = await api.post("/remedies/generate", {
         query: seedText,
-        memberId: selectedMemberId === "family" ? null : selectedMemberId,
+        memberId: selectedMemberId,
       });
 
       if (res?.data?.data?.remedy) {

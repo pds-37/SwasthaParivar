@@ -49,8 +49,8 @@ export const aiVoiceTranscriptionSchema = z.object({
 });
 
 export const aiMemoryQuerySchema = z.object({
-  member: z.string().trim().max(120).optional(),
-  contextKey: z.string().trim().max(120).optional(),
+  member: z.string().trim().max(120).optional().nullable(),
+  contextKey: z.string().trim().max(120).optional().nullable(),
 });
 
 export const aiMemoryBodySchema = z.object({
