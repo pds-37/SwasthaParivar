@@ -5,7 +5,6 @@ import {
   ChevronDown,
   Heart,
   Leaf,
-  Loader2,
   Search,
   Share2,
   Sparkles,
@@ -16,8 +15,8 @@ import {
 import { motion as Motion } from "framer-motion";
 
 import REMEDIES_DATA from "../data/remedies.js";
-import api from "../lib/api";
 import notify from "../lib/notify";
+import api from "../lib/api";
 import {
   buildCatalog,
   buildRemedyContext,
@@ -339,6 +338,37 @@ const buildLocalGeneratedRemedy = ({ seedText, context, activeTag }) => {
   );
 };
 
+const findCuratedRemedyMatch = ({ seedText, query, activeTag, context }) => {
+  const catalogMatches = buildCatalog(REMEDIES_DATA, context, seedText, activeTag);
+  const bestMatch = catalogMatches[0];
+
+  if (!bestMatch) {
+    return {
+      remedy: null,
+      error: "No safe remedy is available for this profile right now.",
+    };
+  }
+
+  const hasSymptomQuery = Boolean(String(query || "").trim());
+  if (hasSymptomQuery) {
+    const isTrustedSymptomMatch =
+      bestMatch.insight?.queryMatchScore > 0 && !bestMatch.insight?.fallbackMatch;
+
+    if (!isTrustedSymptomMatch) {
+      return {
+        remedy: null,
+        error:
+          "We do not have a trusted home-remedy match for this symptom yet. Try Family AI or clinician guidance instead.",
+      };
+    }
+  }
+
+  return {
+    remedy: bestMatch,
+    error: "",
+  };
+};
+
 const shareRemedy = async (remedy) => {
   const text = [
     remedy.name,
@@ -627,7 +657,6 @@ export default function Remedies() {
     }
   });
   const [openRecipe, setOpenRecipe] = useState(null);
-  const [aiBusy, setAiBusy] = useState(false);
   const [generatedRemedy, setGeneratedRemedy] = useState(null);
   const [generatedError, setGeneratedError] = useState("");
   const generatedSectionRef = useRef(null);
@@ -773,38 +802,52 @@ export default function Remedies() {
       return;
     }
 
-    setAiBusy(true);
     setGeneratedError("");
     setGeneratedRemedy(null);
 
+    const { remedy: curatedRemedy, error } = findCuratedRemedyMatch({
+      seedText,
+      query,
+      activeTag,
+      context,
+    });
+
+    if (curatedRemedy) {
+      setGeneratedRemedy(curatedRemedy);
+      setOpenRecipe(curatedRemedy);
+      notify.success("Found a curated remedy match");
+      return;
+    }
+
+    // Attempt internet search via backend if online
     try {
-      const response = await api.post("/remedies/generate", {
+      if (!navigator.onLine) {
+        throw new Error("Offline");
+      }
+      notify.success("Searching the internet for the best remedy...");
+      const res = await api.post("/remedies/generate", {
         query: seedText,
-        memberId: selectedMemberId,
+        memberId: selectedMemberId === "family" ? null : selectedMemberId,
       });
 
-      const normalized = normalizeGeneratedRemedy(
-        response?.remedy || response,
-        seedText,
-        "guided-api"
-      );
-      const generatedBase = isGenericWellnessRemedy(normalized, seedText)
-        ? buildLocalGeneratedRemedy({ seedText, context, activeTag })
-        : normalized;
-      const decorated = decorateRemedyForContext(generatedBase, context, seedText);
-      setGeneratedRemedy(decorated);
-      setOpenRecipe(decorated);
-      notify.success("Generated a new remedy");
-    } catch (error) {
+      if (res?.data?.data?.remedy) {
+        const generated = res.data.data.remedy;
+        setGeneratedRemedy(generated);
+        setOpenRecipe(generated);
+        notify.success("Found remedy online and saved to library");
+        return;
+      }
+    } catch (err) {
+      console.warn("Internet search failed, using offline fallback", err);
+      // Fallback to offline mode generator
       const fallback = buildLocalGeneratedRemedy({ seedText, context, activeTag });
-      const decorated = decorateRemedyForContext(fallback, context, seedText);
-      setGeneratedRemedy(decorated);
-      setOpenRecipe(decorated);
-      setGeneratedError(
-        error?.message || "Live remedy generation is unavailable right now. Showing a guided local remedy instead."
-      );
-    } finally {
-      setAiBusy(false);
+      if (fallback) {
+        setGeneratedRemedy(fallback);
+        setOpenRecipe(fallback);
+        notify.success("Showing best offline remedy");
+        return;
+      }
+      setGeneratedError(error || "No remedy could be found or generated.");
     }
   };
 
@@ -878,8 +921,8 @@ export default function Remedies() {
 
           <div className="hero-panel__actions">
             <button className="action-button action-button--primary" onClick={handleGenerateRemedy}>
-              {aiBusy ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
-              Create custom remedy
+              <Sparkles size={16} />
+              Find best safe remedy
             </button>
           </div>
 
@@ -933,11 +976,11 @@ export default function Remedies() {
           <section className="remedies-results-header">
             <div>
               <div className="remedies-results-title">
-                <h2>Freshly generated</h2>
-                <span>1 custom remedy</span>
+                <h2>Best safe match</h2>
+                <span>1 curated remedy</span>
               </div>
               <p>
-                Built for {context.focusLabel.toLowerCase()} using the current symptom focus and family safety checks.
+                Selected from the remedy catalog using symptom fit and family safety checks.
               </p>
             </div>
             <button className="action-button action-button--ghost" onClick={resetGeneratedState}>

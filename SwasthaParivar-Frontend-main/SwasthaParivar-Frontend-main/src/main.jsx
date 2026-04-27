@@ -15,7 +15,7 @@ createRoot(document.getElementById("root")).render(
   </StrictMode>
 );
 
-if ("serviceWorker" in navigator && import.meta.env.MODE === "production") {
+if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     let refreshedAfterSwUpdate = false;
 

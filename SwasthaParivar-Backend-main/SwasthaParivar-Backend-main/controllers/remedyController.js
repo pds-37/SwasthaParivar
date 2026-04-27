@@ -411,9 +411,11 @@ async function buildFocusContext(userId, selectedMemberId) {
   };
 }
 
-function chooseTemplate(query = "") {
+async function searchLibrary(query = "") {
+  const LibraryRemedy = mongoose.models.LibraryRemedy || (await import("../models/libraryremedymodel.js")).default;
+
   const directTemplate = TEMPLATE_LIBRARY.find((template) => template.match.test(query));
-  if (directTemplate) return directTemplate;
+  if (directTemplate) return { ...directTemplate, source: "prebuilt" };
 
   const normalizedQuery = String(query || "").toLowerCase();
   const queryTokens = tokenizeQuery(normalizedQuery);
@@ -429,11 +431,14 @@ function chooseTemplate(query = "") {
     (hint.preferredIds || []).forEach((id) => preferredIds.add(id));
   });
 
-  const rankedFallback = REMEDY_CATALOG.map((remedy) => {
+  const dbRemedies = await LibraryRemedy.find({}).lean();
+  const combinedCatalog = [...REMEDY_CATALOG, ...dbRemedies];
+
+  const rankedFallback = combinedCatalog.map((remedy) => {
     const searchable = [
       remedy.name,
       remedy.description,
-      ...(remedy.symptomTags || []),
+      ...(remedy.symptomTags || remedy.tags || []),
       ...(remedy.tags || []),
       ...(remedy.ingredients || []),
     ]
@@ -442,7 +447,8 @@ function chooseTemplate(query = "") {
 
     let score = preferredIds.has(remedy.id) ? 6 : 0;
 
-    (remedy.symptomTags || []).forEach((symptom) => {
+    const symTags = remedy.symptomTags || remedy.tags || [];
+    symTags.forEach((symptom) => {
       if (normalizedQuery.includes(String(symptom || "").toLowerCase())) {
         score += 5;
       }
@@ -457,48 +463,30 @@ function chooseTemplate(query = "") {
     return { remedy, score };
   }).sort((a, b) => b.score - a.score);
 
-  if (rankedFallback[0]?.score > 0) {
+  if (rankedFallback[0]?.score > 4) {
     const best = rankedFallback[0].remedy;
     return {
       name: best.name,
       description: best.description,
-      symptoms: (best.symptomTags || []).join(", "),
+      symptoms: best.symptoms || (best.symptomTags || []).join(", "),
       ingredients: [...(best.ingredients || [])],
       steps: [...(best.steps || [])],
-      rating: 4.7,
+      rating: best.rating || 4.7,
       tags: [...(best.tags || [])],
-      timeMins: 8,
-      difficulty: "Easy",
+      timeMins: best.timeMins || 8,
+      difficulty: best.difficulty || "Easy",
       ayurveda:
+        best.ayurveda ||
         best.substitutes?.[0] ||
         "A practical home-prep option based on the closest safe remedy pattern.",
-      bestFor: [...(best.symptomTags || [])],
-      colorFrom: best.colorFrom,
-      colorTo: best.colorTo,
+      bestFor: [...(best.bestFor || best.symptomTags || [])],
+      colorFrom: best.colorFrom || "#1f9c90",
+      colorTo: best.colorTo || "#0d6a65",
+      source: "library",
     };
   }
 
-  return {
-    name: "Daily Tulsi Wellness Brew",
-    description:
-      "A balanced everyday Ayurvedic drink for light immunity and daily wellness support.",
-    symptoms: "General immunity, seasonal wellness, low energy",
-    ingredients: ["Tulsi leaves", "Fresh ginger", "Warm water"],
-    steps: [
-      "Lightly crush the tulsi and ginger.",
-      "Simmer in water for 8 minutes.",
-      "Strain and drink warm once daily.",
-    ],
-    rating: 4.8,
-    tags: ["Immunity", "Daily Wellness"],
-    timeMins: 8,
-    difficulty: "Easy",
-    ayurveda:
-      "This simple brew supports Agni and keeps seasonal Kapha accumulation in check.",
-    bestFor: ["Daily wellness", "Seasonal support"],
-    colorFrom: "#1f9c90",
-    colorTo: "#0d6a65",
-  };
+  return null;
 }
 
 function applySafetyAdjustments(remedy, context) {
@@ -543,22 +531,47 @@ function applySafetyAdjustments(remedy, context) {
   return adjusted;
 }
 
-function buildFallbackRemedy(query, context) {
-  const template = chooseTemplate(query);
-  const remedy = applySafetyAdjustments(
+async function buildFallbackRemedy(query, context) {
+  let template = await searchLibrary(query);
+  
+  if (!template) {
+    template = {
+      name: "Daily Tulsi Wellness Brew",
+      description:
+        "A balanced everyday Ayurvedic drink for light immunity and daily wellness support.",
+      symptoms: "General immunity, seasonal wellness, low energy",
+      ingredients: ["Tulsi leaves", "Fresh ginger", "Warm water"],
+      steps: [
+        "Lightly crush the tulsi and ginger.",
+        "Simmer in water for 8 minutes.",
+        "Strain and drink warm once daily.",
+      ],
+      rating: 4.8,
+      tags: ["Immunity", "Daily Wellness"],
+      timeMins: 8,
+      difficulty: "Easy",
+      ayurveda:
+        "This simple brew supports Agni and keeps seasonal Kapha accumulation in check.",
+      bestFor: ["Daily wellness", "Seasonal support"],
+      colorFrom: "#1f9c90",
+      colorTo: "#0d6a65",
+    };
+  }
+
+  return applySafetyAdjustments(
     {
       ...template,
       source: "fallback",
     },
     context
   );
-
-  return remedy;
 }
 
 async function generateWithGemini(query, context) {
   const prompt = `
 You are generating one Ayurvedic-inspired home remedy for a family wellness app.
+CRITICAL: You MUST use your Google Search tool to search the internet for the most accurate, trusted, and effective home remedy for this specific issue. 
+DO NOT guess or hallucinate. Rely strictly on real, reliable information found on the internet.
 
 User request: "${query}"
 Focus: ${context.focusLabel}
@@ -603,7 +616,10 @@ Return this exact shape:
 
   for (const modelName of getCandidateModels()) {
     try {
-      const model = genAI.getGenerativeModel({ model: modelName });
+      const model = genAI.getGenerativeModel({ 
+        model: modelName,
+        tools: [{ googleSearch: {} }]
+      });
       const result = await model.generateContent([{ text: prompt }]);
       const text = result?.response?.text?.()?.trim();
 
@@ -629,7 +645,7 @@ Return this exact shape:
           bestFor: Array.isArray(parsed?.bestFor) ? parsed.bestFor : [],
           colorFrom: parsed?.colorFrom || "#1f9c90",
           colorTo: parsed?.colorTo || "#0d6a65",
-          source: "gemini",
+          source: "internet",
         },
         context
       );
@@ -668,7 +684,7 @@ export const generateRemedy = async (req, res) => {
     // 1. Try Cache Lookup (48h cache)
     const AIInsight = mongoose.models.AIInsight || (await import("../models/aiinsightmodel.js")).default;
     const recentCache = await AIInsight.findOne({
-      sourceMessage: `remedy:${query}`,
+      sourceMessage: \`remedy:\${query}\`,
       memberLabel: context.focusLabel,
       createdAt: { $gt: new Date(Date.now() - 48 * 60 * 60 * 1000) },
     }).sort({ createdAt: -1 });
@@ -683,21 +699,50 @@ export const generateRemedy = async (req, res) => {
     }
 
     if (!remedy) {
-      try {
-        remedy = await generateWithGemini(query, context);
-        
-        // 2. Cache the result for future requests
+      // 2. Try Prebuilt Library FIRST
+      const libraryMatch = await searchLibrary(query);
+      if (libraryMatch) {
+        remedy = applySafetyAdjustments(libraryMatch, context);
+      } else {
+        // 3. Not in library, search internet (Gemini)
+        try {
+          remedy = await generateWithGemini(query, context);
+          
+          // 4. Save that remedy in library too so may use in future
+          const LibraryRemedy = mongoose.models.LibraryRemedy || (await import("../models/libraryremedymodel.js")).default;
+          await LibraryRemedy.create({
+            id: \`gen-\${Date.now()}\`,
+            name: remedy.name,
+            description: remedy.description,
+            symptoms: remedy.symptoms,
+            ingredients: remedy.ingredients,
+            steps: remedy.steps,
+            rating: remedy.rating,
+            tags: remedy.tags,
+            timeMins: remedy.timeMins,
+            difficulty: remedy.difficulty,
+            ayurveda: remedy.ayurveda,
+            bestFor: remedy.bestFor,
+            colorFrom: remedy.colorFrom,
+            colorTo: remedy.colorTo,
+          }).catch(err => console.error("Failed to save to LibraryRemedy", err));
+          
+        } catch (error) {
+          console.error("Gemini remedy generation failed, using fallback:", error.message);
+          remedy = await buildFallbackRemedy(query, context);
+        }
+      }
+
+      // Cache the result for future requests
+      if (remedy) {
         await AIInsight.create({
           ownerId: req.userId,
           memberId: selectedMemberId !== "family" ? selectedMemberId : null,
           memberLabel: context.focusLabel,
-          sourceMessage: `remedy:${query}`,
+          sourceMessage: \`remedy:\${query}\`,
           adviceSummary: JSON.stringify(remedy),
           symptoms: [query],
         });
-      } catch (error) {
-        console.error("Gemini remedy generation failed, using fallback:", error.message);
-        remedy = buildFallbackRemedy(query, context);
       }
     }
 
