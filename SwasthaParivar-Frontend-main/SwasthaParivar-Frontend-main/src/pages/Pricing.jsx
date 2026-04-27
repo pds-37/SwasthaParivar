@@ -1,5 +1,6 @@
 import React from "react";
 import { CheckCircle2, Crown, HeartHandshake, Sparkles } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 
 import { Button } from "../components/ui";
@@ -46,6 +47,11 @@ const plans = [
 
 const Pricing = () => (
   <div className="app-shell" style={{ maxWidth: "72rem", margin: "0 auto", paddingBlock: "2rem" }}>
+    <Helmet>
+      <title>Pricing | SwasthaParivar</title>
+      <meta name="description" content="Simple and transparent pricing plans for SwasthaParivar. Choose the right plan to manage your family's health." />
+      <link rel="canonical" href="https://swasthaparivar.app/pricing" />
+    </Helmet>
     <section
       className="card"
       style={{

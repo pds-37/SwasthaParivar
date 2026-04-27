@@ -1,11 +1,17 @@
 import React from "react";
 import { FileText, Mail } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import Navigation from "../components/Navigation";
 import "./Legal.css";
 
 const Terms = () => {
   return (
     <div className="legal-page">
+      <Helmet>
+        <title>Terms of Service | SwasthaParivar</title>
+        <meta name="description" content="Read the SwasthaParivar Terms of Service to understand the rules that govern access to our family care tools." />
+        <link rel="canonical" href="https://swasthaparivar.app/terms" />
+      </Helmet>
       <Navigation variant="public" />
 
       <main className="legal-main">

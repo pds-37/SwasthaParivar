@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import {
   Activity,
   ArrowRight,
@@ -45,6 +46,11 @@ const trustItems = [
 const Landing = () => {
   return (
     <div className="landing-page">
+      <Helmet>
+        <title>SwasthaParivar | Care for every family member, all in one place</title>
+        <meta name="description" content="SwasthaParivar brings reminders, records, reports, remedies, and AI guidance into one connected care system that helps your whole family stay organized, safer, and on track." />
+        <link rel="canonical" href="https://swasthaparivar.app/" />
+      </Helmet>
       <Navigation variant="public" />
 
       <main className="landing-main">

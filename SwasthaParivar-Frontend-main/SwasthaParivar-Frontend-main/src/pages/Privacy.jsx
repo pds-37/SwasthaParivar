@@ -1,11 +1,17 @@
 import React from "react";
 import { Mail, ShieldCheck } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import Navigation from "../components/Navigation";
 import "./Legal.css";
 
 const Privacy = () => {
   return (
     <div className="legal-page">
+      <Helmet>
+        <title>Privacy Policy | SwasthaParivar</title>
+        <meta name="description" content="Read the SwasthaParivar privacy policy to understand how we collect, use, and protect your family's health data." />
+        <link rel="canonical" href="https://swasthaparivar.app/privacy" />
+      </Helmet>
       <Navigation variant="public" />
 
       <main className="legal-main">

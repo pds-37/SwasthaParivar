@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /profile/
+Disallow: /settings/
+
+# Host
+Host: https://swasthaparivar.app
+
+# Sitemaps
+Sitemap: https://swasthaparivar.app/sitemap.xml
