@@ -31,12 +31,12 @@ const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
 async function run() {
   console.log("Connecting to Database...");
-  await connectDB();
+  await connectDB(process.env.MONGO_URI);
   console.log("Connected.");
 
   const BATCH_SIZE = 15;
   const TOTAL_PER_SECTOR = 55; // 18 sectors * 55 = 990 remedies (~1000)
-  
+
   let totalSaved = 0;
 
   for (const sector of SECTORS) {
@@ -45,7 +45,7 @@ async function run() {
 
     while (sectorCount < TOTAL_PER_SECTOR) {
       console.log(`Generating batch for ${sector.label} (${sectorCount}/${TOTAL_PER_SECTOR})...`);
-      
+
       const prompt = `
 Generate a diverse array of ${BATCH_SIZE} unique home remedies or health practices for the category: "${sector.label}" (covers: ${sector.covers}).
 Ensure these are medically safe, mostly Ayurvedic, herbal, or natural home-based remedies.
@@ -71,11 +71,11 @@ Each object must have the following schema:
         const { text } = await generateGeminiText(prompt, { mode: "remedy-generation" });
         const cleanedText = text.replace(/```json/gi, "").replace(/```/gi, "").trim();
         const remedies = JSON.parse(cleanedText);
-        
+
         if (!Array.isArray(remedies)) throw new Error("Not an array");
 
         const ops = remedies.map((r) => {
-          const id = \`gen-\${Date.now()}-\${Math.random().toString(36).substr(2, 9)}\`;
+          const id = `gen-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           return {
             insertOne: {
               document: {
@@ -100,21 +100,21 @@ Each object must have the following schema:
         await LibraryRemedy.bulkWrite(ops);
         sectorCount += remedies.length;
         totalSaved += remedies.length;
-        
-        console.log(\`✅ Saved \${remedies.length} remedies for \${sector.label}. Total overall: \${totalSaved}\`);
-        
+
+        console.log(`✅ Saved ${remedies.length} remedies for ${sector.label}. Total overall: ${totalSaved}`);
+
         // Wait 3 seconds to avoid rate limiting
         await sleep(3000);
 
       } catch (err) {
-        console.error(\`❌ Error generating batch: \${err.message}\`);
+        console.error(`❌ Error generating batch: ${err.message}`);
         console.log("Waiting 10 seconds before retrying...");
         await sleep(10000);
       }
     }
   }
 
-  console.log(\`\n🎉 Finished! Successfully generated and saved \${totalSaved} remedies.\`);
+  console.log(`\n🎉 Finished! Successfully generated and saved ${totalSaved} remedies.`);
   process.exit(0);
 }
 
