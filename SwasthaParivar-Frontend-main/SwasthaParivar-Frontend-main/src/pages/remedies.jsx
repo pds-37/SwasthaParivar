@@ -849,6 +849,12 @@ export default function Remedies() {
             Profile-aware filtering now checks age, conditions, allergies, pregnancy, medicines,
             and saved household risk flags before ranking remedies for your family.
           </p>
+          <div className="hero-feedback hero-feedback--warning" style={{ marginTop: "16px", display: "inline-flex" }}>
+            <AlertTriangle size={16} />
+            <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>
+              These remedies are for informational purposes only and do not replace professional medical advice.
+            </span>
+          </div>
         </Motion.div>
 
         <Motion.div
