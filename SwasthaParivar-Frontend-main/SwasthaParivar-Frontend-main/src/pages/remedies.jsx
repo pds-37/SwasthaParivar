@@ -619,6 +619,7 @@ export default function Remedies() {
   } = useFamilyStore();
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState("All");
+  const [hasInteracted, setHasInteracted] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState("family");
   const [favorites, setFavorites] = useState(() => {
     try {
@@ -706,7 +707,7 @@ export default function Remedies() {
     return buildCatalog(REMEDIES_DATA, context, "", activeTag === "All" ? "All" : activeTag).slice(0, 6);
   }, [activeTag, context, seriousMatch]);
 
-  const visibleRemedies = rankedRemedies.length > 0 ? rankedRemedies : fallbackRemedies;
+  const visibleRemedies = hasInteracted ? rankedRemedies : fallbackRemedies;
   const hasCatalogFilters = Boolean(query.trim()) || activeTag !== "All";
   const showingNearestMatches =
     hasCatalogFilters &&
@@ -737,6 +738,7 @@ export default function Remedies() {
   const handleQueryChange = (event) => {
     const nextQuery = event.target.value;
     setQuery(nextQuery);
+    setHasInteracted(true);
 
     if (nextQuery.trim()) {
       setActiveTag("All");
@@ -751,12 +753,14 @@ export default function Remedies() {
     setActiveTag(tag);
     setQuery("");
     resetGeneratedState();
+    setHasInteracted(true);
   };
 
   const clearFilters = () => {
     setQuery("");
     setActiveTag("All");
     resetGeneratedState();
+    setHasInteracted(false);
   };
 
   const handleGenerateRemedy = async () => {
@@ -995,7 +999,7 @@ export default function Remedies() {
       ) : null}
 
       {!seriousMatch ? (
-        hasCatalogFilters ? (
+        hasInteracted ? (
           <>
             <section className="remedies-results-header">
               <div>
