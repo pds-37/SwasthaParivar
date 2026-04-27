@@ -995,42 +995,50 @@ export default function Remedies() {
       ) : null}
 
       {!seriousMatch ? (
-        <>
-          <section className="remedies-results-header">
-            <div>
-              <div className="remedies-results-title">
-                <h2>{resultsTitle}</h2>
-                <span>{visibleRemedies.length} {visibleRemedies.length === 1 ? "match" : "matches"}</span>
+        hasCatalogFilters ? (
+          <>
+            <section className="remedies-results-header">
+              <div>
+                <div className="remedies-results-title">
+                  <h2>{resultsTitle}</h2>
+                  <span>{visibleRemedies.length} {visibleRemedies.length === 1 ? "match" : "matches"}</span>
+                </div>
+                <p>{resultsDescription}</p>
               </div>
-              <p>{resultsDescription}</p>
-            </div>
-            {hasCatalogFilters ? (
               <button className="action-button action-button--ghost" onClick={clearFilters}>
                 Reset filters
               </button>
+            </section>
+
+            <section className="remedies-grid">
+              {visibleRemedies.map((remedy) => (
+                <RemedyCard
+                  key={remedy.id}
+                  remedy={remedy}
+                  onOpen={setOpenRecipe}
+                  onShare={shareRemedy}
+                  onToggleFavorite={handleToggleFavorite}
+                  favorite={favorites.includes(remedy.id)}
+                />
+              ))}
+            </section>
+
+            {visibleRemedies.length === 0 ? (
+              <div className="empty-state">
+                <h3>No safe remedies matched.</h3>
+                <p>Reset the filters or ask Family AI for a safer next step.</p>
+              </div>
             ) : null}
-          </section>
-
-          <section className="remedies-grid">
-            {visibleRemedies.map((remedy) => (
-              <RemedyCard
-                key={remedy.id}
-                remedy={remedy}
-                onOpen={setOpenRecipe}
-                onShare={shareRemedy}
-                onToggleFavorite={handleToggleFavorite}
-                favorite={favorites.includes(remedy.id)}
-              />
-            ))}
-          </section>
-
-          {visibleRemedies.length === 0 ? (
-            <div className="empty-state">
-              <h3>No safe remedies matched.</h3>
-              <p>Reset the filters or ask Family AI for a safer next step.</p>
-            </div>
-          ) : null}
-        </>
+          </>
+        ) : (
+          <div className="empty-state" style={{ marginTop: '32px', padding: '48px 20px' }}>
+            <Sparkles size={42} style={{ color: 'var(--text-soft)', marginBottom: '16px', opacity: 0.6 }} />
+            <h3 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Ready to find a remedy?</h3>
+            <p style={{ maxWidth: '440px', margin: '0 auto', lineHeight: 1.6, color: 'var(--muted)' }}>
+              Select a category from the dropdown or search for symptoms (like "cough", "digestion") to view safe, profile-aware remedies.
+            </p>
+          </div>
+        )
       ) : null}
 
       <RecipeModal
