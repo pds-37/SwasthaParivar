@@ -962,8 +962,8 @@ export default function Remedies() {
         </section>
       ) : null}
 
-      <section className="tag-filter-container" style={{ marginTop: "24px", marginBottom: "8px" }}>
-        <label className="hero-field" style={{ maxWidth: "320px" }}>
+      <section className="tag-filter-container">
+        <label className="hero-field">
           <span>Browse by Category</span>
           <select
             value={activeTag}

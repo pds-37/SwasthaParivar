@@ -257,6 +257,15 @@
   background: var(--surface-glass);
 }
 
+.tag-filter-container {
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
+
+.tag-filter-container .hero-field {
+  max-width: 320px;
+}
+
 
 .triage-panel {
   margin-top: 16px;
@@ -749,6 +758,10 @@
 
   .hero-copy h1 {
     font-size: 2rem;
+  }
+
+  .tag-filter-container .hero-field {
+    max-width: 100%;
   }
 
 
