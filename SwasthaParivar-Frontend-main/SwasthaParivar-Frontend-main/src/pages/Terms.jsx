@@ -10,7 +10,7 @@ const Terms = () => {
       <Helmet>
         <title>Terms of Service | SwasthaParivar</title>
         <meta name="description" content="Read the SwasthaParivar Terms of Service to understand the rules that govern access to our family care tools." />
-        <link rel="canonical" href="https://swasthaparivar.app/terms" />
+        <link rel="canonical" href="https://swastha-parivar-ten.vercel.app/terms" />
       </Helmet>
       <Navigation variant="public" />
 

@@ -49,7 +49,7 @@ const Landing = () => {
       <Helmet>
         <title>SwasthaParivar | Care for every family member, all in one place</title>
         <meta name="description" content="SwasthaParivar brings reminders, records, reports, remedies, and AI guidance into one connected care system that helps your whole family stay organized, safer, and on track." />
-        <link rel="canonical" href="https://swasthaparivar.app/" />
+        <link rel="canonical" href="https://swastha-parivar-ten.vercel.app/" />
       </Helmet>
       <Navigation variant="public" />
 

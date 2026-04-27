@@ -5,7 +5,7 @@ Disallow: /profile/
 Disallow: /settings/
 
 # Host
-Host: https://swasthaparivar.app
+Host: https://swastha-parivar-ten.vercel.app
 
 # Sitemaps
-Sitemap: https://swasthaparivar.app/sitemap.xml
+Sitemap: https://swastha-parivar-ten.vercel.app/sitemap.xml

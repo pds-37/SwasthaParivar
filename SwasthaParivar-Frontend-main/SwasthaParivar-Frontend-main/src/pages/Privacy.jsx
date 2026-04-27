@@ -10,7 +10,7 @@ const Privacy = () => {
       <Helmet>
         <title>Privacy Policy | SwasthaParivar</title>
         <meta name="description" content="Read the SwasthaParivar privacy policy to understand how we collect, use, and protect your family's health data." />
-        <link rel="canonical" href="https://swasthaparivar.app/privacy" />
+        <link rel="canonical" href="https://swastha-parivar-ten.vercel.app/privacy" />
       </Helmet>
       <Navigation variant="public" />
 

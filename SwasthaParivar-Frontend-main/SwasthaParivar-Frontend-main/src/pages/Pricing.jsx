@@ -50,7 +50,7 @@ const Pricing = () => (
     <Helmet>
       <title>Pricing | SwasthaParivar</title>
       <meta name="description" content="Simple and transparent pricing plans for SwasthaParivar. Choose the right plan to manage your family's health." />
-      <link rel="canonical" href="https://swasthaparivar.app/pricing" />
+      <link rel="canonical" href="https://swastha-parivar-ten.vercel.app/pricing" />
     </Helmet>
     <section
       className="card"
