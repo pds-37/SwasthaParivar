@@ -958,16 +958,20 @@ export default function Remedies() {
         </section>
       ) : null}
 
-      <section className="tag-strip">
-        {tagOptions.map((tag) => (
-          <button
-            key={tag}
-            className={`tag-pill ${activeTag === tag ? "active" : ""}`}
-            onClick={() => handleTagSelect(tag)}
+      <section className="tag-filter-container" style={{ marginTop: "24px", marginBottom: "8px" }}>
+        <label className="hero-field" style={{ maxWidth: "320px" }}>
+          <span>Browse by Category</span>
+          <select
+            value={activeTag}
+            onChange={(e) => handleTagSelect(e.target.value)}
           >
-            {tag}
-          </button>
-        ))}
+            {tagOptions.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </select>
+        </label>
       </section>
 
       {seriousMatch ? (
