@@ -184,7 +184,7 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
       category,
       frequency,
       options: { time },
-      nextRunAt,
+      nextRunAt: new Date(nextRunAt).toISOString(),
       meta: {
         reportSummary,
         reportFileName,
