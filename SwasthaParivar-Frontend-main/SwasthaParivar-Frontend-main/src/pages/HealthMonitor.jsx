@@ -161,8 +161,8 @@ const HealthMonitor = () => {
       setFormValues(getDefaultValues());
       notify.success("Health snapshot saved");
       showUnlockedBadges(response?.newBadges || []);
-    } catch {
-      notify.error("Could not save health snapshot");
+    } catch (error) {
+      notify.error(error.message || "Could not save health snapshot");
     }
   };
 

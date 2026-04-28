@@ -222,14 +222,16 @@ class FamilyMemberService {
     const nextHealth = this.sanitizeHealthPayload(currentHealth).data || this.getEmptyHealth();
 
     for (const metric of HEALTH_METRICS) {
+      if (snapshot[metric] === undefined) {
+        continue;
+      }
+
       nextHealth[metric] = (nextHealth[metric] || []).filter((entry) => entry.date !== snapshot.date);
 
-      if (snapshot[metric] !== undefined) {
-        nextHealth[metric].push({
-          value: snapshot[metric],
-          date: snapshot.date,
-        });
-      }
+      nextHealth[metric].push({
+        value: snapshot[metric],
+        date: snapshot.date,
+      });
 
       nextHealth[metric].sort((left, right) => new Date(left.date) - new Date(right.date));
     }

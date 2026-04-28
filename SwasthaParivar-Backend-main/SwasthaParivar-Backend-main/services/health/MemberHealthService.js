@@ -44,7 +44,8 @@ class MemberHealthService {
       result.member.health,
       sanitizedSnapshot.data
     );
-
+    
+    result.member.markModified("health");
     await result.member.save();
     const newBadges = await checkAndAwardBadges(ownerId);
 
