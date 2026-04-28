@@ -117,10 +117,18 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  const data = event.data?.json?.() || {
+  let data = {
     title: "SwasthaParivar",
     body: "You have a new health notification.",
   };
+
+  try {
+    if (event.data) {
+      data = event.data.json();
+    }
+  } catch (e) {
+    data.body = event.data.text() || data.body;
+  }
 
   event.waitUntil(
     self.registration.showNotification(data.title, {
@@ -128,6 +136,9 @@ self.addEventListener("push", (event) => {
       icon: "/swastha_parivar_fast.svg",
       badge: "/swastha_parivar_fast.svg",
       vibrate: [200, 100, 200],
+      requireInteraction: true,
+      renotify: true,
+      tag: "reminder-" + (data.id || Date.now()),
       data: data.data || { url: "/reminders" },
     })
   );

@@ -10,6 +10,8 @@ import { clearReminderDraft, readReminderDraft, toLocalDateTimeValue } from "../
 import { useFamilyStore } from "../store/family-store";
 import { trackEvent } from "../utils/analytics";
 import { Button, Checkbox, Input, Select, Textarea } from "./ui";
+import { getSubscriptionStatus, subscribePush } from "../hooks/usePush";
+import { BellRing, CalendarPlus, Camera, LoaderCircle, Sparkles } from "lucide-react";
 import "./CreateReminder.css";
 
 const reminderTypes = [
@@ -87,6 +89,7 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
   const [reportBusy, setReportBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [pushStatus, setPushStatus] = useState("loading");
   const { members: householdMembers, selfMember, activeView } = useFamilyStore();
   const members = useMemo(
     () => (activeView === "self" ? (selfMember ? [selfMember] : []) : householdMembers),
@@ -106,6 +109,10 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
     if (draft.nextRunAt) setNextRunAt(draft.nextRunAt);
     if (Array.isArray(draft.selectedMembers)) setSelectedMembers(draft.selectedMembers);
   }, [existing]);
+
+  useEffect(() => {
+    getSubscriptionStatus().then(setPushStatus);
+  }, []);
 
   useEffect(() => {
     if (activeView === "self" && selfMember?._id) {
@@ -363,6 +370,22 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
           checked={syncToCalendar}
           onChange={(event) => setSyncToCalendar(event.target.checked)}
         />
+
+        {pushStatus === "unsubscribed" && (
+          <div className="create-reminder-push-notice create-reminder-form__field--wide">
+            <BellRing size={18} />
+            <div>
+              <strong>Device notifications are off</strong>
+              <p>You won&apos;t get a buzz on this device when it&apos;s time. Enable them now?</p>
+            </div>
+            <Button size="sm" variant="secondary" onClick={async () => {
+              await subscribePush();
+              setPushStatus(await getSubscriptionStatus());
+            }}>
+              Enable
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="create-reminder-form__actions">

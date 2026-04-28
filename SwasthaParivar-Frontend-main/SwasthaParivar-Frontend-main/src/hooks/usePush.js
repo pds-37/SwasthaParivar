@@ -36,3 +36,19 @@ export async function subscribePush() {
   await api.post("/notifications/subscribe", { subscription });
   notify.success("Push notifications enabled.");
 }
+
+export async function getSubscriptionStatus() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return "unsupported";
+  }
+
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.getSubscription();
+  
+  if (!subscription) {
+    return "unsubscribed";
+  }
+
+  const permission = Notification.permission;
+  return permission === "granted" ? "subscribed" : "denied";
+}

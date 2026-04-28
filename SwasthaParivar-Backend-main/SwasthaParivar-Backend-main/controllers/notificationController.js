@@ -36,7 +36,15 @@ export const saveSubscription = async (req, res) => {
 };
 
 export async function sendPush(user, title, body) {
-  if (!pushEnabled || !user?.pushSubscription) return;
+  if (!pushEnabled) {
+    console.warn("Push ignored: VAPID keys missing in env");
+    return;
+  }
+  
+  if (!user?.pushSubscription) {
+    console.warn(`Push ignored: User ${user?.email} has no push subscription`);
+    return;
+  }
 
   const payload = JSON.stringify({ title, body });
 
