@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CalendarPlus, Camera, LoaderCircle, Sparkles } from "lucide-react";
+import { BellRing, CalendarPlus, Camera, LoaderCircle, Sparkles } from "lucide-react";
 
 import api from "../lib/api";
 import ProfileAvatar from "./common/ProfileAvatar";
@@ -11,7 +11,6 @@ import { useFamilyStore } from "../store/family-store";
 import { trackEvent } from "../utils/analytics";
 import { Button, Checkbox, Input, Select, Textarea } from "./ui";
 import { getSubscriptionStatus, subscribePush } from "../hooks/usePush";
-import { BellRing, CalendarPlus, Camera, LoaderCircle, Sparkles } from "lucide-react";
 import "./CreateReminder.css";
 
 const reminderTypes = [
