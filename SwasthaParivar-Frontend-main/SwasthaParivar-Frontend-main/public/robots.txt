@@ -1,8 +1,20 @@
 User-agent: *
 Allow: /
-Disallow: /dashboard/
-Disallow: /profile/
-Disallow: /settings/
+Allow: /pricing
+Allow: /privacy
+Allow: /terms
+Allow: /auth
+
+# Disallow protected app routes
+Disallow: /dashboard
+Disallow: /family
+Disallow: /health
+Disallow: /reports
+Disallow: /remedies
+Disallow: /ai-chat
+Disallow: /settings
+Disallow: /reminders
+Disallow: /join/
 
 # Host
 Host: https://swastha-parivar-ten.vercel.app

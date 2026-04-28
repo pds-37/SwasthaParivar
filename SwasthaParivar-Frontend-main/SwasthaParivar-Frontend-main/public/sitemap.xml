@@ -3,22 +3,32 @@
   <!-- Home Page -->
   <url>
     <loc>https://swastha-parivar-ten.vercel.app/</loc>
-    <lastmod>2026-04-27</lastmod>
+    <lastmod>2026-04-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
-  <!-- Public Ayurvedic Library -->
+  
+  <!-- Pricing Page -->
   <url>
-    <loc>https://swastha-parivar-ten.vercel.app/library</loc>
-    <lastmod>2026-04-27</lastmod>
-    <changefreq>daily</changefreq>
+    <loc>https://swastha-parivar-ten.vercel.app/pricing</loc>
+    <lastmod>2026-04-28</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-  <!-- About / Public Info -->
+
+  <!-- Privacy Policy -->
   <url>
-    <loc>https://swastha-parivar-ten.vercel.app/about</loc>
-    <lastmod>2026-04-27</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
+    <loc>https://swastha-parivar-ten.vercel.app/privacy</loc>
+    <lastmod>2026-04-28</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <!-- Terms of Service -->
+  <url>
+    <loc>https://swastha-parivar-ten.vercel.app/terms</loc>
+    <lastmod>2026-04-28</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>
