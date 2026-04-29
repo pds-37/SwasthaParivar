@@ -566,12 +566,16 @@
 
 .ai-chat-composer__input {
   min-height: 3rem;
-  padding: 0 var(--space-4);
+  max-height: 12rem;
+  padding: var(--space-3) var(--space-4);
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--color-text-primary);
   font-size: var(--text-md);
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.5;
 }
 
 @keyframes aiTyping {
@@ -660,8 +664,9 @@
   }
 
   .ai-chat-bubble.is-user {
-    width: 100%;
-    max-width: 100%;
+    width: fit-content;
+    max-width: 90%;
+    margin-left: auto;
   }
 }
 

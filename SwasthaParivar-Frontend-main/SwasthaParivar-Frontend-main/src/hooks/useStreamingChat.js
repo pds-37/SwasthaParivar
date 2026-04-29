@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { buildApiUrl } from "../lib/api";
+import { buildApiUrl, apiClient } from "../lib/api";
 
 const parseSseChunk = (buffer, onEvent) => {
   let workingBuffer = buffer;
@@ -44,9 +44,13 @@ export function useStreamingChat() {
     });
   };
 
-  const sendMessage = async ({ message, memberId, collectedData, chatHistory, language }) => {
-    setIsStreaming(true);
-    resetStreaming();
+  const sendMessage = async (params, isRetry = false) => {
+    const { message, memberId, collectedData, chatHistory, language } = params;
+    
+    if (!isRetry) {
+      setIsStreaming(true);
+      resetStreaming();
+    }
 
     const response = await fetch(buildApiUrl("/ai/chat/stream"), {
       method: "POST",
@@ -54,6 +58,15 @@ export function useStreamingChat() {
       credentials: "include",
       body: JSON.stringify({ message, memberId, collectedData, chatHistory, language }),
     });
+
+    if (response.status === 401 && !isRetry) {
+      try {
+        await apiClient.post("/auth/refresh", {}, { headers: { "x-skip-auth": "true" } });
+        return sendMessage(params, true);
+      } catch {
+        // Refresh failed, propagate the 401
+      }
+    }
 
     if (!response.ok || !response.body) {
       let errorMessage = "Could not start the AI stream.";

@@ -1210,16 +1210,23 @@ const AIChat = () => {
                 ) : null}
               </div>
 
-              <input
+              <textarea
                 className="ai-chat-composer__input"
                 value={input}
-                onChange={(event) => setInput(event.target.value)}
+                onChange={(event) => {
+                  setInput(event.target.value);
+                  // Basic auto-resize
+                  event.target.style.height = "auto";
+                  event.target.style.height = `${event.target.scrollHeight}px`;
+                }}
                 placeholder="Ask about symptoms, medicines, reports, medicine photos, vitals, or reminders"
                 disabled={isBusy}
+                rows={1}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
                     sendMessage();
+                    event.target.style.height = "auto";
                   }
                 }}
               />

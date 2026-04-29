@@ -10,6 +10,7 @@ import FloatingAIButton from "./components/FloatingAIButton";
 import OnboardingWizard from "./components/onboarding/OnboardingWizard";
 import PageSkeleton from "./components/PageSkeleton";
 import UpgradePrompt from "./components/common/UpgradePrompt";
+import InstallPrompt from "./components/common/InstallPrompt";
 import { useAuth } from "./components/auth-context";
 import { AppThemeProvider } from "./context/ThemeContext";
 import { FamilyStoreProvider } from "./store/family-store";
@@ -251,6 +252,7 @@ const App = () => {
               featureName={upgradePrompt.feature}
               onClose={() => setUpgradePrompt({ open: false, feature: "" })}
             />
+            <InstallPrompt />
             <Toaster position="top-right" toastOptions={{ duration: 3200 }} />
           </AuthProvider>
         </UIStoreProvider>
