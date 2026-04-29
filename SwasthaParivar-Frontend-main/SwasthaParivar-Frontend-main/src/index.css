@@ -13,8 +13,6 @@ html,
 body,
 #root {
   min-height: 100dvh; /* dvh = dynamic viewport height */
-  width: 100%;
-  max-width: 100vw;
 }
 
 html {
@@ -31,12 +29,6 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-}
-
-/* Fixes iOS momentum scrolling */
-* {
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Prevents text size inflation on rotation */
