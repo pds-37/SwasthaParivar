@@ -133,6 +133,7 @@ const Auth = () => {
     password: "",
     fullName: "",
   });
+  const [googleStatus, setGoogleStatus] = useState("");
 
   const strength = useMemo(
     () => getPasswordStrength(formData.password || ""),
@@ -218,14 +219,31 @@ const Auth = () => {
     }
   };
 
-  const handleGoogleContinue = () => {
+  const handleGoogleContinue = async () => {
     setError("");
+    setGoogleStatus("Connecting to secure health server...");
     setGoogleLoading(true);
     const returnPath = searchParams.get("from") || "/dashboard";
     trackEvent("auth_google_started", {
       redirect_to: returnPath,
     });
 
+    try {
+      // Warm up the backend to avoid Render's default "Waking Up" terminal screen.
+      // We hit the /health endpoint which is at the root.
+      const healthUrl = buildApiUrl("/health").replace("/api/health", "/health");
+      
+      // Render usually takes 15-20 seconds to wake up.
+      // We'll wait for a response or timeout after 20 seconds.
+      await Promise.race([
+        fetch(healthUrl).catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, 20000))
+      ]);
+    } catch (err) {
+      console.warn("Backend warmup ping failed:", err);
+    }
+
+    setGoogleStatus("Redirecting to Google...");
     const nextUrl = new URL(buildApiUrl("/auth/google/start"), window.location.origin);
     nextUrl.searchParams.set("returnTo", window.location.origin);
     nextUrl.searchParams.set("returnPath", returnPath);
@@ -404,6 +422,13 @@ const Auth = () => {
           <Button variant="secondary" size="lg" fullWidth loading={googleLoading} onClick={handleGoogleContinue}>
             Continue with Google
           </Button>
+
+          {googleLoading && googleStatus && (
+            <p className="auth-google-status">
+              <Sparkles size={14} className="animate-pulse" />
+              {googleStatus}
+            </p>
+          )}
 
           <div className="auth-invite-card">
             <div className="auth-invite-card__copy">

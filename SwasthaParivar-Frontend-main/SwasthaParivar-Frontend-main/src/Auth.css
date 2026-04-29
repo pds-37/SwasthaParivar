@@ -389,3 +389,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+.auth-google-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  animation: authFadeIn var(--transition-base) ease-out;
+}
+
+.auth-google-status svg {
+  color: var(--color-primary);
+  animation: authPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(-0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes authPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
