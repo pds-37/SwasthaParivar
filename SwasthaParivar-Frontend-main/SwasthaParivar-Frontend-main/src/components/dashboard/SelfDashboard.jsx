@@ -400,46 +400,7 @@ const SelfDashboard = () => {
                 </Button>
               </article>
 
-              {!household && (
-                <article className="dashboard-panel dashboard-panel--premium card">
-                  <div className="section-header">
-                    <div>
-                      <h2 className="text-h4">Join a household</h2>
-                      <p className="text-body-sm muted-copy">Accept a family invite code to connect your account.</p>
-                    </div>
-                  </div>
 
-                  <div className="self-dashboard-join">
-                    <Input
-                      label="Invite code"
-                      placeholder="Enter household code"
-                      value={inviteCode}
-                      onChange={(event) => setInviteCode(event.target.value.toUpperCase())}
-                      leftIcon={<Link2 size={16} />}
-                    />
-                    <Button onClick={handleAcceptInvite} loading={joining}>
-                      Join household
-                    </Button>
-                  </div>
-
-                  {pendingInvites.length ? (
-                    <div className="dashboard-stack">
-                      {pendingInvites.slice(0, 2).map((invite) => (
-                        <article key={invite.id} className="dashboard-mini-row">
-                          <div className="dashboard-mini-row__meta">
-                            <ProfileAvatar name={invite.name || invite.email || "Invite"} size="sm" />
-                            <div>
-                              <strong>{invite.email}</strong>
-                              <p>{invite.inviteType === "link_existing" ? "Link existing app user" : "Invite adult family member"}</p>
-                            </div>
-                          </div>
-                          <span>{invite.code}</span>
-                        </article>
-                      ))}
-                    </div>
-                  ) : null}
-                </article>
-              )}
             </section>
           </div>
         </div>
