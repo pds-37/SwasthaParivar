@@ -25,7 +25,7 @@
 
 .ai-chat-sidebar,
 .ai-chat-main {
-  min-height: calc(100vh - 2.75rem);
+  min-height: calc(100dvh - 2.75rem);
 }
 
 .ai-chat-sidebar {
@@ -639,7 +639,7 @@
   }
 
   .ai-chat-main {
-    min-height: calc(100vh - 9rem);
+    min-height: calc(100dvh - 9rem);
   }
 
   .ai-chat-main__top,

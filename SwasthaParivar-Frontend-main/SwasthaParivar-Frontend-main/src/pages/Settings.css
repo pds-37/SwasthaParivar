@@ -252,4 +252,35 @@
   .settings-household-join {
     grid-template-columns: 1fr;
   }
+
+  .settings-diagnostics {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.settings-diagnostics {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+  border-radius: var(--radius-lg);
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.settings-diagnostics__info {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.settings-diagnostics__info strong {
+  text-transform: capitalize;
+}
+
+.settings-diagnostics__info p {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
 }

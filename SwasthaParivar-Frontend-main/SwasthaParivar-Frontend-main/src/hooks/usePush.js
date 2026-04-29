@@ -22,19 +22,39 @@ export async function subscribePush() {
   }
 
   const permission = await Notification.requestPermission();
+  if (permission === "denied") {
+    notify.error("Notification permission denied. Please reset permissions in your browser settings to enable reminders.");
+    return;
+  }
+  
   if (permission !== "granted") {
-    notify.info("Notification permission denied.");
     return;
   }
 
-  const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-  });
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
 
-  await api.post("/notifications/subscribe", { subscription });
-  notify.success("Push notifications enabled.");
+    await api.post("/notifications/subscribe", { subscription });
+    notify.success("Push notifications enabled.");
+    return "subscribed";
+  } catch (error) {
+    console.error("Subscription Error:", error);
+    notify.error("Failed to enable notifications. Try refreshing the page.");
+    return "failed";
+  }
+}
+
+export async function testPush() {
+  try {
+    await api.get("/notifications/test");
+    notify.info("Test notification requested. It should arrive in a few seconds.");
+  } catch (error) {
+    notify.error(error.message || "Failed to send test notification");
+  }
 }
 
 export async function getSubscriptionStatus() {
@@ -42,13 +62,17 @@ export async function getSubscriptionStatus() {
     return "unsupported";
   }
 
-  const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription();
-  
-  if (!subscription) {
-    return "unsubscribed";
-  }
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      return "unsubscribed";
+    }
 
-  const permission = Notification.permission;
-  return permission === "granted" ? "subscribed" : "denied";
+    const permission = Notification.permission;
+    return permission === "granted" ? "subscribed" : "denied";
+  } catch {
+    return "error";
+  }
 }

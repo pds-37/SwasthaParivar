@@ -86,6 +86,14 @@
   --button-active-bg: color-mix(in srgb, var(--color-danger) 82%, black);
 }
 
+.ui-button--success {
+  --button-bg: #4CAF50;
+  --button-color: white;
+  --button-border: transparent;
+  --button-hover-bg: #45a049;
+  --button-active-bg: #45a049;
+}
+
 .ui-button--link {
   --button-bg: transparent;
   --button-color: var(--color-primary-strong);

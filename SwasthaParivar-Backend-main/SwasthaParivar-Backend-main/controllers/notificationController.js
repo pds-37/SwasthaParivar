@@ -35,7 +35,38 @@ export const saveSubscription = async (req, res) => {
   }
 };
 
-export async function sendPush(user, title, body) {
+export const testNotification = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user?.pushSubscription) {
+      return sendError(res, {
+        status: 400,
+        code: "NOT_SUBSCRIBED",
+        message: "You are not subscribed to push notifications on this device.",
+      });
+    }
+
+    await sendPush(
+      user,
+      "Test Notification 🔔",
+      "If you see this, your SwasthaParivar notifications are working perfectly!",
+      {
+        url: "/settings",
+        image: "https://swasthaparivar.app/og-preview.png",
+      }
+    );
+
+    return sendSuccess(res, { message: "Test notification sent" });
+  } catch (err) {
+    return sendError(res, {
+      status: 500,
+      message: "Failed to send test notification",
+      details: err.message,
+    });
+  }
+};
+
+export async function sendPush(user, title, body, data = {}) {
   if (!pushEnabled) {
     console.warn("Push ignored: VAPID keys missing in env");
     return;
@@ -46,10 +77,18 @@ export async function sendPush(user, title, body) {
     return;
   }
 
-  const payload = JSON.stringify({ title, body });
+  const payload = JSON.stringify({ 
+    title, 
+    body,
+    ...data 
+  });
 
   try {
-    await webpush.sendNotification(user.pushSubscription, payload);
+    await webpush.sendNotification(user.pushSubscription, payload, {
+      TTL: 60,
+      priority: "high",
+      urgency: "high"
+    });
   } catch (err) {
     console.error("Push Error:", err);
 

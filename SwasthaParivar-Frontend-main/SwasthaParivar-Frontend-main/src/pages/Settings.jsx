@@ -11,6 +11,7 @@ import notify from "../lib/notify";
 import { useFeatureFlags } from "../hooks/useFeatureFlags";
 import { useThemeMode } from "../theme/theme-context";
 import { trackEvent } from "../utils/analytics";
+import { getSubscriptionStatus, subscribePush, testPush } from "../hooks/usePush";
 import "./Settings.css";
 
 const Settings = () => {
@@ -30,6 +31,20 @@ const Settings = () => {
   const [householdInviteCode, setHouseholdInviteCode] = useState("");
   const [exportingData, setExportingData] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [pushStatus, setPushStatus] = useState("loading");
+
+  React.useEffect(() => {
+    getSubscriptionStatus().then(setPushStatus);
+  }, []);
+
+  const handleSubscribePush = async () => {
+    const result = await subscribePush();
+    if (result === "subscribed") {
+      setPushStatus("subscribed");
+    } else {
+      setPushStatus(await getSubscriptionStatus());
+    }
+  };
 
   const currentPlan = String(user?.plan || "free").toLowerCase();
   const planLabel = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
@@ -419,6 +434,42 @@ const Settings = () => {
                 Consent is recorded under privacy policy version {privacyPolicyVersion}. You can
                 export your data or permanently delete your account at any time.
               </p>
+            </div>
+          </section>
+
+          <section className="settings-section card">
+            <div className="settings-section__head">
+              <div>
+                <h2 className="text-h4">Push diagnostics</h2>
+                <p className="text-body-sm muted-copy">Verify that your device is correctly registered for health alerts.</p>
+              </div>
+              <span className={`badge ${pushStatus === "subscribed" ? "badge--success" : "badge--warning"}`}>
+                <Bell size={14} />
+                {pushStatus === "subscribed" ? "Connected" : pushStatus === "denied" ? "Permission denied" : "Not connected"}
+              </span>
+            </div>
+
+            <div className="settings-diagnostics">
+              <div className="settings-diagnostics__info">
+                <strong>Status: {pushStatus}</strong>
+                <p>
+                  {pushStatus === "subscribed" 
+                    ? "Your device is ready to receive rich notifications. Try sending a test one below." 
+                    : "Notifications are currently disabled for this device/browser."}
+                </p>
+              </div>
+              
+              <div className="settings-diagnostics__actions">
+                {pushStatus !== "subscribed" ? (
+                  <Button variant="primary" size="sm" onClick={handleSubscribePush}>
+                    Enable notifications
+                  </Button>
+                ) : (
+                  <Button variant="secondary" size="sm" onClick={testPush} leftIcon={<Sparkles size={14} />}>
+                    Send test notification
+                  </Button>
+                )}
+              </div>
             </div>
           </section>
 

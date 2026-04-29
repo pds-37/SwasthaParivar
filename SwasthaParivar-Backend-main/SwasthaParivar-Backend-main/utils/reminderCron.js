@@ -63,7 +63,16 @@ cron.schedule("* * * * *", async () => {
       await sendPush(
         user,
         `Reminder: ${reminder.title}`,
-        `It's time for your ${reminder.category} reminder`
+        `It's time for your ${reminder.category} reminder`,
+        {
+          tag: `reminder-${reminder._id}`,
+          url: `/reminders`,
+          data: { reminderId: reminder._id },
+          actions: [
+            { action: "view", title: "View details" },
+            { action: "dismiss", title: "Dismiss" }
+          ]
+        }
       );
 
       reminder.lastTriggeredAt = now;

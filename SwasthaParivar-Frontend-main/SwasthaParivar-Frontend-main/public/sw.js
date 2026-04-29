@@ -130,23 +130,38 @@ self.addEventListener("push", (event) => {
     data.body = event.data.text() || data.body;
   }
 
+  const options = {
+    body: data.body,
+    icon: "/swastha_parivar_fast.svg",
+    badge: "/swastha_parivar_fast.svg",
+    vibrate: [200, 100, 200, 100, 200],
+    requireInteraction: true,
+    renotify: true,
+    tag: data.tag || "sp-notification-" + (data.id || "default"),
+    image: data.image || null,
+    data: data.data || { url: data.url || "/reminders" },
+    actions: data.actions || [
+      { action: "view", title: "View details" },
+      { action: "dismiss", title: "Dismiss" }
+    ]
+  };
+
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: "/swastha_parivar_fast.svg",
-      badge: "/swastha_parivar_fast.svg",
-      vibrate: [200, 100, 200],
-      requireInteraction: true,
-      renotify: true,
-      tag: "reminder-" + (data.id || Date.now()),
-      data: data.data || { url: "/reminders" },
-    })
+    self.registration.showNotification(data.title, options)
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || "/reminders", self.location.origin).href;
+
+  if (event.action === "dismiss") {
+    return;
+  }
+
+  const targetUrl = new URL(
+    event.notification.data?.url || event.notification.data?.data?.url || "/reminders",
+    self.location.origin
+  ).href;
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {

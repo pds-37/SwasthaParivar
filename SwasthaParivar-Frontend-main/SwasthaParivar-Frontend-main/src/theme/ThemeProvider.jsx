@@ -233,12 +233,34 @@ export const AppThemeProvider = ({ children }) => {
               },
             },
           },
+          MuiContainer: {
+            styleOverrides: {
+              root: {
+                paddingLeft: "16px",
+                paddingRight: "16px",
+                "@media (max-width: 600px)": {
+                  paddingLeft: "12px",
+                  paddingRight: "12px",
+                },
+              },
+            },
+          },
           MuiDialog: {
             styleOverrides: {
               paper: {
                 borderRadius: 28,
                 background: "var(--color-surface-overlay)",
                 border: "1px solid var(--color-border-subtle)",
+                margin: "16px",
+                width: "calc(100% - 32px)",
+                maxHeight: "calc(100% - 32px)",
+              },
+            },
+          },
+          MuiDrawer: {
+            styleOverrides: {
+              paper: {
+                paddingBottom: "env(safe-area-inset-bottom)",
               },
             },
           },

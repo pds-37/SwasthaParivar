@@ -370,18 +370,24 @@ const CreateReminder = ({ existing = null, refresh, cancel }) => {
           onChange={(event) => setSyncToCalendar(event.target.checked)}
         />
 
-        {pushStatus === "unsubscribed" && (
+        {pushStatus !== "subscribed" && pushStatus !== "loading" && pushStatus !== "unsupported" && (
           <div className="create-reminder-push-notice create-reminder-form__field--wide">
             <BellRing size={18} />
             <div>
               <strong>Device notifications are off</strong>
               <p>You won&apos;t get a buzz on this device when it&apos;s time. Enable them now?</p>
             </div>
-            <Button size="sm" variant="secondary" onClick={async () => {
-              await subscribePush();
-              setPushStatus(await getSubscriptionStatus());
-            }}>
-              Enable
+            <Button 
+              size="sm" 
+              variant={pushStatus === "subscribed" ? "success" : "secondary"} 
+              onClick={async () => {
+                const result = await subscribePush();
+                if (result === "subscribed") {
+                  setPushStatus("subscribed");
+                }
+              }}
+            >
+              {pushStatus === "subscribed" ? "Enabled!" : "Enable"}
             </Button>
           </div>
         )}
