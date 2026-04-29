@@ -252,13 +252,22 @@
 }
 
 .dashboard-overview__node--left {
-  top: 24%;
-  left: 2%;
+  top: 15%;
+  left: -5%;
 }
 
 .dashboard-overview__node--right {
-  right: 0;
-  bottom: 18%;
+  right: -5%;
+  bottom: 12%;
+}
+
+@media (max-width: 82rem) {
+  .dashboard-overview__node--left {
+    left: 2%;
+  }
+  .dashboard-overview__node--right {
+    right: 2%;
+  }
 }
 
 .self-dashboard-shell {

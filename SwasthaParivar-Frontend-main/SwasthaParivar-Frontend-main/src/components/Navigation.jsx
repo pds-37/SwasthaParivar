@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 import ProfileAvatar from "./common/ProfileAvatar";
-import { subscribePush } from "../hooks/usePush";
+import { getSubscriptionStatus, subscribePush } from "../hooks/usePush";
 import { howToUseNote, howToUseSteps } from "../lib/howToUse";
 import { useFamilyStore } from "../store/family-store";
 import { useUIStore } from "../store/ui-store";
@@ -74,6 +74,21 @@ const Navigation = ({ variant = "app" }) => {
   const isPublic = variant === "public";
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [pushStatus, setPushStatus] = useState("loading");
+
+  useEffect(() => {
+    getSubscriptionStatus().then(setPushStatus);
+  }, []);
+
+  const handleSubscribePush = async () => {
+    const result = await subscribePush();
+    if (result === "subscribed") {
+      setPushStatus("subscribed");
+    } else {
+      setPushStatus(await getSubscriptionStatus());
+    }
+  };
+
   useEffect(() => {
     if (isPublic) return undefined;
 
@@ -279,18 +294,21 @@ const Navigation = ({ variant = "app" }) => {
             {sidebarCollapsed ? null : "How to use"}
           </Button>
 
-          <Button
-            variant="secondary"
-            size="sm"
-            fullWidth={!sidebarCollapsed}
-            leftIcon={<BellRing size={16} />}
-            onClick={subscribePush}
-            className="app-sidebar__notify-btn"
-            aria-label="Enable reminders"
-            title="Enable reminders"
-          >
-            {sidebarCollapsed ? null : "Enable reminders"}
-          </Button>
+          {pushStatus !== "subscribed" && (
+            <Button
+              variant={pushStatus === "denied" ? "ghost" : "secondary"}
+              size="sm"
+              fullWidth={!sidebarCollapsed}
+              leftIcon={<BellRing size={16} />}
+              onClick={handleSubscribePush}
+              className="app-sidebar__notify-btn"
+              aria-label={pushStatus === "denied" ? "Notifications blocked" : "Enable reminders"}
+              title={pushStatus === "denied" ? "Notifications blocked" : "Enable reminders"}
+              disabled={pushStatus === "denied"}
+            >
+              {sidebarCollapsed ? null : pushStatus === "denied" ? "Blocked" : "Enable reminders"}
+            </Button>
+          )}
 
           <div className="app-sidebar__profile card">
             <ProfileAvatar name={user?.fullName} src={user?.avatarUrl} size="md" />
@@ -372,9 +390,17 @@ const Navigation = ({ variant = "app" }) => {
             >
               How to use
             </Button>
-            <Button variant="secondary" leftIcon={<BellRing size={16} />} onClick={subscribePush} fullWidth>
-              Enable notifications
-            </Button>
+            {pushStatus !== "subscribed" && (
+              <Button 
+                variant={pushStatus === "denied" ? "ghost" : "secondary"} 
+                leftIcon={<BellRing size={16} />} 
+                onClick={handleSubscribePush} 
+                fullWidth
+                disabled={pushStatus === "denied"}
+              >
+                {pushStatus === "denied" ? "Notifications blocked" : "Enable notifications"}
+              </Button>
+            )}
             <Button variant="ghost" onClick={toggleTheme} fullWidth>
               Switch to {mode === "dark" ? "light" : "dark"} mode
             </Button>
