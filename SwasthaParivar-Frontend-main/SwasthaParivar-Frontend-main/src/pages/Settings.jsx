@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Copy, Download, Gift, Link2, Moon, Shield, Sparkles, SunMedium, Trash2, UserCircle2, Users } from "lucide-react";
+import { Bell, Copy, Download, Gift, Link2, Moon, Shield, Sparkles, SunMedium, Trash2, UserCircle2, Users } from "lucide-react";
 
 import { useAuth } from "../components/auth-context";
 import ProfileAvatar from "../components/common/ProfileAvatar";
