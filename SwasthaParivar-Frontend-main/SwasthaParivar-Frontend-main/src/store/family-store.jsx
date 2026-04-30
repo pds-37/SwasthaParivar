@@ -25,11 +25,18 @@ const defaultFamilyStore = {
   setActiveView: () => {},
 };
 
-const getInitialActiveView = () => {
-  if (typeof window === "undefined") return "family";
+const getInitialState = () => {
+  if (typeof window === "undefined") {
+    return { activeView: "family", selectedMemberId: null };
+  }
 
   const savedView = window.localStorage.getItem("sp_active_view");
-  return savedView === "self" ? "self" : "family";
+  const savedMemberId = window.localStorage.getItem("sp_selected_member_id");
+  
+  return {
+    activeView: savedView === "self" ? "self" : "family",
+    selectedMemberId: savedMemberId || null,
+  };
 };
 
 const familyReducer = (state, action) => {
@@ -95,6 +102,7 @@ export const FamilyStoreProvider = ({ children }) => {
     createInvite,
     acceptInvite,
   } = useHousehold();
+  const initialState = getInitialState();
   const [state, dispatch] = useReducer(familyReducer, {
     members: [],
     household: null,
@@ -102,12 +110,21 @@ export const FamilyStoreProvider = ({ children }) => {
     memberships: [],
     pendingInvites: [],
     selectedMember: null,
-    activeView: getInitialActiveView(),
+    activeView: initialState.activeView,
+    selectedMemberId: initialState.selectedMemberId,
   });
 
   useEffect(() => {
     dispatch({ type: "SET_MEMBERS", payload: members });
-  }, [members]);
+    
+    // If we have a saved selectedMemberId, try to find it in the new members list
+    if (state.selectedMemberId && members.length > 0 && !state.selectedMember) {
+      const match = members.find(m => m._id === state.selectedMemberId);
+      if (match) {
+        dispatch({ type: "SET_SELECTED_MEMBER", payload: match });
+      }
+    }
+  }, [members, state.selectedMember, state.selectedMemberId]);
 
   useEffect(() => {
     dispatch({
@@ -124,7 +141,12 @@ export const FamilyStoreProvider = ({ children }) => {
   useEffect(() => {
     if (typeof window === "undefined") return;
     localStorage.setItem("sp_active_view", state.activeView);
-  }, [state.activeView]);
+    if (state.selectedMember?._id) {
+      localStorage.setItem("sp_selected_member_id", state.selectedMember._id);
+    } else {
+      localStorage.removeItem("sp_selected_member_id");
+    }
+  }, [state.activeView, state.selectedMember]);
 
   const value = useMemo(
     () => ({

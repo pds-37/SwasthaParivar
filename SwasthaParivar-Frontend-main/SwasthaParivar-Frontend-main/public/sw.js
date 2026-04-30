@@ -1,8 +1,9 @@
-const CACHE_NAME = "sp-v3";
+const CACHE_NAME = "sp-v4";
 const STATIC_ASSETS = [
   "/manifest.json",
   "/swastha_parivar_fast.svg",
   "/icon-health.svg",
+  "/notification-icon.png",
 ];
 
 const isCacheableAssetRequest = (request) => {
@@ -55,21 +56,35 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (event.request.url.includes("/api/")) {
+    // Exclude AI streaming and authentication refresh from caching
+    if (event.request.url.includes("/api/ai/") || event.request.url.includes("/auth/refresh")) {
+      return;
+    }
+
     event.respondWith(
-      fetch(event.request).catch(
-        () =>
-          new Response(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok && event.request.method === "GET") {
+            const cloned = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          
+          return new Response(
             JSON.stringify({
-              message: "You are offline. Please check your connection.",
+              message: "You are offline. Showing cached data.",
+              offline: true,
             }),
             {
-              status: 503,
-              headers: {
-                "Content-Type": "application/json",
-              },
+              status: 200, // Return 200 so the frontend can handle the 'offline' flag
+              headers: { "Content-Type": "application/json" },
             }
-          )
-      )
+          );
+        })
     );
     return;
   }
@@ -132,9 +147,10 @@ self.addEventListener("push", (event) => {
 
   const options = {
     body: data.body,
-    icon: "/swastha_parivar_fast.svg",
-    badge: "/swastha_parivar_fast.svg",
-    vibrate: [200, 100, 200, 100, 200],
+    icon: "/notification-icon.png",
+    badge: "/notification-icon.png",
+    vibrate: [200, 100, 200, 100, 200, 100, 400],
+    timestamp: Date.now(),
     requireInteraction: true,
     renotify: true,
     tag: data.tag || "sp-notification-" + (data.id || "default"),

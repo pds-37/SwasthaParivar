@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { SWRConfig } from "swr";
 
 import Navigation from "./components/Navigation";
 import { AuthProvider } from "./components/AuthProvider";
@@ -16,6 +17,7 @@ import { AppThemeProvider } from "./context/ThemeContext";
 import { FamilyStoreProvider } from "./store/family-store";
 import { UIStoreProvider } from "./store/ui-store";
 import { initAnalytics, trackEvent } from "./utils/analytics";
+import { localStorageProvider } from "./lib/swr-cache";
 
 const Auth = lazy(() => import("./pages/Auth"));
 const Landing = lazy(() => import("./pages/Landing"));
@@ -222,6 +224,7 @@ const App = () => {
     open: false,
     feature: "",
   });
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
     initAnalytics();
@@ -236,8 +239,16 @@ const App = () => {
     };
 
     window.addEventListener("show-upgrade-prompt", handleShowUpgradePrompt);
+    
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
     return () => {
       window.removeEventListener("show-upgrade-prompt", handleShowUpgradePrompt);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
@@ -245,16 +256,25 @@ const App = () => {
     <AppThemeProvider>
       <BrowserRouter>
         <UIStoreProvider>
-          <AuthProvider>
-            <AppRoutes />
-            <UpgradePrompt
-              open={upgradePrompt.open}
-              featureName={upgradePrompt.feature}
-              onClose={() => setUpgradePrompt({ open: false, feature: "" })}
-            />
-            <InstallPrompt />
-            <Toaster position="top-right" toastOptions={{ duration: 3200 }} />
-          </AuthProvider>
+          <SWRConfig value={{ provider: localStorageProvider, revalidateOnFocus: false, shouldRetryOnError: false }}>
+            <AuthProvider>
+              {isOffline && (
+                <div className="offline-banner">
+                  <div className="offline-banner__content">
+                    <span>📡 Offline Mode: Using saved data</span>
+                  </div>
+                </div>
+              )}
+              <AppRoutes />
+              <UpgradePrompt
+                open={upgradePrompt.open}
+                featureName={upgradePrompt.feature}
+                onClose={() => setUpgradePrompt({ open: false, feature: "" })}
+              />
+              <InstallPrompt />
+              <Toaster position="top-right" toastOptions={{ duration: 3200 }} />
+            </AuthProvider>
+          </SWRConfig>
         </UIStoreProvider>
       </BrowserRouter>
     </AppThemeProvider>

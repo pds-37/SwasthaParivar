@@ -8,7 +8,7 @@ const pushEnabled = Boolean(vapidPublicKey && vapidPrivateKey);
 
 if (pushEnabled) {
   webpush.setVapidDetails(
-    "mailto:you@example.com",
+    "https://swasthaparivar.app",
     vapidPublicKey,
     vapidPrivateKey
   );
@@ -18,8 +18,12 @@ if (pushEnabled) {
 
 export const saveSubscription = async (req, res) => {
   try {
+    const { subscription } = req.body;
+    
+    // Add the subscription to the user's list if it doesn't already exist
+    // We check by the endpoint to avoid duplicate registrations for the same device
     await User.findByIdAndUpdate(req.userId, {
-      $set: { pushSubscription: req.body.subscription },
+      $addToSet: { pushSubscriptions: subscription },
     });
 
     return sendSuccess(res, {
@@ -38,11 +42,11 @@ export const saveSubscription = async (req, res) => {
 export const testNotification = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-    if (!user?.pushSubscription) {
+    if (!user?.pushSubscriptions?.length) {
       return sendError(res, {
         status: 400,
         code: "NOT_SUBSCRIBED",
-        message: "You are not subscribed to push notifications on this device.",
+        message: "You are not subscribed to push notifications on any device.",
       });
     }
 
@@ -72,8 +76,8 @@ export async function sendPush(user, title, body, data = {}) {
     return;
   }
   
-  if (!user?.pushSubscription) {
-    console.warn(`Push ignored: User ${user?.email} has no push subscription`);
+  if (!user?.pushSubscriptions?.length) {
+    console.warn(`Push ignored: User ${user?.email} has no push subscriptions`);
     return;
   }
 
@@ -83,19 +87,33 @@ export async function sendPush(user, title, body, data = {}) {
     ...data 
   });
 
-  try {
-    await webpush.sendNotification(user.pushSubscription, payload, {
-      TTL: 60,
-      priority: "high",
-      urgency: "high"
-    });
-  } catch (err) {
-    console.error("Push Error:", err);
+  const sendResults = await Promise.allSettled(
+    user.pushSubscriptions.map(async (subscription) => {
+      try {
+        await webpush.sendNotification(subscription, payload, {
+          TTL: 86400, // 24 hours
+          priority: "high",
+          urgency: "high"
+        });
+      } catch (err) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          // Subscription is no longer valid, remove it
+          return { error: "expired", endpoint: subscription.endpoint };
+        }
+        throw err;
+      }
+    })
+  );
 
-    if (err.statusCode === 410 || err.statusCode === 404) {
-      user.pushSubscription = null;
-      await user.save();
-    }
+  // Clean up expired subscriptions
+  const expiredEndpoints = sendResults
+    .filter(r => r.status === "fulfilled" && r.value?.error === "expired")
+    .map(r => r.value.endpoint);
+
+  if (expiredEndpoints.length > 0) {
+    await User.findByIdAndUpdate(user._id, {
+      $pull: { pushSubscriptions: { endpoint: { $in: expiredEndpoints } } }
+    });
   }
 }
 

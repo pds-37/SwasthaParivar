@@ -28,7 +28,7 @@ const uiReducer = (state, action) => {
 export const UIStoreProvider = ({ children }) => {
   const { mode, preference, setThemePreference } = useThemeMode();
   const [state, dispatch] = useReducer(uiReducer, {
-    sidebarCollapsed: false,
+    sidebarCollapsed: typeof window !== "undefined" ? localStorage.getItem("swastha:sidebar_collapsed") === "true" : false,
     activeThreadId: typeof window !== "undefined" ? localStorage.getItem("swastha:last_thread_id") : null,
     toasts: [],
   });
@@ -47,6 +47,11 @@ export const UIStoreProvider = ({ children }) => {
     window.addEventListener("swastha:toast", onToastEvent);
     return () => window.removeEventListener("swastha:toast", onToastEvent);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("swastha:sidebar_collapsed", String(state.sidebarCollapsed));
+  }, [state.sidebarCollapsed]);
 
   const value = useMemo(
     () => ({

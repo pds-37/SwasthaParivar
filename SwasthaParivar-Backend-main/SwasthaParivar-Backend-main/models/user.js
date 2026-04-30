@@ -104,7 +104,7 @@ const userSchema = new mongoose.Schema({
     default: null,
     select: false,
   },
-  pushSubscription: { type: mongoose.Schema.Types.Mixed, default: null },
+  pushSubscriptions: { type: [mongoose.Schema.Types.Mixed], default: [] },
   activeHouseholdId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Household",

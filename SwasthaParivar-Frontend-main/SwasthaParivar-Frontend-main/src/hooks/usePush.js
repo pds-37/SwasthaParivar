@@ -33,17 +33,25 @@ export async function subscribePush() {
 
   try {
     const registration = await navigator.serviceWorker.ready;
+    
+    // Check if we already have a subscription
+    const existingSubscription = await registration.pushManager.getSubscription();
+    
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     });
 
-    await api.post("/notifications/subscribe", { subscription });
+    // Only send to backend if it's a new subscription or endpoint changed
+    if (!existingSubscription || existingSubscription.endpoint !== subscription.endpoint) {
+      await api.post("/notifications/subscribe", { subscription });
+    }
+    
     notify.success("Push notifications enabled.");
     return "subscribed";
   } catch (error) {
-    console.error("Subscription Error:", error);
-    notify.error("Failed to enable notifications. Try refreshing the page.");
+    console.error("Push Subscription Error:", error);
+    notify.error(error.message || "Failed to enable notifications. Try refreshing the page.");
     return "failed";
   }
 }
