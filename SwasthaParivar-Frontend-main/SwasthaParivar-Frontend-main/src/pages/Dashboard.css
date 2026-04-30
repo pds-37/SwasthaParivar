@@ -801,3 +801,149 @@
     top: var(--space-6);
   }
 }
+
+/* ── Mobile auto-fit fixes ───────────────────────────────── */
+
+.dashboard-page {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.dashboard-shell {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 auto;
+  overflow-x: hidden;
+}
+
+@media (max-width: 48rem) {
+  /* Tighter overview padding on phones */
+  .dashboard-overview {
+    padding: var(--space-6) var(--space-4);
+    grid-template-columns: 1fr;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  /* Shrink the orbit visual so it fits small screens */
+  .dashboard-overview__visual {
+    min-height: 12rem;
+    width: 100%;
+    max-width: 100vw;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    transform: scale(0.8);
+    transform-origin: center center;
+  }
+
+  .dashboard-orbit {
+    width: 12rem;
+    height: 12rem;
+    left: 50%;
+    margin-left: -6rem;
+  }
+
+  .dashboard-orbit--two {
+    width: 8rem;
+    height: 8rem;
+    margin-left: -4rem;
+  }
+
+  .dashboard-overview__core {
+    width: 8rem;
+    height: 8rem;
+    left: 50%;
+    margin-left: -4rem;
+    top: 50%;
+    margin-top: -4rem;
+  }
+
+  .dashboard-overview__core strong {
+    font-size: var(--text-3xl);
+  }
+
+  /* Force hide floating stat nodes – using !important to override .family-dashboard-shell variants */
+  .dashboard-overview__node {
+    display: none !important;
+  }
+
+  /* Family dashboard overrides for mobile */
+  .family-dashboard-shell .dashboard-overview__visual {
+    min-height: 14rem;
+  }
+
+  /* Stack section headers vertically on mobile */
+  .dashboard-section .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  /* Reduce action tile minimum height and padding */
+  .dashboard-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-action-tile {
+    min-height: auto;
+    padding: var(--space-5);
+  }
+
+  /* Smaller summary pills */
+  .dashboard-summary-pill {
+    font-size: var(--text-xs);
+    min-height: 2.25rem;
+    padding: 0 var(--space-3);
+  }
+
+  /* Prevent member card overflow */
+  .dashboard-member-row {
+    grid-template-columns: 1fr;
+    grid-auto-flow: row;
+    padding-bottom: 0;
+  }
+
+  .dashboard-member-card {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Reduce dashboard panel padding */
+  .dashboard-panel {
+    padding: var(--space-5);
+  }
+
+  /* Reduce dashboard overview heading size */
+  .dashboard-overview__copy h1 {
+    font-size: var(--text-3xl);
+  }
+}
+
+/* ── Extra-small phones (below ~416px) ───────────────────── */
+@media (max-width: 26rem) {
+  .dashboard-shell {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .dashboard-overview {
+    padding: var(--space-5) var(--space-3);
+  }
+
+  .dashboard-overview__visual {
+    min-height: 10rem;
+    transform: scale(0.7);
+  }
+
+  .dashboard-overview__copy h1 {
+    font-size: var(--text-2xl);
+  }
+
+  .dashboard-summary-pills {
+    gap: var(--space-2);
+  }
+
+  .dashboard-rail-hero__metrics {
+    grid-template-columns: 1fr;
+  }
+}
