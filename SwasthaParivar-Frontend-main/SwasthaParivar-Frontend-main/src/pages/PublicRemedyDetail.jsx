@@ -152,7 +152,7 @@ export default function PublicRemedyDetail() {
                 <div className="promo-card">
                   <h3>Get Family-Aware Recommendations</h3>
                   <p>Sign up to see which of these 2500+ remedies are safe for your specific family members based on age and conditions.</p>
-                  <Link to="/auth?mode=signup" className="button button-primary">
+                  <Link to="/auth?mode=signup" className="lib-button">
                     Create Free Profile
                   </Link>
                 </div>
