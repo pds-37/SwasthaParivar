@@ -50,6 +50,14 @@ export const useReports = () => {
     mutate: swr.mutate,
     uploadReport,
     analyzeReport,
+    deleteReport: async (reportId) => {
+      await api.delete(`/reports/${reportId}`);
+      await swr.mutate((previous) => {
+        const current = Array.isArray(previous) ? previous : previous?.reports || [];
+        return current.filter((report) => report.id !== reportId);
+      }, false);
+      swr.mutate();
+    },
   };
 };
 

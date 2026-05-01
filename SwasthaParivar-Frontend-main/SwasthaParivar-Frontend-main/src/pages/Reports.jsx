@@ -6,6 +6,7 @@ import {
   FileText,
   LoaderCircle,
   Sparkles,
+  Trash2,
   UploadCloud,
 } from "lucide-react";
 
@@ -190,7 +191,7 @@ const UploadReportModal = ({ members, onClose, onUploaded }) => {
 
 const Reports = () => {
   const { members, selfMember, activeView, loading: membersLoading } = useFamilyStore();
-  const { reports, loading: reportsLoading, mutate, uploadReport, analyzeReport } = useReports();
+  const { reports, loading: reportsLoading, mutate, uploadReport, analyzeReport, deleteReport } = useReports();
   const [showUpload, setShowUpload] = useState(false);
   const [memberFilter, setMemberFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -265,6 +266,18 @@ const Reports = () => {
       }
     } finally {
       setAnalyzingId("");
+    }
+  };
+  const handleDeleteReport = async (reportId) => {
+    if (!window.confirm("Are you sure you want to delete this report? This cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await deleteReport(reportId);
+      notify.success("Report deleted");
+    } catch (error) {
+      notify.error(error.message || "Could not delete report");
     }
   };
 
@@ -402,6 +415,15 @@ const Reports = () => {
                       ) : null}
                       <Button as="a" href={report.signedUrl} target="_blank" rel="noreferrer" variant="secondary" size="sm">
                         Open file
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="reports-card__delete"
+                        onClick={() => handleDeleteReport(report.id)}
+                        title="Delete report"
+                      >
+                        <Trash2 size={16} color="var(--color-danger)" />
                       </Button>
                     </div>
                   </div>
