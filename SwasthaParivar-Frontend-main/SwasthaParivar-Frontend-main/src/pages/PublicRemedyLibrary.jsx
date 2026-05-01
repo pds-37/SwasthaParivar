@@ -111,7 +111,7 @@ export default function PublicRemedyLibrary() {
                 <div className="category-icon">{sector.icon}</div>
                 <h3>{sector.label}</h3>
                 <p>{sector.description}</p>
-                <Link to={`/remedy-library/${sector.id}`} className="category-link">
+                <Link to="/auth?mode=signup" className="category-link">
                   Explore Remedies
                   <ChevronRight size={16} />
                 </Link>
