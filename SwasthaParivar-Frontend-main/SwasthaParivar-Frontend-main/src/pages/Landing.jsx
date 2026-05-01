@@ -219,6 +219,7 @@ const Landing = () => {
         <nav className="landing-footer__nav" aria-label="Footer navigation">
           <Link to="/">Home</Link>
           <a href="#features">Features</a>
+          <Link to="/remedy-library">Remedy Library</Link>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>
           <Link to="/auth?mode=signin">Login</Link>

@@ -34,6 +34,8 @@ const Remedies = lazy(() => import("./pages/remedies.jsx"));
 const AIChat = lazy(() => import("./pages/AIChat"));
 const Reminders = lazy(() => import("./pages/Reminders"));
 const Settings = lazy(() => import("./pages/Settings"));
+const PublicRemedyLibrary = lazy(() => import("./pages/PublicRemedyLibrary"));
+const PublicRemedyDetail = lazy(() => import("./pages/PublicRemedyDetail"));
 const MotionDiv = motion.div;
 
 const RouteScreen = ({ page, componentProps }) => {
@@ -123,6 +125,9 @@ const AppRoutes = () => {
       <Route path="/privacy" element={<RouteScreen page={Privacy} />} />
       <Route path="/terms" element={<RouteScreen page={Terms} />} />
       <Route path="/pricing" element={<RouteScreen page={Pricing} />} />
+      <Route path="/remedy-library" element={<RouteScreen page={PublicRemedyLibrary} />} />
+      <Route path="/remedy-library/:sectorId" element={<RouteScreen page={PublicRemedyLibrary} />} />
+      <Route path="/remedy/:id" element={<RouteScreen page={PublicRemedyDetail} />} />
       <Route path="/join/:code" element={<RouteScreen page={JoinFamily} />} />
       <Route
         path="/auth"

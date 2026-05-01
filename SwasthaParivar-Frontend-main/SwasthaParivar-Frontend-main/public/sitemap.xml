@@ -3,15 +3,37 @@
   <!-- Home Page -->
   <url>
     <loc>https://swastha-parivar-ten.vercel.app/</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   
+  <!-- Remedy Library (NEW) -->
+  <url>
+    <loc>https://swastha-parivar-ten.vercel.app/remedy-library</loc>
+    <lastmod>2026-05-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Remedy Categories (NEW) -->
+  <url><loc>https://swastha-parivar-ten.vercel.app/remedy-library/cold_flu</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://swastha-parivar-ten.vercel.app/remedy-library/digestion</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://swastha-parivar-ten.vercel.app/remedy-library/headache</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://swastha-parivar-ten.vercel.app/remedy-library/skin</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://swastha-parivar-ten.vercel.app/remedy-library/sleep</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://swastha-parivar-ten.vercel.app/remedy-library/stress</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://swastha-parivar-ten.vercel.app/remedy-library/immunity</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://swastha-parivar-ten.vercel.app/remedy-library/women</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  
+  <!-- Featured Remedies (NEW) -->
+  <url><loc>https://swastha-parivar-ten.vercel.app/remedy/r1</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://swastha-parivar-ten.vercel.app/remedy/r2</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  
   <!-- Pricing Page -->
   <url>
     <loc>https://swastha-parivar-ten.vercel.app/pricing</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -19,7 +41,7 @@
   <!-- Privacy Policy -->
   <url>
     <loc>https://swastha-parivar-ten.vercel.app/privacy</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
@@ -27,7 +49,7 @@
   <!-- Terms of Service -->
   <url>
     <loc>https://swastha-parivar-ten.vercel.app/terms</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>

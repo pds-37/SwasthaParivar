@@ -1,0 +1,209 @@
+.remedy-detail {
+  background: var(--color-page);
+  padding: 8rem 0 5rem;
+  min-height: 100vh;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  margin-bottom: 2rem;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: var(--color-primary-strong);
+}
+
+.remedy-article {
+  background: white;
+  border-radius: 2rem;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--color-border);
+}
+
+.article-header {
+  padding: 4rem 3rem;
+  color: white;
+  position: relative;
+}
+
+.article-header h1 {
+  font-size: 3rem;
+  font-family: var(--font-display);
+  margin-top: 1rem;
+}
+
+.tag {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.subtitle {
+  opacity: 0.9;
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.article-body {
+  padding: 3rem;
+}
+
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.stat-card {
+  padding: 1.5rem;
+  background: var(--color-page);
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stat-card label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.grid-main {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 3rem;
+}
+
+.section {
+  margin-bottom: 3rem;
+}
+
+.section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: var(--color-primary-strong);
+}
+
+.ingredient-list {
+  list-style: none;
+  padding: 0;
+}
+
+.ingredient-list li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ingredient-list li::before {
+  content: "•";
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.step-list {
+  padding-left: 1.5rem;
+}
+
+.step-list li {
+  padding-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.sidebar-card {
+  padding: 1.5rem;
+  border-radius: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ayurveda-card {
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-primary-soft-strong);
+}
+
+.safety-card {
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: var(--color-primary-strong);
+}
+
+.safety-card .card-head {
+  color: #c53030;
+}
+
+.promo-card {
+  padding: 2rem;
+  background: var(--color-primary-strong);
+  color: white;
+  border-radius: 1.5rem;
+  text-align: center;
+}
+
+.promo-card h3 {
+  font-size: 1.125rem;
+  margin-bottom: 1rem;
+}
+
+.promo-card p {
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.9;
+}
+
+.article-footer {
+  padding: 2rem 3rem;
+  background: var(--color-page);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.share-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--color-border);
+  background: white;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 992px) {
+  .grid-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .quick-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .article-header h1 {
+    font-size: 2rem;
+  }
+}
