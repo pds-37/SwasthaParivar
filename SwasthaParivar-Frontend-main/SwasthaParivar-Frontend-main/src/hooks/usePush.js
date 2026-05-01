@@ -3,11 +3,25 @@ import api from "../lib/api";
 import notify from "../lib/notify";
 
 function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  if (!base64String) return new Uint8Array(0);
 
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map((character) => character.charCodeAt(0)));
+  // Remove potential hidden characters, whitespace and ensure URL-safe base64 is converted
+  const cleanBase64 = base64String.trim().replace(/\s/g, "");
+  const padding = "=".repeat((4 - (cleanBase64.length % 4)) % 4);
+  const base64 = (cleanBase64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  try {
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  } catch (error) {
+    console.error("VAPID key decoding failed:", error, "String was:", base64);
+    throw new Error("Invalid VAPID public key format");
+  }
 }
 
 export async function subscribePush() {
