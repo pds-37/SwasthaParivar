@@ -42,7 +42,7 @@ export default function PublicRemedyLibrary() {
       </Helmet>
 
       <section className="library-hero">
-        <div className="container">
+        <div className="lib-container">
           <Motion.div 
             className="hero-badge"
             initial={{ opacity: 0, y: 20 }}
@@ -92,8 +92,8 @@ export default function PublicRemedyLibrary() {
       </section>
 
       <section className="categories-section">
-        <div className="container">
-          <div className="section-header">
+        <div className="lib-container">
+          <div className="lib-section-header">
             <h2>Browse by Category</h2>
             <p>Select a health sector to explore targeted natural solutions.</p>
           </div>
@@ -122,8 +122,8 @@ export default function PublicRemedyLibrary() {
       </section>
 
       <section className="featured-section">
-        <div className="container">
-          <div className="section-header">
+        <div className="lib-container">
+          <div className="lib-section-header">
             <h2>Featured Remedies</h2>
             <p>Our most trusted and requested traditional recipes.</p>
           </div>
@@ -159,7 +159,7 @@ export default function PublicRemedyLibrary() {
           
           <div className="cta-block">
             <p>Looking for a personalized recommendation for your family?</p>
-            <Link to="/auth?mode=signup" className="button button-primary">
+            <Link to="/auth?mode=signup" className="lib-button lib-button-primary">
               Join SwasthaParivar Free
             </Link>
           </div>

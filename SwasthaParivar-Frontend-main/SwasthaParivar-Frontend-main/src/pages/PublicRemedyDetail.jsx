@@ -53,7 +53,7 @@ export default function PublicRemedyDetail() {
         </script>
       </Helmet>
 
-      <div className="container">
+      <div className="lib-container">
         <Link to="/remedy-library" className="back-link">
           <ArrowLeft size={16} />
           Back to Library
@@ -104,12 +104,12 @@ export default function PublicRemedyDetail() {
 
             <div className="grid-main">
               <div className="main-content">
-                <section className="section">
+                <section className="lib-section">
                   <h2>Description</h2>
                   <p>{remedy.description}</p>
                 </section>
 
-                <section className="section">
+                <section className="lib-section">
                   <h2>Ingredients</h2>
                   <ul className="ingredient-list">
                     {remedy.ingredients.map(ing => (
@@ -118,7 +118,7 @@ export default function PublicRemedyDetail() {
                   </ul>
                 </section>
 
-                <section className="section">
+                <section className="lib-section">
                   <h2>Preparation Steps</h2>
                   <ol className="step-list">
                     {remedy.steps.map((step, i) => (
@@ -161,7 +161,7 @@ export default function PublicRemedyDetail() {
           </div>
 
           <footer className="article-footer">
-            <button className="share-button" onClick={() => window.print()}>
+            <button className="lib-share-button" onClick={() => window.print()}>
               <Share2 size={16} />
               Print Recipe
             </button>

@@ -1,3 +1,4 @@
+/* Scoped to .remedy-detail to prevent breaking main app layout */
 .remedy-detail {
   background: var(--color-page);
   padding: 8rem 0 5rem;
@@ -5,7 +6,13 @@
   color: var(--color-text-primary);
 }
 
-.back-link {
+.remedy-detail .lib-container {
+  max-width: 75rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.remedy-detail .back-link {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -15,12 +22,12 @@
   transition: all 0.2s;
 }
 
-.back-link:hover {
+.remedy-detail .back-link:hover {
   color: var(--color-primary-strong);
   transform: translateX(-0.25rem);
 }
 
-.remedy-article {
+.remedy-detail .remedy-article {
   background: var(--color-surface);
   border-radius: 2rem;
   overflow: hidden;
@@ -29,27 +36,28 @@
   backdrop-filter: blur(0.625rem);
 }
 
-.article-header {
+.remedy-detail .article-header {
   padding: 5rem 3rem;
   color: white;
   position: relative;
 }
 
-.article-header h1 {
+.remedy-detail .article-header h1 {
   font-size: clamp(2rem, 5vw, 3.5rem);
   font-family: var(--font-display);
   margin-top: 1rem;
   letter-spacing: -0.03em;
   line-height: 1.1;
+  color: white;
 }
 
-.tags {
+.remedy-detail .tags {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.tag {
+.remedy-detail .tag {
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(0.25rem);
   padding: 0.375rem 1rem;
@@ -61,25 +69,25 @@
   letter-spacing: 0.05em;
 }
 
-.subtitle {
+.remedy-detail .subtitle {
   opacity: 0.9;
   font-weight: 500;
   margin-top: 0.75rem;
   font-size: 1.125rem;
 }
 
-.article-body {
+.remedy-detail .article-body {
   padding: 4rem 3rem;
 }
 
-.quick-stats {
+.remedy-detail .quick-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   margin-bottom: 4rem;
 }
 
-.stat-card {
+.remedy-detail .stat-card {
   padding: 1.75rem;
   background: color-mix(in srgb, var(--color-text-primary) 3%, transparent);
   border-radius: 1.25rem;
@@ -89,11 +97,11 @@
   border: 1px solid var(--color-border-subtle);
 }
 
-.stat-card svg {
+.remedy-detail .stat-card svg {
   color: var(--color-primary);
 }
 
-.stat-card label {
+.remedy-detail .stat-card label {
   display: block;
   font-size: 0.75rem;
   color: var(--color-text-secondary);
@@ -102,22 +110,22 @@
   font-weight: 700;
 }
 
-.stat-card strong {
+.remedy-detail .stat-card strong {
   font-size: 1.125rem;
   color: var(--color-text-primary);
 }
 
-.grid-main {
+.remedy-detail .grid-main {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 4rem;
 }
 
-.section {
+.remedy-detail .lib-section {
   margin-bottom: 4rem;
 }
 
-.section h2 {
+.remedy-detail .lib-section h2 {
   font-size: 1.75rem;
   margin-bottom: 1.75rem;
   color: var(--color-text-primary);
@@ -126,12 +134,12 @@
   padding-left: 1.25rem;
 }
 
-.ingredient-list {
+.remedy-detail .ingredient-list {
   list-style: none;
   padding: 0;
 }
 
-.ingredient-list li {
+.remedy-detail .ingredient-list li {
   padding: 1rem 0;
   border-bottom: 1px solid var(--color-border-subtle);
   display: flex;
@@ -140,26 +148,26 @@
   font-size: 1.125rem;
 }
 
-.ingredient-list li::before {
+.remedy-detail .ingredient-list li::before {
   content: "✦";
   color: var(--color-primary);
   font-weight: bold;
 }
 
-.step-list {
+.remedy-detail .step-list {
   padding-left: 1.5rem;
   list-style: none;
   counter-reset: steps;
 }
 
-.step-list li {
+.remedy-detail .step-list li {
   padding-bottom: 2rem;
   line-height: 1.7;
   font-size: 1.125rem;
   position: relative;
 }
 
-.step-list li::before {
+.remedy-detail .step-list li::before {
   counter-increment: steps;
   content: counter(steps);
   position: absolute;
@@ -177,30 +185,30 @@
   font-weight: 700;
 }
 
-.sidebar-card {
+.remedy-detail .sidebar-card {
   padding: 2rem;
   border-radius: 1.5rem;
   margin-bottom: 2rem;
   box-shadow: var(--shadow-sm);
 }
 
-.ayurveda-card {
+.remedy-detail .ayurveda-card {
   background: var(--color-primary-soft);
   border: 1px solid var(--color-primary-soft-strong);
   color: var(--color-primary-strong);
 }
 
-.ayurveda-card p {
+.remedy-detail .ayurveda-card p {
   line-height: 1.6;
   font-weight: 500;
 }
 
-.safety-card {
+.remedy-detail .safety-card {
   background: color-mix(in srgb, var(--color-error) 5%, var(--color-surface));
   border: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
 }
 
-.card-head {
+.remedy-detail .card-head {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -208,11 +216,11 @@
   font-weight: 700;
 }
 
-.safety-card .card-head {
+.remedy-detail .safety-card .card-head {
   color: var(--color-error);
 }
 
-.promo-card {
+.remedy-detail .promo-card {
   padding: 2.5rem;
   background: var(--color-primary-strong);
   color: white;
@@ -221,20 +229,22 @@
   box-shadow: var(--shadow-lg);
 }
 
-.promo-card h3 {
+.remedy-detail .promo-card h3 {
   font-size: 1.25rem;
   margin-bottom: 1.25rem;
   font-weight: 700;
+  color: white;
 }
 
-.promo-card p {
+.remedy-detail .promo-card p {
   font-size: 0.9375rem;
   margin-bottom: 2rem;
   opacity: 0.9;
   line-height: 1.6;
+  color: white;
 }
 
-.article-footer {
+.remedy-detail .article-footer {
   padding: 2.5rem 3rem;
   background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
   display: flex;
@@ -242,7 +252,7 @@
   border-top: 1px solid var(--color-border-subtle);
 }
 
-.share-button {
+.remedy-detail .lib-share-button {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -256,33 +266,33 @@
   cursor: pointer;
 }
 
-.share-button:hover {
+.remedy-detail .lib-share-button:hover {
   background: var(--color-primary-soft);
   color: var(--color-primary-strong);
   border-color: var(--color-primary-soft-strong);
 }
 
 @media (max-width: 64rem) {
-  .grid-main {
+  .remedy-detail .grid-main {
     grid-template-columns: 1fr;
     gap: 3rem;
   }
 }
 
 @media (max-width: 48rem) {
-  .quick-stats {
+  .remedy-detail .quick-stats {
     grid-template-columns: 1fr;
   }
   
-  .article-header {
+  .remedy-detail .article-header {
     padding: 4rem 2rem;
   }
 
-  .article-body {
+  .remedy-detail .article-body {
     padding: 3rem 2rem;
   }
 
-  .article-header h1 {
+  .remedy-detail .article-header h1 {
     font-size: 2.25rem;
   }
 }

@@ -1,3 +1,4 @@
+/* Scoped to .public-library to prevent breaking main app layout */
 .public-library {
   min-height: 100vh;
   background: var(--color-page);
@@ -5,48 +6,49 @@
   color: var(--color-text-primary);
 }
 
-.library-hero {
+.public-library .library-hero {
   background: linear-gradient(180deg, #134a57 0%, #1a5b6a 100%);
   color: white;
   padding: 8rem 0 6rem;
   text-align: center;
 }
 
-.library-hero h1 {
+.public-library .library-hero h1 {
   font-size: clamp(2.5rem, 5vw, 3.5rem);
   font-family: var(--font-display);
   margin-bottom: 1.5rem;
   line-height: 1.1;
+  color: white;
 }
 
-.library-hero p {
+.public-library .library-hero p {
   font-size: 1.25rem;
   opacity: 0.9;
-  max-width: 700px;
+  max-width: 43.75rem;
   margin: 0 auto 2.5rem;
   line-height: 1.6;
 }
 
-.hero-badge {
+.public-library .hero-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 100px;
+  border-radius: 6.25rem;
   font-size: 0.875rem;
   margin-bottom: 1.5rem;
 }
 
-.hero-trust {
+.public-library .hero-trust {
   display: flex;
   justify-content: center;
   gap: 3rem;
   flex-wrap: wrap;
 }
 
-.trust-item {
+.public-library .trust-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -54,41 +56,42 @@
   font-weight: 500;
 }
 
-.container {
+.public-library .lib-container {
   max-width: 75rem;
   margin: 0 auto;
   padding: 0 1.5rem;
 }
 
-.categories-section {
+.public-library .categories-section {
   padding: 5rem 0;
 }
 
-.section-header {
+.public-library .lib-section-header {
   margin-bottom: 3rem;
   text-align: left;
   max-width: 50rem;
 }
 
-.section-header h2 {
+.public-library .lib-section-header h2 {
   font-size: 2.25rem;
   font-family: var(--font-display);
   margin-bottom: 0.5rem;
   letter-spacing: -0.02em;
+  color: var(--color-text-primary);
 }
 
-.section-header p {
+.public-library .lib-section-header p {
   color: var(--color-text-secondary);
   font-size: 1.125rem;
 }
 
-.categories-grid {
+.public-library .categories-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
   gap: 1.5rem;
 }
 
-.category-card {
+.public-library .category-card {
   background: var(--color-surface);
   padding: 2.5rem;
   border-radius: 1.5rem;
@@ -98,32 +101,33 @@
   box-shadow: var(--shadow-sm);
 }
 
-.category-card:hover {
+.public-library .category-card:hover {
   border-color: var(--color-primary-soft-strong);
   box-shadow: var(--shadow-md);
   transform: translateY(-0.25rem);
 }
 
-.category-icon {
+.public-library .category-icon {
   font-size: 2.5rem;
   margin-bottom: 1.5rem;
   display: block;
 }
 
-.category-card h3 {
+.public-library .category-card h3 {
   font-size: 1.5rem;
   margin-bottom: 0.75rem;
   font-weight: 700;
+  color: var(--color-text-primary);
 }
 
-.category-card p {
+.public-library .category-card p {
   font-size: 1rem;
   color: var(--color-text-secondary);
   margin-bottom: 1.5rem;
   line-height: 1.6;
 }
 
-.category-link {
+.public-library .category-link {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -132,18 +136,18 @@
   font-size: 0.9375rem;
 }
 
-.featured-section {
+.public-library .featured-section {
   padding: 5rem 0;
   background: color-mix(in srgb, var(--color-primary) 4%, transparent);
 }
 
-.remedies-grid {
+.public-library .remedies-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
   gap: 2rem;
 }
 
-.remedy-snippet {
+.public-library .remedy-snippet {
   background: var(--color-surface);
   border-radius: 1.25rem;
   overflow: hidden;
@@ -152,18 +156,18 @@
   transition: all 0.3s ease;
 }
 
-.remedy-snippet:hover {
+.public-library .remedy-snippet:hover {
   transform: translateY(-0.25rem);
   box-shadow: var(--shadow-md);
   border-color: var(--color-primary-soft-strong);
 }
 
-.snippet-header {
+.public-library .snippet-header {
   height: 0.5rem;
   position: relative;
 }
 
-.rating {
+.public-library .rating {
   position: absolute;
   top: 1rem;
   right: 1rem;
@@ -180,11 +184,11 @@
   z-index: 2;
 }
 
-.snippet-body {
+.public-library .snippet-body {
   padding: 2rem;
 }
 
-.snippet-meta {
+.public-library .snippet-meta {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -196,14 +200,15 @@
   letter-spacing: 0.05em;
 }
 
-.remedy-snippet h3 {
+.public-library .remedy-snippet h3 {
   font-size: 1.25rem;
   margin-bottom: 0.75rem;
   font-weight: 700;
   line-height: 1.3;
+  color: var(--color-text-primary);
 }
 
-.remedy-snippet p {
+.public-library .remedy-snippet p {
   font-size: 0.9375rem;
   color: var(--color-text-secondary);
   margin-bottom: 1.5rem;
@@ -214,7 +219,7 @@
   line-height: 1.5;
 }
 
-.view-link {
+.public-library .view-link {
   display: block;
   text-align: center;
   padding: 0.875rem;
@@ -226,12 +231,12 @@
   transition: all 0.2s;
 }
 
-.view-link:hover {
+.public-library .view-link:hover {
   background: var(--color-primary-soft-strong);
   transform: scale(1.02);
 }
 
-.cta-block {
+.public-library .cta-block {
   margin-top: 5rem;
   text-align: center;
   padding: 4rem 2rem;
@@ -241,13 +246,14 @@
   box-shadow: var(--shadow-lg);
 }
 
-.cta-block p {
+.public-library .cta-block p {
   font-size: 1.25rem;
   margin-bottom: 2rem;
   font-weight: 500;
+  color: white;
 }
 
-.button {
+.public-library .lib-button {
   display: inline-flex;
   padding: 1rem 2.5rem;
   border-radius: 6.25rem;
@@ -255,26 +261,26 @@
   transition: all 0.2s;
 }
 
-.button-primary {
+.public-library .lib-button-primary {
   background: white;
   color: var(--color-primary-strong);
 }
 
-.button:hover {
+.public-library .lib-button:hover {
   transform: translateY(-0.125rem);
   box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 60rem) {
-  .library-hero {
+  .public-library .library-hero {
     padding: 6rem 1.5rem 4rem;
   }
   
-  .hero-trust {
+  .public-library .hero-trust {
     gap: 1rem 2rem;
   }
 
-  .section-header {
+  .public-library .lib-section-header {
     text-align: center;
     margin-left: auto;
     margin-right: auto;
