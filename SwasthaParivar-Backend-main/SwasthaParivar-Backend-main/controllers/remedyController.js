@@ -9,9 +9,9 @@ import { logger } from "../utils/logger.js";
 const activeProfileStatusFilter = () => ({ $ne: "archived" });
 const JSON_FENCE_PATTERN = /```json|```/gi;
 const MODEL_CANDIDATES = [
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
   "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
 ];
 const NON_REMEDY_QUERY_PATTERN =
   /\b(zinc deficiency|low zinc|zinc deficient|iron deficiency|low iron|anemi[ae]|vitamin deficiency|b12 deficiency|vitamin b12 deficiency)\b/i;
@@ -435,6 +435,10 @@ async function searchLibrary(query = "") {
 
     let score = preferredIds.has(remedy.id) ? 6 : 0;
 
+    if (remedy.match && remedy.match instanceof RegExp && remedy.match.test(normalizedQuery)) {
+      score += 10;
+    }
+
     const symTags = remedy.symptomTags || remedy.tags || [];
     symTags.forEach((symptom) => {
       if (normalizedQuery.includes(String(symptom || "").toLowerCase())) {
@@ -444,14 +448,14 @@ async function searchLibrary(query = "") {
 
     queryTokens.forEach((token) => {
       if (searchable.includes(token)) {
-        score += 2;
+        score += 3;
       }
     });
 
     return { remedy, score };
   }).sort((a, b) => b.score - a.score);
 
-  if (rankedFallback[0]?.score >= 7) {
+  if (rankedFallback[0]?.score >= 5) {
     const best = rankedFallback[0].remedy;
     return {
       name: best.name,
@@ -637,7 +641,7 @@ Return this exact shape:
     throw new Error("No Gemini API key configured.");
   }
 
-  const modelsToTry = getGeminiCandidateModels(["gemini-2.5-flash", "gemini-2.0-flash"]);
+  const modelsToTry = getGeminiCandidateModels(["gemini-2.0-flash", "gemini-1.5-flash"]);
   let lastError = null;
 
   for (const apiKey of apiKeys) {

@@ -632,6 +632,7 @@ export default function Remedies() {
   const [openRecipe, setOpenRecipe] = useState(null);
   const [generatedRemedy, setGeneratedRemedy] = useState(null);
   const [generatedError, setGeneratedError] = useState("");
+  const [generating, setGenerating] = useState(false);
   const generatedSectionRef = useRef(null);
 
   const resetGeneratedState = () => {
@@ -780,13 +781,14 @@ export default function Remedies() {
 
     setGeneratedError("");
     setGeneratedRemedy(null);
+    setGenerating(true);
 
     // Attempt internet search via backend if online
     try {
       if (!navigator.onLine) {
         throw new Error("Offline");
       }
-      notify.success("Searching for the best remedy...");
+      
       const res = await api.post("/remedies/generate", {
         query: seedText,
         memberId: selectedMemberId,
@@ -811,6 +813,8 @@ export default function Remedies() {
         return;
       }
       setGeneratedError(err?.message || "No remedy could be found or generated.");
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -1023,6 +1027,30 @@ export default function Remedies() {
         onShare={shareRemedy}
         focusLabel={focusMembersLabel}
       />
+
+      {generating && (
+        <Motion.div 
+          className="remedy-loader-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <div className="remedy-loader-card">
+            <div className="remedy-loader-icon">
+              <Sparkles size={32} className="spin" />
+            </div>
+            <h3>Analyzing Symptoms</h3>
+            <p>Scanning 2,500+ remedies and cross-checking family safety profiles...</p>
+            <div className="remedy-loader-bar">
+              <Motion.div 
+                className="remedy-loader-progress"
+                animate={{ width: ["0%", "40%", "70%", "100%"] }}
+                transition={{ duration: 4, times: [0, 0.4, 0.8, 1], repeat: Infinity }}
+              />
+            </div>
+          </div>
+        </Motion.div>
+      )}
     </div>
   );
 }
