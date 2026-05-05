@@ -1,6 +1,7 @@
 import Report from "../models/reportmodel.js";
 import householdService from "../services/household/HouseholdService.js";
 import { reviewHealthAttachment } from "../services/ai/reportReviewService.js";
+import aiContextService from "../services/ai/aiContextService.js";
 import {
   MAX_UPLOAD_BYTES,
   buildSignedDownloadToken,
@@ -186,6 +187,10 @@ export const analyzeReport = async (req, res) => {
 
     const memberResult = await householdService.findAccessibleMember(req.userId, report.memberId);
     const memberLabel = memberResult?.member?.name || "Family member";
+    
+    // Fetch the Health Memory (Shared Context)
+    const healthContext = await aiContextService.getMemberHealthContext(req.userId, report.memberId);
+    
     let review;
     try {
       review = await reviewHealthAttachment({
@@ -193,6 +198,7 @@ export const analyzeReport = async (req, res) => {
         mimeType: report.mimeType,
         fileName: report.originalName,
         memberLabel,
+        healthContext, // Pass the memory here
       });
     } catch (reviewError) {
       review = {

@@ -521,9 +521,9 @@ const AIChat = () => {
     [contextThreadKey]
   );
   
-  const { threads, saveMemory, deleteThread } = useAIChat(contextThreadKey, memberValue);
+  const { threads, saveMemory, deleteThread, loading: chatLoading } = useAIChat(contextThreadKey, memberValue);
   const hasMessages = messages.length > 0;
-  const isBusy = loading || isStreaming || voiceProcessing;
+  const isBusy = loading || isStreaming || voiceProcessing || chatLoading;
 
   useEffect(() => {
     if (activeView === "self" && selfMember?._id) {

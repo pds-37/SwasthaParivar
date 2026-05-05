@@ -1,44 +1,74 @@
-import { useMemo } from "react";
-import useSWR from "swr";
+import { useMemo, useState, useEffect } from "react";
 
-import api from "../lib/api";
+const STORAGE_PREFIX = "swastha:ai_history:";
 
 export const useAIChat = (contextKey, memberLabel) => {
-  const swrKey = useMemo(
-    () => ["/ai/memory", contextKey || "family", memberLabel || ""],
-    [contextKey, memberLabel]
-  );
-  const swr = useSWR(swrKey, ([, activeContextKey, activeMemberLabel]) =>
-    api.get("/ai/memory", {
-      params: {
-        ...(activeContextKey ? { contextKey: activeContextKey } : {}),
-        ...(activeMemberLabel ? { member: activeMemberLabel } : {}),
-      },
-    })
-  );
+  const [threads, setThreads] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const threads = useMemo(() => {
-    if (Array.isArray(swr.data?.threads)) return swr.data.threads;
-    if (Array.isArray(swr.data?.data?.threads)) return swr.data.data.threads;
-    return [];
-  }, [swr.data]);
+  // Load threads from local storage on mount or when context changes
+  useEffect(() => {
+    const storageKey = `${STORAGE_PREFIX}${contextKey || "family"}`;
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        setThreads(JSON.parse(stored));
+      } else {
+        setThreads([]);
+      }
+    } catch (err) {
+      console.error("Failed to load local AI history", err);
+      setThreads([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [contextKey]);
 
   const saveMemory = async (payload) => {
-    const res = await api.post("/ai/memory", payload);
-    swr.mutate();
-    return res;
+    const storageKey = `${STORAGE_PREFIX}${contextKey || "family"}`;
+    
+    // In our hybrid model, we don't save the full history to the cloud
+    // But we generate a local thread ID if one doesn't exist
+    const threadId = payload.threadId || `local_${Date.now()}`;
+    
+    setThreads(prev => {
+      let next;
+      const existingIndex = prev.findIndex(t => t._id === threadId);
+      
+      const newThread = {
+        _id: threadId,
+        title: payload.title || "New Chat",
+        member: payload.member,
+        messages: payload.messages,
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (existingIndex > -1) {
+        next = [...prev];
+        next[existingIndex] = newThread;
+      } else {
+        next = [newThread, ...prev];
+      }
+
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      return next;
+    });
+
+    return { threadId };
   };
 
   const deleteThread = async (id) => {
-    await api.delete(`/ai/memory/${id}`);
-    swr.mutate();
+    const storageKey = `${STORAGE_PREFIX}${contextKey || "family"}`;
+    setThreads(prev => {
+      const next = prev.filter(t => t._id !== id);
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      return next;
+    });
   };
 
   return {
     threads,
-    loading: swr.isLoading,
-    error: swr.error,
-    mutate: swr.mutate,
+    loading: isLoading,
     saveMemory,
     deleteThread,
   };

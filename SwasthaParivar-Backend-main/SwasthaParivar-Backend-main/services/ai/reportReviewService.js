@@ -41,7 +41,7 @@ const getCandidateModels = () =>
 const isSupportedHealthAttachment = (mimeType = "") =>
   String(mimeType).startsWith("image/") || SUPPORTED_REVIEW_MIME_TYPES.includes(String(mimeType));
 
-const buildReviewPrompt = ({ mimeType, fileName, memberLabel }) =>
+const buildReviewPrompt = ({ mimeType, fileName, memberLabel, healthContext }) =>
   [
     "You are validating a file uploaded into a family health application.",
     "Decide whether this file looks like a genuine health or medical report.",
@@ -52,11 +52,12 @@ const buildReviewPrompt = ({ mimeType, fileName, memberLabel }) =>
     '{"isHealthReport": true, "confidence": "high", "documentType": "Lab report", "reason": "Why you decided this.", "summary": "Short medical summary for the app, or empty string if invalid."}',
     "Keep reason concise and keep summary under 120 words.",
     memberLabel ? `Selected family member: ${memberLabel}.` : "",
+    healthContext ? `Member Health Context:\n${healthContext}` : "",
     fileName ? `Uploaded file name: ${fileName}.` : "",
     mimeType ? `Uploaded mime type: ${mimeType}.` : "",
   ]
     .filter(Boolean)
-    .join(" ");
+    .join("\n\n");
 
 const buildMedicineFallbackSummary = (medicineName = "") =>
   [
@@ -116,7 +117,7 @@ const normalizeAttachmentInsight = (value = {}) => {
   };
 };
 
-const buildAttachmentInsightPrompt = ({ mimeType, fileName, memberLabel }) =>
+const buildAttachmentInsightPrompt = ({ mimeType, fileName, memberLabel, healthContext }) =>
   [
     "You are reviewing an uploaded file inside a family health app.",
     'Classify it into exactly one attachmentType: "report", "medicine", or "other".',
@@ -130,13 +131,20 @@ const buildAttachmentInsightPrompt = ({ mimeType, fileName, memberLabel }) =>
     "For report images, summary should be a short markdown summary of the report in under 140 words.",
     "For other files, keep summary empty.",
     memberLabel ? `Selected family member: ${memberLabel}.` : "",
+    healthContext ? `Member Health Context:\n${healthContext}` : "",
     fileName ? `Uploaded file name: ${fileName}.` : "",
     mimeType ? `Uploaded mime type: ${mimeType}.` : "",
   ]
     .filter(Boolean)
-    .join(" ");
+    .join("\n\n");
 
-export const reviewHealthAttachment = async ({ base64Data, mimeType, fileName, memberLabel }) => {
+export const reviewHealthAttachment = async ({
+  base64Data,
+  mimeType,
+  fileName,
+  memberLabel,
+  healthContext,
+}) => {
   if (!base64Data || !mimeType) {
     throw new Error("Attachment data and mime type are required");
   }
@@ -167,7 +175,7 @@ export const reviewHealthAttachment = async ({ base64Data, mimeType, fileName, m
     });
   }
 
-  const prompt = buildReviewPrompt({ mimeType, fileName, memberLabel });
+  const prompt = buildReviewPrompt({ mimeType, fileName, memberLabel, healthContext });
   let lastError = null;
 
   for (const apiKey of apiKeys) {
@@ -214,7 +222,13 @@ export const reviewHealthAttachment = async ({ base64Data, mimeType, fileName, m
   throw lastError || new Error("No Gemini model succeeded for report review");
 };
 
-export const triageHealthAttachment = async ({ base64Data, mimeType, fileName, memberLabel }) => {
+export const triageHealthAttachment = async ({
+  base64Data,
+  mimeType,
+  fileName,
+  memberLabel,
+  healthContext,
+}) => {
   if (!base64Data || !mimeType) {
     throw new Error("Attachment data and mime type are required");
   }
@@ -243,7 +257,7 @@ export const triageHealthAttachment = async ({ base64Data, mimeType, fileName, m
     });
   }
 
-  const prompt = buildAttachmentInsightPrompt({ mimeType, fileName, memberLabel });
+  const prompt = buildAttachmentInsightPrompt({ mimeType, fileName, memberLabel, healthContext });
   let lastError = null;
 
   for (const apiKey of apiKeys) {

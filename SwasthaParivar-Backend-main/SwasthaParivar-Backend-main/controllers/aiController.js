@@ -3,6 +3,7 @@ import Reminder from "../models/remindermodel.js";
 import AIInsight from "../models/aiinsightmodel.js";
 import { triageHealthAttachment } from "../services/ai/reportReviewService.js";
 import { generateGeminiText } from "../services/ai/geminiService.js";
+import aiContextService from "../services/ai/aiContextService.js";
 import householdService from "../services/household/HouseholdService.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
@@ -703,10 +704,12 @@ async function buildConversationContext(userId, selectedMember) {
     };
   }
 
+  const healthSummary = await aiContextService.getMemberHealthContext(userId, member._id);
+
   return {
     focusLabel: member.name,
     memberId: member._id,
-    summary: summarizeMember(member),
+    summary: healthSummary,
   };
 }
 
@@ -760,6 +763,7 @@ Core Competencies:
 - Medical Precision: Use the 'Saved family context' to personalize advice (e.g., check for allergies before suggesting a remedy).
 - Safety First: If symptoms sound urgent (chest pain, high fever in infants, bleeding), prioritize advising professional medical care.
 - Scope: Help with symptoms, medicines, reports, reminders, vitals, and family wellness. Politely pivot other topics back to health.
+- Language Mirroring: ALWAYS respond in the same language as the user's latest message. If the user asks in Hindi (using either Devanagri or Roman/Hinglish script), respond in Hindi. If they ask in English, respond in English.
 
 Tone: Professional, calm, and supportive. Avoid sounding like a bot.
 
