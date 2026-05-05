@@ -651,8 +651,7 @@ Return this exact shape:
     for (const modelName of modelsToTry) {
       try {
         const model = genAI.getGenerativeModel({ 
-          model: modelName,
-          tools: [{ googleSearch: {} }]
+          model: modelName
         });
         const result = await model.generateContent([{ text: prompt }]);
         const text = result?.response?.text?.()?.trim();

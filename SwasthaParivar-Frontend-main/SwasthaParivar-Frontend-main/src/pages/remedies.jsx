@@ -889,9 +889,22 @@ export default function Remedies() {
           </label>
 
           <div className="hero-panel__actions">
-            <button className="action-button action-button--primary action-button--glow" onClick={handleGenerateRemedy}>
-              <Sparkles size={16} />
-              Get personalized remedies
+            <button 
+              className={`action-button action-button--primary action-button--glow ${generating ? 'loading' : ''}`} 
+              onClick={handleGenerateRemedy}
+              disabled={generating}
+            >
+              {generating ? (
+                <>
+                  <Sparkles size={16} className="spin" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={16} />
+                  Get personalized remedies
+                </>
+              )}
             </button>
             <p className="hero-microcopy">Results are tailored to your inputs</p>
           </div>
