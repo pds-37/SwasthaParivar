@@ -41,7 +41,7 @@ const AppLoader = () => {
         <div className={`app-loader-message ${showSlowMessage ? "visible" : ""}`}>
           <p>{quote}</p>
           <span className="app-loader-submessage">
-            We're warming up our secure servers for your first visit. Just a moment!
+            We're warming up our secure servers for your visit. Just a moment!
           </span>
         </div>
       </div>
