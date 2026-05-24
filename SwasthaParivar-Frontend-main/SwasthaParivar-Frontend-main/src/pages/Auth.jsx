@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import {
   ArrowRight,
+  ChevronLeft,
   HeartPulse,
   Lock,
   Mail,
@@ -120,6 +122,9 @@ const Auth = () => {
   const { mode, toggleTheme } = useThemeMode();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
+  const [showMobileForm, setShowMobileForm] = useState(() =>
+    Boolean(searchParams.get("from") || searchParams.get("authError"))
+  );
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
@@ -171,6 +176,7 @@ const Auth = () => {
 
   const handleModeChange = (nextIsLogin) => {
     setIsLogin(nextIsLogin);
+    setShowMobileForm(true);
     setError("");
     setFieldErrors({});
   };
@@ -262,7 +268,7 @@ const Auth = () => {
     nextParams.set("from", buildJoinHouseholdPath(nextCode));
     nextParams.set("mode", isLogin ? "signin" : "signup");
     setSearchParams(nextParams, { replace: true });
-    setInviteNotice("Invite code saved. Continue below and we’ll join the family right after auth.");
+    setInviteNotice("Invite code saved. Continue below and we'll join the family right after auth.");
     trackEvent("household_invite_code_captured", {
       entrypoint: "auth",
       invite_code: nextCode,
@@ -271,7 +277,11 @@ const Auth = () => {
 
   return (
     <div className={`auth-page auth-page--${mode}`}>
-      <div className="auth-shell">
+      <Helmet>
+        <title>{isLogin ? "Sign In" : "Sign Up"} | SwasthaParivar</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
+      <div className={`auth-shell ${showMobileForm ? "is-mobile-form-open" : ""}`}>
         <button
           type="button"
           className="auth-theme-toggle icon-btn"
@@ -280,6 +290,38 @@ const Auth = () => {
         >
           {mode === "dark" ? <SunMedium size={18} /> : <Moon size={18} />}
         </button>
+
+        <section className={`auth-mobile-hero ${showMobileForm ? "is-hidden" : ""}`}>
+          <div className="auth-mobile-status" aria-hidden="true">
+            <span>9:41</span>
+            <span className="auth-mobile-status__icons">
+              <span />
+              <span />
+              <span />
+            </span>
+          </div>
+
+          <div className="auth-mobile-orb" aria-hidden="true">
+            <img src="/logo.png" alt="" />
+          </div>
+
+          <div className="auth-mobile-copy">
+            <span className="auth-mobile-kicker">Installable PWA</span>
+            <h1>Your Smart Family Health Assistant</h1>
+            <p>
+              Care reminders, reports, and AI guidance in one calm mobile app.
+            </p>
+          </div>
+
+          <div className="auth-mobile-actions">
+            <button type="button" onClick={() => handleModeChange(false)}>
+              Sign Up
+            </button>
+            <button type="button" onClick={() => handleModeChange(true)}>
+              Log In
+            </button>
+          </div>
+        </section>
 
         <section className="auth-brand-panel">
           <div className="auth-brand-mark">
@@ -323,6 +365,15 @@ const Auth = () => {
         </section>
 
         <section className="auth-card">
+          <button
+            type="button"
+            className="auth-mobile-back"
+            onClick={() => setShowMobileForm(false)}
+            aria-label="Back to welcome"
+          >
+            <ChevronLeft size={18} />
+          </button>
+
           <div className="auth-card-top">
             <div>
               <p className="auth-card-label">Welcome</p>
