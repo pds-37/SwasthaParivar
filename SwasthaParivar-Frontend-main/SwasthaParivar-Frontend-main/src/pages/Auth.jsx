@@ -292,8 +292,10 @@ const Auth = () => {
         </button>
 
         <section className={`auth-mobile-hero ${showMobileForm ? "is-hidden" : ""}`}>
-          <div className="auth-mobile-orb" aria-hidden="true">
-            <img src="/logo.png" alt="" />
+          <div className="auth-mobile-orb-container" aria-hidden="true">
+            <div className="auth-mobile-orb">
+              <img src="/logo.png" alt="SwasthaParivar Logo" className="auth-mobile-logo" />
+            </div>
           </div>
 
           <div className="auth-mobile-copy">

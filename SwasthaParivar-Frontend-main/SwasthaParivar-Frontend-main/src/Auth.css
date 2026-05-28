@@ -467,11 +467,20 @@
     background: #ffffff;
   }
 
-  .auth-mobile-orb {
+  .auth-mobile-orb-container {
     position: relative;
     width: clamp(8.5rem, 42vw, 11.75rem);
     aspect-ratio: 1;
     margin: auto auto 0;
+    display: grid;
+    place-items: center;
+    animation: orbPulse 6s ease-in-out infinite;
+  }
+
+  .auth-mobile-orb {
+    position: relative;
+    width: 100%;
+    height: 100%;
     display: grid;
     place-items: center;
     border-radius: 50%;
@@ -484,6 +493,7 @@
       0 0 0.35rem rgba(87, 212, 197, 0.8) inset,
       0 0 3.5rem rgba(21, 140, 131, 0.5),
       0 1.5rem 5rem rgba(0, 0, 0, 0.72);
+    animation: orbRotate 18s linear infinite;
   }
 
   .auth-mobile-orb::before,
@@ -509,19 +519,25 @@
     filter: blur(0.02rem);
   }
 
-  .auth-mobile-orb img {
+  .auth-mobile-logo {
     position: relative;
     z-index: 1;
-    width: 42%;
-    height: 42%;
+    width: 48%;
+    height: 48%;
     object-fit: contain;
-    opacity: 0.16;
-    filter: grayscale(1) brightness(2.4);
+    opacity: 0.95;
+    mix-blend-mode: screen;
+    border-radius: 12px;
+    filter: brightness(1.2) drop-shadow(0 0 8px rgba(87, 212, 197, 0.5));
+    animation: logoCounterRotate 18s linear infinite;
   }
 
   .auth-mobile-copy {
     margin-top: clamp(2.25rem, 8vh, 4rem);
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .auth-mobile-kicker {
@@ -546,10 +562,11 @@
 
   .auth-mobile-copy p {
     max-width: 18.5rem;
-    margin: 0.95 auto 0;
+    margin: 0.95rem auto 0;
     color: rgba(255, 255, 255, 0.78);
     font-size: 0.88rem;
     line-height: 1.65;
+    text-align: center;
   }
 
   .auth-mobile-actions {
@@ -559,19 +576,79 @@
   }
 
   .auth-mobile-actions button {
-    min-height: 2.75rem;
-    border: 0;
+    min-height: 2.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 0.95rem;
+    font-size: 0.98rem;
+    font-weight: 600;
     color: #ffffff;
-    background: rgba(255, 255, 255, 0.09);
-    box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.05);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+
+  .auth-mobile-actions button:hover,
+  .auth-mobile-actions button:focus-visible {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+    transform: translateY(-1px);
+  }
+
+  .auth-mobile-actions button:active {
+    transform: scale(0.97);
   }
 
   .auth-mobile-actions button:last-child {
     color: #ffffff;
-    background: #158c83;
+    background: linear-gradient(135deg, #158c83, #0f6f67);
+    border: 1px solid rgba(21, 140, 131, 0.3);
+    box-shadow: 
+      0 4px 15px rgba(21, 140, 131, 0.3),
+      inset 0 1px rgba(255, 255, 255, 0.15);
+  }
+
+  .auth-mobile-actions button:last-child:hover,
+  .auth-mobile-actions button:last-child:focus-visible {
+    background: linear-gradient(135deg, #17a497, #107c73);
+    box-shadow: 
+      0 6px 20px rgba(21, 140, 131, 0.45),
+      inset 0 1px rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+
+  .auth-mobile-actions button:last-child:active {
+    transform: scale(0.97);
+  }
+
+  /* Keyframe Animations */
+  @keyframes orbRotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes logoCounterRotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(-360deg);
+    }
+  }
+
+  @keyframes orbPulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.04);
+    }
   }
 
   .auth-card {
