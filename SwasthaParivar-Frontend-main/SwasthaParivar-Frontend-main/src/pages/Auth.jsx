@@ -292,21 +292,11 @@ const Auth = () => {
         </button>
 
         <section className={`auth-mobile-hero ${showMobileForm ? "is-hidden" : ""}`}>
-          <div className="auth-mobile-status" aria-hidden="true">
-            <span>9:41</span>
-            <span className="auth-mobile-status__icons">
-              <span />
-              <span />
-              <span />
-            </span>
-          </div>
-
           <div className="auth-mobile-orb" aria-hidden="true">
             <img src="/logo.png" alt="" />
           </div>
 
           <div className="auth-mobile-copy">
-            <span className="auth-mobile-kicker">Installable PWA</span>
             <h1>Your Smart Family Health Assistant</h1>
             <p>
               Care reminders, reports, and AI guidance in one calm mobile app.

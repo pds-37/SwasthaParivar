@@ -361,8 +361,8 @@
     min-height: 100dvh;
     padding: 0;
     background:
-      radial-gradient(circle at 50% 45%, rgba(179, 151, 44, 0.72), rgba(21, 19, 7, 0.42) 23%, transparent 45%),
-      linear-gradient(180deg, #010302 0%, #030403 36%, #151208 66%, #010302 100%);
+      radial-gradient(circle at 50% 45%, rgba(21, 140, 131, 0.72), rgba(7, 21, 19, 0.42) 23%, transparent 45%),
+      linear-gradient(180deg, #010302 0%, #030403 36%, #071513 66%, #010302 100%);
     color: #ffffff;
   }
 
@@ -478,11 +478,11 @@
     background:
       radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.78), transparent 10%),
       radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.66), transparent 11%),
-      radial-gradient(circle at 52% 48%, #111109 0 47%, transparent 48%),
-      conic-gradient(from 34deg, #f1d75c, #17160f 18%, #ffdb48 30%, #3f3720 49%, #f1d75c 62%, #111111 77%, #f4cf34);
+      radial-gradient(circle at 52% 48%, #0b1a20 0 47%, transparent 48%),
+      conic-gradient(from 34deg, #158c83, #0a1d1b 18%, #77e0d4 30%, #10363d 49%, #158c83 62%, #0f1a20 77%, #57d4c5);
     box-shadow:
-      0 0 0.35rem rgba(255, 242, 168, 0.8) inset,
-      0 0 3.5rem rgba(195, 161, 35, 0.5),
+      0 0 0.35rem rgba(87, 212, 197, 0.8) inset,
+      0 0 3.5rem rgba(21, 140, 131, 0.5),
       0 1.5rem 5rem rgba(0, 0, 0, 0.72);
   }
 
@@ -497,14 +497,14 @@
 
   .auth-mobile-orb::before {
     border: 0.14rem solid rgba(255, 255, 255, 0.32);
-    box-shadow: 0 0 1rem rgba(255, 218, 69, 0.72) inset;
+    box-shadow: 0 0 1rem rgba(87, 212, 197, 0.72) inset;
     transform: rotate(-22deg) scaleX(1.05);
   }
 
   .auth-mobile-orb::after {
     background:
       radial-gradient(circle at 27% 24%, rgba(255, 255, 255, 0.72), transparent 9%),
-      radial-gradient(circle at 75% 66%, rgba(255, 249, 207, 0.72), transparent 11%),
+      radial-gradient(circle at 75% 66%, rgba(221, 246, 242, 0.72), transparent 11%),
       linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 38%);
     filter: blur(0.02rem);
   }
@@ -546,7 +546,7 @@
 
   .auth-mobile-copy p {
     max-width: 18.5rem;
-    margin: 0.95rem auto 0;
+    margin: 0.95 auto 0;
     color: rgba(255, 255, 255, 0.78);
     font-size: 0.88rem;
     line-height: 1.65;
@@ -570,8 +570,8 @@
   }
 
   .auth-mobile-actions button:last-child {
-    color: #fffaf0;
-    background: #b99b29;
+    color: #ffffff;
+    background: #158c83;
   }
 
   .auth-card {
