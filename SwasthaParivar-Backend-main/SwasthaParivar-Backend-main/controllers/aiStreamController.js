@@ -1,12 +1,22 @@
 import {
+  assessContextualTriage,
   assessRisk,
+  buildContextualCollectedData,
   buildFallbackResponse,
   buildFollowUpPrompt,
+  buildIntakeQuestions,
   buildPrompt,
   buildSuggestedReminder,
+  mergeRisk,
   triageCheck,
 } from "../aiOrchestrator.js";
+import {
+  formatKnowledgeForPrompt,
+  retrieveClinicalKnowledge,
+} from "../services/ai/clinicalKnowledgeService.js";
+import { evaluateClinicalRules } from "../services/ai/clinicalRulesEngine.js";
 import { isGeminiQuotaError, startGeminiTextStream } from "../services/ai/geminiService.js";
+import { buildHealthTrends } from "../services/health/healthTrendService.js";
 import householdService from "../services/household/HouseholdService.js";
 import { logger } from "../utils/logger.js";
 
@@ -62,31 +72,85 @@ export const streamChatWithAI = async (req, res) => {
 
   try {
     const member = await loadMember(req.userId, memberId);
+    const contextualCollectedData = buildContextualCollectedData(member, collectedData || {});
+    const healthTrends = buildHealthTrends(member || {});
+    const knowledgeEntries = retrieveClinicalKnowledge(message, {
+      conditions: member?.conditions || [],
+      allergies: member?.allergies || [],
+      medications: member?.medications || [],
+      pregnancyStatus: member?.pregnancyStatus || "",
+      childSensitive: Boolean(member?.childSensitive),
+    });
+    const clinicalRules = evaluateClinicalRules({ message, member, trends: healthTrends });
+    const clinicalContext = {
+      clinicalRules,
+      healthTrends,
+      knowledgeEntries,
+      knowledgeBlock: formatKnowledgeForPrompt(knowledgeEntries),
+    };
     const triage = triageCheck(message, member?.age);
 
-    if (triage.stopProcessing) {
+    if (triage.stopProcessing || clinicalRules.level === "EMERGENCY") {
+      const emergencyRisk = mergeRisk(
+        { level: "EMERGENCY", risks: ["emergency symptom pattern"] },
+        clinicalRules
+      );
+      const emergencyResponse =
+        triage.response ||
+        clinicalRules.actions?.[0] ||
+        "Emergency warning signs are present. Call 112 immediately or go to the nearest emergency department now.";
+      const triageSummary = assessContextualTriage({
+        message,
+        member,
+        collectedData: contextualCollectedData,
+        risk: emergencyRisk,
+        clinicalRules,
+        healthTrends,
+        knowledgeEntries,
+        emergency: true,
+      });
+      const intakeQuestions = buildIntakeQuestions(
+        message,
+        member,
+        triageSummary,
+        emergencyRisk
+      );
+
       writeEvent(res, {
-        token: triage.response,
+        token: emergencyResponse,
         done: true,
         riskLevel: "EMERGENCY",
+        triageSummary,
+        intakeQuestions,
         followUpPrompt: buildFollowUpPrompt(message, { level: "EMERGENCY" }),
         suggestedReminder: buildSuggestedReminder(message, member),
-        reply: triage.response,
+        reply: emergencyResponse,
       });
       return res.end();
     }
 
-    const risk = assessRisk(message, member);
+    const risk = mergeRisk(assessRisk(message, member), clinicalRules);
+    const triageSummary = assessContextualTriage({
+      message,
+      member,
+      collectedData: contextualCollectedData,
+      risk,
+      clinicalRules,
+      healthTrends,
+      knowledgeEntries,
+    });
+    const intakeQuestions = buildIntakeQuestions(message, member, triageSummary, risk);
     const followUpPrompt = buildFollowUpPrompt(message, risk);
     const suggestedReminder = buildSuggestedReminder(message, member);
     const prompt = buildPrompt(
       member,
       "symptom_check",
       {},
-      collectedData || {},
+      contextualCollectedData,
       risk,
       chatHistory || [],
-      language || "en"
+      language || "en",
+      clinicalContext
     );
 
     let fullResponse = "";
@@ -118,7 +182,7 @@ export const streamChatWithAI = async (req, res) => {
     } catch (error) {
       usedFallback = true;
       quotaExceeded = Boolean(error?.isQuotaExhausted || isGeminiQuotaError(error));
-      fullResponse = buildFallbackResponse(message, member, risk);
+      fullResponse = buildFallbackResponse(message, member, risk, clinicalContext);
 
       logger.warn({
         route: "ai-chat-stream",
@@ -143,6 +207,8 @@ export const streamChatWithAI = async (req, res) => {
       token: "",
       done: true,
       riskLevel: risk.level,
+      triageSummary,
+      intakeQuestions,
       followUpPrompt,
       suggestedReminder,
       reply: fullResponse,

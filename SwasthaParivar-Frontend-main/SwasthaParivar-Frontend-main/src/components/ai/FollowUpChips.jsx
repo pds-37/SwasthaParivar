@@ -5,6 +5,7 @@ import { Chip, Stack } from "@mui/material";
 
 export default function FollowUpChips({
   followUpPrompt,
+  intakeQuestions = [],
   suggestedReminder,
   onCreateReminder,
   onAskFollowUp,
@@ -33,6 +34,18 @@ export default function FollowUpChips({
           onClick={() => onAskFollowUp?.(followUpPrompt)}
         />
       ) : null}
+
+      {intakeQuestions.map((question) => (
+        <Chip
+          key={question.id || question.prompt}
+          icon={<TrackChangesIcon fontSize="small" />}
+          label={question.label || "Add context"}
+          variant="outlined"
+          size="small"
+          clickable
+          onClick={() => onAskFollowUp?.(question.prompt)}
+        />
+      ))}
 
       {onFindDoctor ? (
         <Chip

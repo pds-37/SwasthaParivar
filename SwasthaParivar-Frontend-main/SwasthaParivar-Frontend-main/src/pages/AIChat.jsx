@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   ArrowLeft,
+  Download,
   Languages,
   Mic,
   PanelLeftClose,
@@ -13,6 +14,7 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
+  Stethoscope,
   Trash2,
   UserRound,
 } from "lucide-react";
@@ -32,6 +34,7 @@ import { saveReminderDraft } from "../lib/reminderDraft";
 import { useFamilyStore } from "../store/family-store";
 import { useUIStore } from "../store/ui-store";
 import { trackEvent } from "../utils/analytics";
+import { exportAiCarePacketPdf } from "../utils/doctorSharePdf";
 import "./AIChat.css";
 
 const MEDICATION_KEYWORDS = [
@@ -212,6 +215,51 @@ const serializeMessagesForMemory = (entries = []) =>
         ? entry.attachment
         : null,
     riskLevel: entry?.riskLevel ? String(entry.riskLevel).trim().slice(0, 32) : null,
+    triageSummary:
+      entry?.triageSummary && typeof entry.triageSummary === "object"
+        ? {
+            tier: String(entry.triageSummary.tier || "").trim().slice(0, 32),
+            label: String(entry.triageSummary.label || "").trim().slice(0, 120),
+            action: String(entry.triageSummary.action || "").trim().slice(0, 240),
+            contextSignals: Array.isArray(entry.triageSummary.contextSignals)
+              ? entry.triageSummary.contextSignals.map((item) => String(item).slice(0, 160)).slice(0, 6)
+              : [],
+            profileGaps: Array.isArray(entry.triageSummary.profileGaps)
+              ? entry.triageSummary.profileGaps.map((item) => String(item).slice(0, 120)).slice(0, 5)
+              : [],
+            doctorPacket: Array.isArray(entry.triageSummary.doctorPacket)
+              ? entry.triageSummary.doctorPacket.map((item) => String(item).slice(0, 220)).slice(0, 6)
+              : [],
+            trendFlags: Array.isArray(entry.triageSummary.trendFlags)
+              ? entry.triageSummary.trendFlags.map((item) => String(item).slice(0, 220)).slice(0, 6)
+              : [],
+            sourceReferences: Array.isArray(entry.triageSummary.sourceReferences)
+              ? entry.triageSummary.sourceReferences.slice(0, 6).map((ref) => ({
+                  title: String(ref?.title || "").trim().slice(0, 160),
+                  source: String(ref?.source || "").trim().slice(0, 220),
+                  url: String(ref?.url || "").trim().slice(0, 500),
+                }))
+              : [],
+          }
+        : null,
+    intakeQuestions: Array.isArray(entry?.intakeQuestions)
+      ? entry.intakeQuestions
+          .map((question) => {
+            const prompt = String(question?.prompt || "").trim().slice(0, 300);
+
+            if (!prompt) {
+              return null;
+            }
+
+            return {
+              id: String(question?.id || prompt).trim().slice(0, 60),
+              label: String(question?.label || "Add context").trim().slice(0, 80),
+              prompt,
+            };
+          })
+          .filter(Boolean)
+          .slice(0, 4)
+      : [],
     followUpPrompt: entry?.followUpPrompt ? String(entry.followUpPrompt).trim().slice(0, 400) : null,
     suggestedReminder: entry?.suggestedReminder?.title
       ? {
@@ -378,6 +426,46 @@ const formatConversationTime = (timestamp) => {
   });
 };
 
+const TriageSummary = ({ triage, onExport }) => {
+  if (!triage?.tier) {
+    return null;
+  }
+
+  const checkedSignals = Array.isArray(triage.contextSignals) ? triage.contextSignals : [];
+  const profileGaps = Array.isArray(triage.profileGaps) ? triage.profileGaps : [];
+
+  return (
+    <div className={`ai-chat-triage ai-chat-triage--${String(triage.tier).toLowerCase()}`}>
+      <div className="ai-chat-triage__head">
+        <span>
+          <Stethoscope size={14} />
+          Care routing
+        </span>
+        <strong>{triage.label || "Contextual triage"}</strong>
+      </div>
+      {triage.action ? <p>{triage.action}</p> : null}
+      {checkedSignals.length ? (
+        <div className="ai-chat-triage__meta">
+          <span>Checked</span>
+          <p>{checkedSignals.join(" | ")}</p>
+        </div>
+      ) : null}
+      {profileGaps.length ? (
+        <div className="ai-chat-triage__meta">
+          <span>Need more</span>
+          <p>{profileGaps.join(", ")}</p>
+        </div>
+      ) : null}
+      {typeof onExport === "function" ? (
+        <button type="button" className="ai-chat-triage__export" onClick={onExport}>
+          <Download size={14} />
+          Doctor packet
+        </button>
+      ) : null}
+    </div>
+  );
+};
+
 const getConversationTitle = (messages = [], fallbackLabel = "New chat") => {
   const firstUserMessage = messages.find(
     (message) => message?.sender === "user" && String(message?.text || "").trim()
@@ -500,6 +588,7 @@ const AIChat = () => {
     () => userFamily.find((member) => member._id === currentContext?.memberId) || null,
     [currentContext?.memberId, userFamily]
   );
+  const contextMember = activeMember || (currentContext?.memberId === selfMember?._id ? selfMember : null);
   const [threadSelections, setThreadSelections] = useState(() => readStoredThreadSelections());
   const [draftContextKey, setDraftContextKey] = useState(null);
   const activeThreadId = threadSelections[contextThreadKey] || null;
@@ -694,6 +783,8 @@ const AIChat = () => {
     text,
     ts: Date.now(),
     riskLevel: options.riskLevel || "LOW",
+    triageSummary: options.triageSummary || null,
+    intakeQuestions: Array.isArray(options.intakeQuestions) ? options.intakeQuestions : [],
     followUpPrompt: options.followUpPrompt || null,
     suggestedReminder: options.suggestedReminder || null,
     actions: options.disableActions ? [] : buildAiActions(text),
@@ -723,6 +814,51 @@ const AIChat = () => {
       description: `Suggested from AI guidance for ${activeMember?.name || contextLabel}.`,
       frequency: suggestion.type === "checkup" ? "once" : "daily",
     });
+  };
+
+  const exportCarePacket = (message, index) => {
+    const previousUserMessage = messages
+      .slice(0, index)
+      .reverse()
+      .find((entry) => entry?.sender === "user");
+
+    if (contextMember?._id && message?.triageSummary?.tier) {
+      api.post(
+        "/ai/doctor-packets",
+        {
+          memberId: contextMember._id,
+          source: "ai_chat",
+          triageTier: message.triageSummary.label || message.triageSummary.tier,
+          riskLevel: message.riskLevel || "",
+          summary: String(message?.text || "").slice(0, 4000),
+          userConcern: previousUserMessage?.text || "",
+          warningsTriggered: message.triageSummary.contextSignals || [],
+          contextChecked: message.triageSummary.contextSignals || [],
+          missingContext: message.triageSummary.profileGaps || [],
+          doctorNotes: message.triageSummary.doctorPacket || [],
+          trendFlags: message.triageSummary.trendFlags || [],
+          sourceReferences: message.triageSummary.sourceReferences || [],
+        },
+        { suppressErrorToast: true }
+      ).catch(() => {
+        // PDF export should still work if server-side packet storage is unavailable.
+      });
+    }
+
+    exportAiCarePacketPdf({
+      member: contextMember,
+      contextLabel,
+      userMessage: previousUserMessage?.text || "",
+      aiReply: message?.text || "",
+      triageSummary: message?.triageSummary || {},
+    });
+
+    trackEvent("ai_care_packet_exported", {
+      active_view: activeView,
+      context: contextLabel,
+      tier: message?.triageSummary?.tier || "unknown",
+    });
+    notify.success("Doctor packet downloaded");
   };
 
   const handleMessageAction = async (action, message) => {
@@ -815,6 +951,8 @@ const AIChat = () => {
         ...history,
         createAiMessage(replyText, {
           riskLevel: response?.riskLevel,
+          triageSummary: response?.triageSummary,
+          intakeQuestions: response?.intakeQuestions,
           followUpPrompt: response?.followUpPrompt,
           suggestedReminder: response?.suggestedReminder,
           disableActions: Boolean(response?.outOfScope),
@@ -1078,12 +1216,25 @@ const AIChat = () => {
                     {message.sender === "ai" && message.riskLevel && message.riskLevel !== "LOW" ? (
                       <AiDisclaimer riskLevel={message.riskLevel} />
                     ) : null}
+                    {message.sender === "ai" ? (
+                      <TriageSummary
+                        triage={message.triageSummary}
+                        onExport={
+                          message.triageSummary?.tier
+                            ? () => exportCarePacket(message, index)
+                            : null
+                        }
+                      />
+                    ) : null}
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
 
                     {message.sender === "ai" &&
-                    (message.followUpPrompt || message.suggestedReminder) ? (
+                    (message.followUpPrompt ||
+                      message.suggestedReminder ||
+                      message.intakeQuestions?.length) ? (
                       <FollowUpChips
                         followUpPrompt={message.followUpPrompt}
+                        intakeQuestions={message.intakeQuestions}
                         suggestedReminder={message.suggestedReminder}
                         onCreateReminder={createReminderFromSuggestion}
                         onAskFollowUp={(followUpPrompt) => sendMessage(followUpPrompt)}
@@ -1120,7 +1271,19 @@ const AIChat = () => {
                         {streamMeta.riskLevel && streamMeta.riskLevel !== "LOW" ? (
                           <AiDisclaimer riskLevel={streamMeta.riskLevel} />
                         ) : null}
+                        <TriageSummary triage={streamMeta.triageSummary} />
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
+                        {streamMeta.followUpPrompt ||
+                        streamMeta.suggestedReminder ||
+                        streamMeta.intakeQuestions?.length ? (
+                          <FollowUpChips
+                            followUpPrompt={streamMeta.followUpPrompt}
+                            intakeQuestions={streamMeta.intakeQuestions}
+                            suggestedReminder={streamMeta.suggestedReminder}
+                            onCreateReminder={createReminderFromSuggestion}
+                            onAskFollowUp={(followUpPrompt) => sendMessage(followUpPrompt)}
+                          />
+                        ) : null}
                       </>
                     ) : (
                       <>

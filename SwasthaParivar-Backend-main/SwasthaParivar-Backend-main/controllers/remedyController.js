@@ -582,8 +582,9 @@ import { getGeminiCandidateModels, isGeminiQuotaError, getApiKeys } from "../ser
 async function generateWithGemini(query, context) {
   const prompt = `
 You are generating one Ayurvedic-inspired home remedy for a family wellness app.
-CRITICAL: You MUST use your Google Search tool to search the internet for the most accurate, trusted, and effective home remedy for this specific issue. 
-DO NOT guess or hallucinate. Rely strictly on real, reliable information found on the internet.
+Use only conservative, common home-care patterns. You do not have live internet access in this request.
+Do not invent clinical evidence, cite sources, or claim that you searched the web.
+If the request sounds like a deficiency, severe symptom, diagnosis, prescription decision, or emergency, return a cautious supportive routine and clear doctor/pharmacist guidance instead of a cure-like remedy.
 
 User request: "${query}"
 Focus: ${context.focusLabel}
@@ -604,6 +605,9 @@ Rules:
 - Keep it realistic for a home kitchen.
 - If a risk flag suggests caution, include a warning.
 - Do not diagnose or promise a cure.
+- Avoid prescription-dose instructions and avoid telling the user to stop prescribed medicine.
+- For children, pregnancy, older adults, chronic illness, allergies, or current medicines, include a clinician/pharmacist confirmation warning.
+- Put uncertainty and safety limits in warnings instead of sounding definitive.
 
 Return this exact shape:
 {

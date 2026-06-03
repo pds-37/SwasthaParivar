@@ -14,6 +14,38 @@ const suggestedReminderSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const triageSummarySchema = new mongoose.Schema(
+  {
+    tier: { type: String, default: "" },
+    label: { type: String, default: "" },
+    action: { type: String, default: "" },
+    contextSignals: { type: [String], default: [] },
+    profileGaps: { type: [String], default: [] },
+    doctorPacket: { type: [String], default: [] },
+    trendFlags: { type: [String], default: [] },
+    sourceReferences: {
+      type: [
+        {
+          title: { type: String, default: "" },
+          source: { type: String, default: "" },
+          url: { type: String, default: "" },
+        },
+      ],
+      default: [],
+    },
+  },
+  { _id: false }
+);
+
+const intakeQuestionSchema = new mongoose.Schema(
+  {
+    id: { type: String, default: "" },
+    label: { type: String, default: "" },
+    prompt: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
 const messageSchema = new mongoose.Schema(
   {
     sender: {
@@ -37,6 +69,14 @@ const messageSchema = new mongoose.Schema(
     riskLevel: {
       type: String,
       default: null,
+    },
+    triageSummary: {
+      type: triageSummarySchema,
+      default: null,
+    },
+    intakeQuestions: {
+      type: [intakeQuestionSchema],
+      default: [],
     },
     followUpPrompt: {
       type: String,

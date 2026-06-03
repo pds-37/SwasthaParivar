@@ -8,6 +8,12 @@ import {
   listAIInsights,
   transcribeVoiceInput,
 } from "../controllers/aiController.js";
+import {
+  createDoctorPacket,
+  exportDoctorPacket,
+  getDoctorPacket,
+  listDoctorPackets,
+} from "../controllers/doctorPacketController.js";
 import { streamChatWithAI } from "../controllers/aiStreamController.js";
 import appConfig from "../config/AppConfig.js";
 import { requireFeature } from "../middleware/planGuard.js";
@@ -17,6 +23,9 @@ import { validate } from "../middleware/validate.js";
 import {
   aiAttachmentSchema,
   aiChatSchema,
+  doctorPacketCreateSchema,
+  doctorPacketParamsSchema,
+  doctorPacketQuerySchema,
   aiInsightQuerySchema,
   aiStreamingChatSchema,
   aiVoiceTranscriptionSchema,
@@ -50,6 +59,18 @@ router.get("/models", auth, async (req, res) => {
 });
 
 router.get("/insights", auth, validate(aiInsightQuerySchema, "query"), listAIInsights);
+router.get("/doctor-packets", validate(doctorPacketQuerySchema, "query"), listDoctorPackets);
+router.post("/doctor-packets", validate(doctorPacketCreateSchema), createDoctorPacket);
+router.get(
+  "/doctor-packets/:id",
+  validate(doctorPacketParamsSchema, "params"),
+  getDoctorPacket
+);
+router.get(
+  "/doctor-packets/:id/export",
+  validate(doctorPacketParamsSchema, "params"),
+  exportDoctorPacket
+);
 router.post(
   "/",
   auth,

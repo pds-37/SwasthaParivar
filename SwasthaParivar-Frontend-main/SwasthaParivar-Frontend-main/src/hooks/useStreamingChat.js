@@ -31,6 +31,8 @@ export function useStreamingChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamMeta, setStreamMeta] = useState({
     riskLevel: "LOW",
+    triageSummary: null,
+    intakeQuestions: [],
     followUpPrompt: null,
     suggestedReminder: null,
   });
@@ -39,6 +41,8 @@ export function useStreamingChat() {
     setStreamingText("");
     setStreamMeta({
       riskLevel: "LOW",
+      triageSummary: null,
+      intakeQuestions: [],
       followUpPrompt: null,
       suggestedReminder: null,
     });
@@ -92,6 +96,8 @@ export function useStreamingChat() {
     let finalResult = {
       reply: "",
       riskLevel: "LOW",
+      triageSummary: null,
+      intakeQuestions: [],
       followUpPrompt: null,
       suggestedReminder: null,
       fallback: false,
@@ -112,9 +118,23 @@ export function useStreamingChat() {
             setStreamingText((current) => current + data.token);
           }
 
-          if (data.riskLevel || data.followUpPrompt || data.suggestedReminder) {
+          if (
+            data.riskLevel ||
+            data.triageSummary ||
+            data.intakeQuestions ||
+            data.followUpPrompt ||
+            data.suggestedReminder
+          ) {
             setStreamMeta((current) => ({
               riskLevel: data.riskLevel || current.riskLevel,
+              triageSummary:
+                data.triageSummary === undefined
+                  ? current.triageSummary
+                  : data.triageSummary,
+              intakeQuestions:
+                data.intakeQuestions === undefined
+                  ? current.intakeQuestions
+                  : data.intakeQuestions,
               followUpPrompt:
                 data.followUpPrompt === undefined
                   ? current.followUpPrompt

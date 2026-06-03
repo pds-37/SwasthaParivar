@@ -9,6 +9,57 @@ const router = express.Router();
 const MEMORY_MESSAGE_LIMIT = 40;
 const MEMORY_ATTACHMENT_PREVIEW_MAX = 250000;
 
+const normalizeTriageSummary = (triageSummary) => {
+  if (!triageSummary || typeof triageSummary !== "object") {
+    return null;
+  }
+
+  return {
+    tier: String(triageSummary.tier || "").trim().slice(0, 32),
+    label: String(triageSummary.label || "").trim().slice(0, 120),
+    action: String(triageSummary.action || "").trim().slice(0, 240),
+    contextSignals: Array.isArray(triageSummary.contextSignals)
+      ? triageSummary.contextSignals.map((item) => String(item).trim().slice(0, 160)).filter(Boolean).slice(0, 6)
+      : [],
+    profileGaps: Array.isArray(triageSummary.profileGaps)
+      ? triageSummary.profileGaps.map((item) => String(item).trim().slice(0, 120)).filter(Boolean).slice(0, 5)
+      : [],
+    doctorPacket: Array.isArray(triageSummary.doctorPacket)
+      ? triageSummary.doctorPacket.map((item) => String(item).trim().slice(0, 220)).filter(Boolean).slice(0, 6)
+      : [],
+    trendFlags: Array.isArray(triageSummary.trendFlags)
+      ? triageSummary.trendFlags.map((item) => String(item).trim().slice(0, 220)).filter(Boolean).slice(0, 6)
+      : [],
+    sourceReferences: Array.isArray(triageSummary.sourceReferences)
+      ? triageSummary.sourceReferences.slice(0, 6).map((ref) => ({
+          title: String(ref?.title || "").trim().slice(0, 160),
+          source: String(ref?.source || "").trim().slice(0, 220),
+          url: String(ref?.url || "").trim().slice(0, 500),
+        }))
+      : [],
+  };
+};
+
+const normalizeIntakeQuestions = (intakeQuestions = []) =>
+  Array.isArray(intakeQuestions)
+    ? intakeQuestions
+        .map((question) => {
+          const prompt = String(question?.prompt || "").trim().slice(0, 300);
+
+          if (!prompt) {
+            return null;
+          }
+
+          return {
+            id: String(question?.id || prompt).trim().slice(0, 60),
+            label: String(question?.label || "Add context").trim().slice(0, 80),
+            prompt,
+          };
+        })
+        .filter(Boolean)
+        .slice(0, 4)
+    : [];
+
 const normalizeStoredMessages = (messages = []) =>
   Array.isArray(messages)
     ? messages
@@ -29,6 +80,8 @@ const normalizeStoredMessages = (messages = []) =>
                 ? message.attachment
                 : null,
             riskLevel: message?.riskLevel ? String(message.riskLevel).trim().slice(0, 32) : null,
+            triageSummary: normalizeTriageSummary(message?.triageSummary),
+            intakeQuestions: normalizeIntakeQuestions(message?.intakeQuestions),
             followUpPrompt: message?.followUpPrompt
               ? String(message.followUpPrompt).trim().slice(0, 400)
               : null,
