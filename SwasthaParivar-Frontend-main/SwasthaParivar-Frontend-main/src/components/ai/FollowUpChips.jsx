@@ -1,62 +1,44 @@
-import AddAlarmIcon from "@mui/icons-material/AddAlarm";
-import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
-import TrackChangesIcon from "@mui/icons-material/TrackChanges";
-import { Chip, Stack } from "@mui/material";
+import { AlarmPlus, Hospital, Target } from "lucide-react";
+
+const FollowUpButton = ({ icon: Icon, label, onClick }) => (
+  <button type="button" className="ai-followup-chip" onClick={onClick}>
+    <Icon size={15} aria-hidden="true" />
+    <span>{label}</span>
+  </button>
+);
 
 export default function FollowUpChips({
   followUpPrompt,
-  intakeQuestions = [],
   suggestedReminder,
   onCreateReminder,
   onAskFollowUp,
   onFindDoctor,
 }) {
   return (
-    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mt={1}>
+    <div className="ai-followup-chips">
       {suggestedReminder ? (
-        <Chip
-          icon={<AddAlarmIcon fontSize="small" />}
+        <FollowUpButton
+          icon={AlarmPlus}
           label={`Set reminder: ${suggestedReminder.title}`}
-          variant="outlined"
-          size="small"
-          clickable
           onClick={() => onCreateReminder?.(suggestedReminder)}
         />
       ) : null}
 
       {followUpPrompt ? (
-        <Chip
-          icon={<TrackChangesIcon fontSize="small" />}
+        <FollowUpButton
+          icon={Target}
           label="Track these symptoms"
-          variant="outlined"
-          size="small"
-          clickable
           onClick={() => onAskFollowUp?.(followUpPrompt)}
         />
       ) : null}
 
-      {intakeQuestions.map((question) => (
-        <Chip
-          key={question.id || question.prompt}
-          icon={<TrackChangesIcon fontSize="small" />}
-          label={question.label || "Add context"}
-          variant="outlined"
-          size="small"
-          clickable
-          onClick={() => onAskFollowUp?.(question.prompt)}
-        />
-      ))}
-
       {onFindDoctor ? (
-        <Chip
-          icon={<LocalHospitalIcon fontSize="small" />}
+        <FollowUpButton
+          icon={Hospital}
           label="Find a doctor"
-          variant="outlined"
-          size="small"
-          clickable
           onClick={() => onFindDoctor()}
         />
       ) : null}
-    </Stack>
+    </div>
   );
 }

@@ -3,11 +3,12 @@ import {
   assessRisk,
   buildContextualCollectedData,
   buildFallbackResponse,
-  buildFollowUpPrompt,
+  buildIntakePrompt,
   buildIntakeQuestions,
   buildPrompt,
   buildSuggestedReminder,
   mergeRisk,
+  shouldAskIntakeBeforeAnswer,
   triageCheck,
 } from "../aiOrchestrator.js";
 import {
@@ -109,20 +110,13 @@ export const streamChatWithAI = async (req, res) => {
         knowledgeEntries,
         emergency: true,
       });
-      const intakeQuestions = buildIntakeQuestions(
-        message,
-        member,
-        triageSummary,
-        emergencyRisk
-      );
-
       writeEvent(res, {
         token: emergencyResponse,
         done: true,
         riskLevel: "EMERGENCY",
         triageSummary,
-        intakeQuestions,
-        followUpPrompt: buildFollowUpPrompt(message, { level: "EMERGENCY" }),
+        intakeQuestions: [],
+        followUpPrompt: null,
         suggestedReminder: buildSuggestedReminder(message, member),
         reply: emergencyResponse,
       });
@@ -140,8 +134,25 @@ export const streamChatWithAI = async (req, res) => {
       knowledgeEntries,
     });
     const intakeQuestions = buildIntakeQuestions(message, member, triageSummary, risk);
-    const followUpPrompt = buildFollowUpPrompt(message, risk);
     const suggestedReminder = buildSuggestedReminder(message, member);
+
+    if (shouldAskIntakeBeforeAnswer(intakeQuestions, chatHistory || [], risk)) {
+      const intakePrompt = buildIntakePrompt(intakeQuestions, risk, member);
+
+      writeEvent(res, {
+        token: intakePrompt,
+        done: true,
+        riskLevel: risk.level,
+        triageSummary: null,
+        intakeQuestions: [],
+        followUpPrompt: null,
+        suggestedReminder: null,
+        reply: intakePrompt,
+        waitingForInput: true,
+      });
+      return res.end();
+    }
+
     const prompt = buildPrompt(
       member,
       "symptom_check",
@@ -208,8 +219,8 @@ export const streamChatWithAI = async (req, res) => {
       done: true,
       riskLevel: risk.level,
       triageSummary,
-      intakeQuestions,
-      followUpPrompt,
+      intakeQuestions: [],
+      followUpPrompt: null,
       suggestedReminder,
       reply: fullResponse,
       fallback: usedFallback,

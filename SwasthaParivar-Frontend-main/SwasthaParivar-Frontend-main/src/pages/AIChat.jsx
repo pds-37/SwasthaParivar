@@ -447,13 +447,21 @@ const TriageSummary = ({ triage, onExport }) => {
       {checkedSignals.length ? (
         <div className="ai-chat-triage__meta">
           <span>Checked</span>
-          <p>{checkedSignals.join(" | ")}</p>
+          <ul>
+            {checkedSignals.map((signal) => (
+              <li key={signal}>{signal}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
       {profileGaps.length ? (
         <div className="ai-chat-triage__meta">
-          <span>Need more</span>
-          <p>{profileGaps.join(", ")}</p>
+          <span>Missing context</span>
+          <ul>
+            {profileGaps.map((gap) => (
+              <li key={gap}>{gap}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
       {typeof onExport === "function" ? (
@@ -1229,12 +1237,9 @@ const AIChat = () => {
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
 
                     {message.sender === "ai" &&
-                    (message.followUpPrompt ||
-                      message.suggestedReminder ||
-                      message.intakeQuestions?.length) ? (
+                    (message.followUpPrompt || message.suggestedReminder) ? (
                       <FollowUpChips
                         followUpPrompt={message.followUpPrompt}
-                        intakeQuestions={message.intakeQuestions}
                         suggestedReminder={message.suggestedReminder}
                         onCreateReminder={createReminderFromSuggestion}
                         onAskFollowUp={(followUpPrompt) => sendMessage(followUpPrompt)}
@@ -1273,12 +1278,9 @@ const AIChat = () => {
                         ) : null}
                         <TriageSummary triage={streamMeta.triageSummary} />
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
-                        {streamMeta.followUpPrompt ||
-                        streamMeta.suggestedReminder ||
-                        streamMeta.intakeQuestions?.length ? (
+                        {streamMeta.followUpPrompt || streamMeta.suggestedReminder ? (
                           <FollowUpChips
                             followUpPrompt={streamMeta.followUpPrompt}
-                            intakeQuestions={streamMeta.intakeQuestions}
                             suggestedReminder={streamMeta.suggestedReminder}
                             onCreateReminder={createReminderFromSuggestion}
                             onAskFollowUp={(followUpPrompt) => sendMessage(followUpPrompt)}

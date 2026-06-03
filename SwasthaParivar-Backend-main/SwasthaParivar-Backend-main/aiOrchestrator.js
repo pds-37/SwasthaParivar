@@ -23,6 +23,28 @@ const MODERATE_RISK_PATTERNS = [
   /\b(medicine|medication|tablet|dose|dosage)\b/i,
 ];
 
+const RED_FLAG_SCREENING_PATTERNS = [
+  /\b(what|which)\s+(are|is)\s+.*\b(red flags?|warning signs?)\b/i,
+  /\b(are there|any)\s+.*\b(red flags?|warning signs?)\b/i,
+  /\b(help me|can you|please)\s+.*\b(check|screen|look)\s+.*\b(red flags?|warning signs?)\b/i,
+];
+
+const ACTIVE_SYMPTOM_PATTERNS = [
+  /\b(i|we)\s+(have|has|am|are|feel|feeling|experiencing|suffering)\b/i,
+  /\b(he|she|they|my\s+\w+|patient|person|child|baby|father|mother)\s+(has|have|is|are|feels|feeling|experiencing|suffering)\b/i,
+  /\bwith\s+(chest pain|difficulty breathing|shortness of breath|one-sided weakness|severe weakness|confusion|fainting|seizure)\b/i,
+];
+
+function isRedFlagScreeningQuestion(text = "") {
+  const normalized = String(text || "").trim();
+
+  if (!normalized || !RED_FLAG_SCREENING_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    return false;
+  }
+
+  return !ACTIVE_SYMPTOM_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
 const LANGUAGE_INSTRUCTIONS = {
   hi: "Respond in simple Hindi using Devanagari. Avoid medical jargon.",
   mr: "Respond in Marathi.",
@@ -49,6 +71,54 @@ const TRIAGE_TIERS = {
     action: "Stop routine advice and seek emergency care now.",
   },
 };
+
+export const INTAKE_PROMPT_MARKER = "To guide you safely, please answer these first:";
+
+export function hasRecentIntakePrompt(chatHistory = []) {
+  if (!Array.isArray(chatHistory)) {
+    return false;
+  }
+
+  return chatHistory
+    .slice(-4)
+    .some(
+      (entry) =>
+        entry?.sender === "ai" &&
+        String(entry?.text || "").includes(INTAKE_PROMPT_MARKER)
+    );
+}
+
+export function shouldAskIntakeBeforeAnswer(intakeQuestions = [], chatHistory = [], risk = { level: "LOW" }) {
+  if (!Array.isArray(intakeQuestions) || intakeQuestions.length === 0) {
+    return false;
+  }
+
+  if (risk?.level === "EMERGENCY") {
+    return false;
+  }
+
+  return !hasRecentIntakePrompt(chatHistory);
+}
+
+export function buildIntakePrompt(intakeQuestions = [], risk = { level: "LOW" }, member = null) {
+  const questions = Array.isArray(intakeQuestions) ? intakeQuestions.slice(0, 4) : [];
+  const focus = member?.name ? ` for ${member.name}` : "";
+  const urgentLine =
+    risk?.level === "HIGH"
+      ? "\n\nIf there is trouble breathing, chest pain, fainting, confusion, one-sided weakness, or severe worsening, do not wait here. Call 112 or go to emergency care now."
+      : "";
+
+  return [
+    `${INTAKE_PROMPT_MARKER}${focus}`,
+    "",
+    ...questions.map((question, index) => `${index + 1}. ${question.prompt}`),
+    "",
+    "Reply with whatever you know. If one answer is not available, say unknown and I will continue safely.",
+    urgentLine,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
 
 const summarizeMember = (member) => {
   if (!member) {
@@ -94,6 +164,10 @@ export function triageCheck(message, age) {
     return { stopProcessing: false, response: "" };
   }
 
+  if (isRedFlagScreeningQuestion(text)) {
+    return { stopProcessing: false, response: "" };
+  }
+
   if (EMERGENCY_PATTERNS.some((pattern) => pattern.test(text))) {
     return {
       stopProcessing: true,
@@ -121,8 +195,9 @@ export function triageCheck(message, age) {
 export function assessRisk(message, member) {
   const text = String(message || "");
   const matchedRisks = [];
+  const screeningForRedFlags = isRedFlagScreeningQuestion(text);
 
-  if (HIGH_RISK_PATTERNS.some((pattern) => pattern.test(text))) {
+  if (!screeningForRedFlags && HIGH_RISK_PATTERNS.some((pattern) => pattern.test(text))) {
     matchedRisks.push("high-risk symptom pattern");
   }
 
@@ -134,7 +209,7 @@ export function assessRisk(message, member) {
     matchedRisks.push("existing medical conditions");
   }
 
-  if (HIGH_RISK_PATTERNS.some((pattern) => pattern.test(text))) {
+  if (!screeningForRedFlags && HIGH_RISK_PATTERNS.some((pattern) => pattern.test(text))) {
     return { level: "HIGH", risks: matchedRisks };
   }
 
@@ -440,7 +515,7 @@ export function buildIntakeQuestions(message, member, triageSummary = {}, risk =
   addQuestion(
     "red_flags",
     "Check red flags",
-    "Are there any red flags like trouble breathing, chest pain, confusion, fainting, severe weakness, or one-sided numbness?",
+    "Help me check for red flags. Ask if there is trouble breathing, chest pain, confusion, fainting, severe weakness, or one-sided numbness.",
     risk.level === "HIGH" ? 1 : risk.level === "MODERATE" ? 3 : 6
   );
 
