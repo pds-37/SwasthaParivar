@@ -455,7 +455,7 @@ async function searchLibrary(query = "") {
     return { remedy, score };
   }).sort((a, b) => b.score - a.score);
 
-  if (rankedFallback[0]?.score >= 5) {
+  if (rankedFallback[0]?.score >= 1) {
     const best = rankedFallback[0].remedy;
     return {
       name: best.name,
@@ -545,24 +545,28 @@ async function buildFallbackRemedy(query, context) {
   let template = await searchLibrary(query);
   
   if (!template) {
+    // Capitalize the query for display
+    const displayQuery = String(query || "Wellness").charAt(0).toUpperCase() + String(query || "Wellness").slice(1);
+    
     template = {
-      name: "Daily Tulsi Wellness Brew",
+      name: `Gentle ${displayQuery} Support`,
       description:
-        "A balanced everyday Ayurvedic drink for light immunity and daily wellness support.",
-      symptoms: "General immunity, seasonal wellness, low energy",
-      ingredients: ["Tulsi leaves", "Fresh ginger", "Warm water"],
+        `A balanced, simple home routine designed to offer gentle support for ${query || "daily wellness"}.`,
+      symptoms: query || "General wellness, low energy",
+      ingredients: ["Warm water", "Fresh ginger", "A pinch of turmeric"],
       steps: [
-        "Lightly crush the tulsi and ginger.",
-        "Simmer in water for 8 minutes.",
-        "Strain and drink warm once daily.",
+        "Lightly crush a small piece of ginger.",
+        "Simmer in water for 5-8 minutes.",
+        "Add a tiny pinch of turmeric, strain, and drink warm.",
+        "Rest and observe how your body feels.",
       ],
-      rating: 4.8,
-      tags: ["Immunity", "Daily Wellness"],
+      rating: 4.6,
+      tags: ["Wellness", "Balance"],
       timeMins: 8,
       difficulty: "Easy",
       ayurveda:
-        "This simple brew supports Agni and keeps seasonal Kapha accumulation in check.",
-      bestFor: ["Daily wellness", "Seasonal support"],
+        "Warm hydration with light spices helps clear Ama (toxins) and gently stimulates Agni (digestive fire) without overwhelming the system.",
+      bestFor: ["Daily wellness", "Gentle support"],
       colorFrom: "#1f9c90",
       colorTo: "#0d6a65",
     };
