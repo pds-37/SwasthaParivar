@@ -26,7 +26,7 @@ test("emergency symptom text stops routine AI processing", () => {
 
 test("red flag screening prompts do not trigger emergency by keyword alone", () => {
   const screeningPrompt =
-    "Help me check for red flags. Ask if there is trouble breathing, chest pain, confusion, fainting, severe weakness, or one-sided numbness.";
+    "Are there any severe warning signs right now, such as trouble breathing, chest pain, confusion, fainting, severe weakness, or one-sided numbness?";
   const result = triageCheck(screeningPrompt, 32);
   const risk = assessRisk(screeningPrompt, { name: "Priyanshu", conditions: [], allergies: [], medications: [] });
 
@@ -116,7 +116,7 @@ test("fallback response keeps doctor guidance when model is unavailable", () => 
 
 test("intake questions ask for missing profile and red flags", () => {
   const questions = buildIntakeQuestions(
-    "headache",
+    "fever",
     null,
     { profileGaps: ["saved member profile"] },
     { level: "MODERATE" }

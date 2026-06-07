@@ -95,7 +95,8 @@ const CONTEXT_RULES = [
     id: "persistent_symptoms",
     level: "MODERATE",
     tier: "DOCTOR",
-    when: ({ text }) => /\b(\d+\s*(day|days|week|weeks)|persistent|recurring|keeps coming back)\b/i.test(text),
+    when: ({ text }) =>
+      /\b(\d+\s*(week|weeks|month|months|year|years)|few\s+(week|weeks|month|months|year|years)|persistent|recurring|keeps coming back)\b/i.test(text),
     warning: "Persistent or recurring symptoms should be reviewed instead of treated as a one-off episode.",
     action: "Prepare a symptom timeline and arrange a non-emergency doctor review.",
   },
@@ -130,6 +131,28 @@ function maxByRank(current, next, rank) {
   return rank[next] > rank[current] ? next : current;
 }
 
+function isTrendRelevant(text = "", flag = {}) {
+  const normalized = String(text || "").toLowerCase();
+
+  if (flag.metric === "bloodSugar") {
+    return /\b(blood sugar|glucose|diabetes|diabetic|sugar|dizz|faint|confusion|sweat|shaky|vomit|not eating|weakness)\b/i.test(normalized);
+  }
+
+  if (flag.metric === "bloodPressure") {
+    return /\b(bp|blood pressure|hypertension|severe headache|vision|chest pain|shortness of breath|dizz|weakness)\b/i.test(normalized);
+  }
+
+  if (flag.metric === "heartRate") {
+    return /\b(heart rate|pulse|palpitation|chest pain|shortness of breath|dizz|faint)\b/i.test(normalized);
+  }
+
+  if (flag.metric === "sleep") {
+    return /\b(sleep|insomnia|fatigue|tired|headache|stress)\b/i.test(normalized);
+  }
+
+  return false;
+}
+
 export function evaluateClinicalRules({ message = "", member = {}, trends = {} } = {}) {
   const text = String(message || "");
   const matchedRules = [];
@@ -152,9 +175,13 @@ export function evaluateClinicalRules({ message = "", member = {}, trends = {} }
     }
   });
 
-  if (trends?.flags?.length) {
-    const severeTrend = trends.flags.some((flag) => flag.severity === "high");
-    const moderateTrend = trends.flags.some((flag) => flag.severity === "moderate");
+  const relevantTrendFlags = Array.isArray(trends?.flags)
+    ? trends.flags.filter((flag) => isTrendRelevant(text, flag))
+    : [];
+
+  if (relevantTrendFlags.length) {
+    const severeTrend = relevantTrendFlags.some((flag) => flag.severity === "high");
+    const moderateTrend = relevantTrendFlags.some((flag) => flag.severity === "moderate");
 
     if (severeTrend) {
       level = maxByRank(level, "HIGH", severityRank);

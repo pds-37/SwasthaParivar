@@ -23,6 +23,8 @@ const MODERATE_RISK_PATTERNS = [
   /\b(medicine|medication|tablet|dose|dosage)\b/i,
 ];
 
+const BACK_PAIN_PATTERNS = /\b(back pain|lower back|upper back|spine|backache)\b/i;
+
 const RED_FLAG_SCREENING_PATTERNS = [
   /\b(what|which)\s+(are|is)\s+.*\b(red flags?|warning signs?)\b/i,
   /\b(are there|any)\s+.*\b(red flags?|warning signs?)\b/i,
@@ -205,7 +207,7 @@ export function assessRisk(message, member) {
     matchedRisks.push("moderate symptom pattern");
   }
 
-  if (Array.isArray(member?.conditions) && member.conditions.length > 0) {
+  if (matchedRisks.length && Array.isArray(member?.conditions) && member.conditions.length > 0) {
     matchedRisks.push("existing medical conditions");
   }
 
@@ -465,13 +467,14 @@ export function assessContextualTriage({
 export function buildIntakeQuestions(message, member, triageSummary = {}, risk = { level: "LOW" }) {
   const text = String(message || "").toLowerCase();
   const questions = [];
-  const hasDuration = /\b(\d+\s*(hour|hours|day|days|week|weeks)|since|today|yesterday|persistent|recurring)\b/i.test(text);
+  const hasDuration = /\b(\d+\s*(hour|hours|day|days|week|weeks|month|months|year|years)|few\s+(hour|hours|day|days|week|weeks|month|months|year|years)|several\s+(hour|hours|day|days|week|weeks|month|months|year|years)|couple\s+of\s+(hour|hours|day|days|week|weeks|month|months|year|years)|since|today|yesterday|persistent|recurring)\b/i.test(text);
   const hasSeverity = /\b(mild|moderate|severe|very bad|\d+\s*\/\s*10)\b/i.test(text);
   const hasMedicine = /\b(took|taken|medicine|tablet|syrup|dose|paracetamol|ibuprofen|cetirizine)\b/i.test(text);
   const hasFever = /\b(fever|temperature|viral|chills)\b/i.test(text);
   const hasBreathing = /\b(cough|cold|breath|wheezing|oxygen|spo2|congestion)\b/i.test(text);
   const hasDizziness = /\b(dizz|faint|lightheaded|vertigo)\b/i.test(text);
   const hasPain = /\b(pain|ache|headache|cramp|hurt)\b/i.test(text);
+  const hasBackPain = BACK_PAIN_PATTERNS.test(text);
   const hasProfileGap = Array.isArray(triageSummary.profileGaps) && triageSummary.profileGaps.length > 0;
 
   const addQuestion = (id, label, prompt, priority = 5) => {
@@ -488,11 +491,11 @@ export function buildIntakeQuestions(message, member, triageSummary = {}, risk =
     );
   }
 
-  if (!hasDuration) {
+  if (!hasDuration && (risk.level !== "LOW" || hasPain || hasFever || hasBreathing || hasDizziness)) {
     addQuestion("duration", "Add duration", "How long has this been happening, and did it start suddenly or gradually?", 2);
   }
 
-  if ((hasPain || risk.level !== "LOW") && !hasSeverity) {
+  if ((hasPain || risk.level === "HIGH") && !hasSeverity) {
     addQuestion("severity", "Add severity", "On a scale of 1 to 10, how severe is it right now?", 3);
   }
 
@@ -508,16 +511,32 @@ export function buildIntakeQuestions(message, member, triageSummary = {}, risk =
     addQuestion("bp_sugar", "Add BP/sugar", "Can you share the latest BP and blood sugar reading, and whether any medicine dose was missed?", 2);
   }
 
-  if (!hasMedicine && (risk.level !== "LOW" || hasProfileGap)) {
+  if (!hasMedicine && risk.level === "HIGH") {
     addQuestion("medicine_taken", "Medicine taken", "Has anything already been taken for this, including home remedies or prescribed medicine?", 4);
   }
 
-  addQuestion(
-    "red_flags",
-    "Check red flags",
-    "Help me check for red flags. Ask if there is trouble breathing, chest pain, confusion, fainting, severe weakness, or one-sided numbness.",
-    risk.level === "HIGH" ? 1 : risk.level === "MODERATE" ? 3 : 6
-  );
+  if (hasBackPain) {
+    addQuestion(
+      "back_pain_red_flags",
+      "Back pain safety check",
+      "Any leg numbness or weakness, loss of bladder or bowel control, fever, recent injury, or pain going down one leg?",
+      2
+    );
+  } else if (risk.level === "HIGH") {
+    addQuestion(
+      "red_flags",
+      "Check red flags",
+      "Are there any severe warning signs right now, such as trouble breathing, chest pain, confusion, fainting, severe weakness, or one-sided numbness?",
+      1
+    );
+  } else if (risk.level === "MODERATE" && (hasBreathing || hasDizziness || hasFever)) {
+    addQuestion(
+      "red_flags",
+      "Check warning signs",
+      "Are there any severe or worsening symptoms right now?",
+      4
+    );
+  }
 
   return questions
     .sort((a, b) => a.priority - b.priority)
