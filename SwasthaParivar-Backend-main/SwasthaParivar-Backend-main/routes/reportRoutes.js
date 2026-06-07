@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import auth from "../middleware/auth.js";
-import { analyzeReport, downloadReport, listReports, uploadReport } from "../controllers/reportController.js";
+import { analyzeReport, downloadReport, listReports, uploadReport, deleteReport } from "../controllers/reportController.js";
 import { requireFeature } from "../middleware/planGuard.js";
 import { validate } from "../middleware/validate.js";
 import {
@@ -36,6 +36,12 @@ router.get(
   validate(reportParamsSchema, "params"),
   validate(reportDownloadQuerySchema, "query"),
   downloadReport
+);
+router.delete(
+  "/:id",
+  auth,
+  validate(reportParamsSchema, "params"),
+  deleteReport
 );
 
 export default router;

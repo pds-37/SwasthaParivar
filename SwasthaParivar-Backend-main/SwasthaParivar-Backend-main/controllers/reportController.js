@@ -294,3 +294,38 @@ export const downloadReport = async (req, res) => {
     });
   }
 };
+
+export const deleteReport = async (req, res) => {
+  try {
+    const householdContext = await householdService.getOptionalUserHouseholdContext(
+      req.userId,
+      "deleteReport"
+    );
+    const report = await Report.findOne({
+      _id: req.params.id,
+      ...buildReportScope(householdContext?.household?._id || null, req.userId),
+    });
+
+    if (!report) {
+      return sendError(res, {
+        status: 404,
+        code: "REPORT_NOT_FOUND",
+        message: "Report not found",
+      });
+    }
+
+    await Report.deleteOne({ _id: report._id });
+
+    return sendSuccess(res, {
+      message: "Report deleted successfully",
+    });
+  } catch (error) {
+    return sendError(res, {
+      status: 500,
+      code: "REPORT_DELETE_FAILED",
+      message: "Could not delete report",
+      details: error.message,
+    });
+  }
+};
+
