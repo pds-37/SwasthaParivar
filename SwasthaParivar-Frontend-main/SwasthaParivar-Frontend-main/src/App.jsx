@@ -43,7 +43,7 @@ const RouteScreen = ({ page, componentProps }) => {
   const Page = page;
 
   useEffect(() => {
-    trackEvent("page_view", {
+    trackEvent("$pageview", {
       path: location.pathname,
     });
   }, [location.pathname]);
