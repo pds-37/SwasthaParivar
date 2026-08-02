@@ -215,9 +215,11 @@ class AuthService {
   async persistRefreshToken(userId, refreshToken, sessionId = null, requestContext = {}) {
     const hash = this.hashToken(refreshToken);
     const expiresAt = new Date(Date.now() + appConfig.refreshTokenMaxAgeMs);
+    const targetSessionId = sessionId || new mongoose.Types.ObjectId();
     
-    if (sessionId) {
-      await Session.findByIdAndUpdate(sessionId, {
+    const existing = sessionId ? await Session.findById(sessionId) : null;
+    if (existing) {
+      await Session.findByIdAndUpdate(targetSessionId, {
         $set: {
           refreshTokenHash: hash,
           expiresAt: expiresAt,
@@ -225,9 +227,10 @@ class AuthService {
           deviceFingerprint: requestContext.deviceFingerprint || null
         },
       });
-      return sessionId;
+      return targetSessionId;
     } else {
       const session = await Session.create({
+        _id: targetSessionId,
         userId,
         refreshTokenHash: hash,
         expiresAt,
@@ -254,7 +257,7 @@ class AuthService {
     const accessToken = this.issueAccessToken(user._id, sessionId);
     const refreshToken = this.issueRefreshToken(user._id, sessionId);
     
-    await this.persistRefreshToken(user._id, refreshToken, existingSessionId ? sessionId : null, requestContext);
+    await this.persistRefreshToken(user._id, refreshToken, sessionId, requestContext);
     let safeUser = householdService.buildSafeUser(user);
 
     try {
