@@ -1,5 +1,5 @@
 import mongoSanitize from "express-mongo-sanitize";
-import securityEmitter from "../services/security/SecurityEmitter.js";
+import { securityEmitter } from "../services/diContainer.js";
 import securityConfig from "../config/security.config.js";
 
 // We wrap it to emit security events when a NoSQL injection payload is found

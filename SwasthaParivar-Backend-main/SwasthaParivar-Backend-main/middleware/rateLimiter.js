@@ -2,7 +2,7 @@ import { RateLimiterMemory, RateLimiterRedis } from "rate-limiter-flexible";
 import { sendError } from "../utils/apiResponse.js";
 import { getRedisClient } from "../utils/redis.js";
 import securityConfig from "../config/security.config.js";
-import securityEmitter from "../services/security/SecurityEmitter.js";
+import { securityEmitter } from "../services/diContainer.js";
 
 const normalizeEmail = (value = "") => String(value).trim().toLowerCase();
 

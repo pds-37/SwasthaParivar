@@ -1,6 +1,6 @@
 import Report from "../models/reportmodel.js";
 import householdService from "../services/household/HouseholdService.js";
-import securityEmitter from "../services/security/SecurityEmitter.js";
+import { securityEmitter } from "../services/diContainer.js";
 import securityConfig from "../config/security.config.js";
 import { reviewHealthAttachment } from "../services/ai/reportReviewService.js";
 import aiContextService from "../services/ai/aiContextService.js";

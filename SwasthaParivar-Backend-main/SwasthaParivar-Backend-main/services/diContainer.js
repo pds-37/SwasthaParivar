@@ -69,5 +69,6 @@ export default {
   aiOutputSafetyLayer,
   contextSanitizer,
   promptRiskEngine,
-  threatScoreService
+  threatScoreService,
+  securityEmitter
 };
