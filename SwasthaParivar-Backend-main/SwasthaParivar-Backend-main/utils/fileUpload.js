@@ -1,39 +1,31 @@
 import { createHmac, randomUUID } from "node:crypto";
 import path from "node:path";
+import { fileTypeFromBuffer } from "file-type";
 import appConfig from "../config/AppConfig.js";
+import securityConfig from "../config/security.config.js";
 
-const allowedMimeTypes = new Map([
-  ["application/pdf", { signature: "25504446", extension: ".pdf" }],
-  ["image/png", { signature: "89504e47", extension: ".png" }],
-  ["image/jpeg", { signature: "ffd8ff", extension: ".jpg" }],
-  ["image/webp", { signature: "52494646", extension: ".webp" }],
-]);
-
-export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = securityConfig.upload.maxSizeBytes;
 
 export const isSafeFileName = (fileName = "") => {
   const normalized = path.posix.normalize(String(fileName || ""));
   return !normalized.includes("..") && !normalized.includes("/") && !normalized.includes("\\");
 };
 
-export const detectMimeFromBuffer = (buffer) => {
-  const hex = buffer.subarray(0, 12).toString("hex").toLowerCase();
-
-  for (const [mimeType, { signature }] of allowedMimeTypes.entries()) {
-    if (hex.startsWith(signature)) {
-      return mimeType;
-    }
+export const detectMimeFromBuffer = async (buffer) => {
+  const result = await fileTypeFromBuffer(buffer);
+  
+  if (!result || !securityConfig.upload.allowedMimeTypes.includes(result.mime)) {
+    return null;
+  }
+  
+  if (!securityConfig.upload.allowedExtensions.includes(`.${result.ext}`)) {
+    return null;
   }
 
-  if (hex.startsWith("52494646") && buffer.subarray(8, 12).toString("ascii") === "WEBP") {
-    return "image/webp";
-  }
-
-  return null;
+  return { mimeType: result.mime, extension: `.${result.ext}` };
 };
 
-export const buildStoredFileName = (mimeType) => {
-  const extension = allowedMimeTypes.get(mimeType)?.extension || "";
+export const buildStoredFileName = (extension) => {
   return `${randomUUID()}${extension}`;
 };
 

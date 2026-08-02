@@ -32,6 +32,11 @@ const doctorPacketSchema = new mongoose.Schema({
   doctorNotes: { type: [String], default: [] },
   latestVitals: { type: mongoose.Schema.Types.Mixed, default: {} },
   trendFlags: { type: [String], default: [] },
+  randomForestRisk: { type: String, default: "NOT_EVALUATED" },
+  logisticProbability: { type: Number, default: 0.0 },
+  decisionTreeReasoning: { type: [String], default: [] },
+  clinicalRulesVerdict: { type: String, default: "NOT_APPLICABLE" },
+  geminiSummary: { type: String, default: "" },
   sourceReferences: {
     type: [
       {

@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import "express-async-errors";
 
 import appConfig from "./config/AppConfig.js";
+import securityConfig from "./config/security.config.js";
 import { closeDB, connectDB } from "./utils/db.js";
 import { closeRedisClient } from "./utils/redis.js";
 import authRouter from "./routes/authroute.js";
@@ -72,10 +73,16 @@ app.set("trust proxy", 1);
 
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: securityConfig.helmet.contentSecurityPolicy,
+    crossOriginResourcePolicy: securityConfig.helmet.crossOriginResourcePolicy,
+    hsts: securityConfig.helmet.hsts,
+    frameguard: securityConfig.helmet.frameguard,
   })
 );
 app.use(requestLogger);
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: false, limit: "10mb" }));
+app.use(requestSanitizer);
 app.use(
   cors({
     origin(origin, callback) {
@@ -89,9 +96,7 @@ app.use(
   })
 );
 app.use(cookieParser());
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: false, limit: "10mb" }));
-app.use(requestSanitizer);
+
 app.use((req, res, next) => {
   if (isShuttingDown) {
     res.setHeader("Connection", "close");

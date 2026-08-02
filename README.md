@@ -1,298 +1,419 @@
-<div align="center">
+# SwasthaParivar
 
-<img src="https://img.shields.io/badge/SwasthaParivar-Family%20Health%20Platform-4CAF50?style=for-the-badge&logo=heart&logoColor=white" alt="SwasthaParivar" />
+SwasthaParivar is a full-stack family health management platform for organizing family members, health records, reminders, reports, home-remedy guidance, and AI-assisted health conversations in one place.
 
+The app is split into a Vite React frontend and an Express/MongoDB backend. The frontend is designed for Vercel, while the backend is configured for Render-style deployment.
 
-**A full-stack family health management platform.**  
-Organize reminders, reports, member records, health snapshots, and AI-guided care — all in one connected workspace.
+Live links:
 
-<br/>
+- Frontend: https://swastha-parivar.vercel.app
+- Backend health check: https://swasthaparivar-v1.onrender.com/health
 
-[🚀 Live App](https://swastha-parivar.vercel.app) · [🔍 Backend Health](https://swasthaparivar-v1.onrender.com/health) · [📖 Docs](#local-setup) · [🐛 Issues](https://github.com/pds-37/SwasthaParivar/issues)
+> Medical disclaimer: SwasthaParivar is an organization and guidance tool. It does not replace licensed medical advice, diagnosis, treatment, emergency care, or consultation with a doctor.
 
-</div>
+## What It Does
 
----
+- Family profiles for different members of a household
+- Auth with access and refresh token flow
+- Household invite and join flow
+- Health records for vitals and member-specific tracking
+- Medicine, vaccination, checkup, and custom reminders
+- Push notification support through VAPID keys
+- Medical report upload, management, and doctor-share PDF generation
+- Home remedy library with safety checks and adverse event handling
+- AI health chat backed by Google Gemini
+- AI memory, insight storage, reminder extraction, and report review flows
+- Pricing, privacy, terms, public remedy pages, and protected dashboard pages
+- Optional Redis-backed rate limiting
+- Optional Sentry monitoring
+- Optional PostHog frontend analytics
 
+## Tech Stack
 
-## 🩺 The Problem
+Frontend:
 
-Family healthcare is usually scattered across WhatsApp chats, paper reports, missed reminders, and one person's memory. Most health apps are either single-user trackers, basic reminder apps, or generic AI chatbots.
+- React 19
+- Vite
+- React Router
+- Material UI
+- SWR
+- Axios
+- Framer Motion
+- Recharts
+- FullCalendar
+- PWA/service worker support
 
-**SwasthaParivar solves this** by creating a shared family care system where reminders, reports, records, and AI guidance all work together — with member-specific context throughout.
+Backend:
 
----
+- Node.js
+- Express
+- MongoDB with Mongoose
+- JWT auth
+- Zod validation
+- Helmet, CORS, cookie-parser
+- Multer uploads
+- Web Push
+- Node Cron jobs
+- Pino logging
+- Optional Redis
+- Optional Sentry
+- Google Gemini AI
 
-## ✨ Core Features
-
-<table>
-<tr>
-<td width="50%">
-
-### 👨‍👩‍👧 Family Profiles
-Each member tracks:
-- Name, age, gender, relationship
-- Existing conditions & allergies
-- Current medications
-- Child-sensitive & pregnancy flags
-
-</td>
-<td width="50%">
-
-### 📊 Health Records
-Monitor over time:
-- Blood pressure & heart rate
-- Blood sugar & weight
-- Sleep quality & daily steps
-
-</td>
-</tr>
-<tr>
-<td>
-
-### 🔔 Smart Reminders
-Supports:
-- Medicine, vaccination & checkup reminders
-- Custom recurrence schedules
-- Member-specific scheduling
-- Google Calendar handoff
-
-</td>
-<td>
-
-### 📄 Report Management
-- Upload medical reports
-- Link reports to family members
-- AI-generated summaries
-- Invalid upload rejection logic
-
-</td>
-</tr>
-</table>
-
----
-
-## 🤖 AI Layer
-
-The AI assistant is **intentionally health-focused** — not a general chatbot.
-
-Built on **Google Gemini** with structured family context injection:
-
-| Capability | Description |
-|---|---|
-| 🧠 Family context injection | Personalised to each member's profile |
-| 🔒 Health-only scope | Redirects unrelated queries back to health topics |
-| 📋 Reminder extraction | Detects and creates reminders from conversation |
-| 📑 Report review | Summarises and validates uploaded reports |
-| 💬 Conversation memory | Maintains context across the session |
-| 💡 AI insight storage | Persists key guidance for future reference |
-
----
-
-## 🛠 Tech Stack
-
-<table>
-<tr>
-<th>Frontend</th>
-<th>Backend</th>
-<th>AI / Platform</th>
-</tr>
-<tr>
-<td>
-
-![React](https://img.shields.io/badge/-React-61DAFB?style=flat-square&logo=react&logoColor=black)
-![Vite](https://img.shields.io/badge/-Vite-646CFF?style=flat-square&logo=vite&logoColor=white)
-![MUI](https://img.shields.io/badge/-MUI-007FFF?style=flat-square&logo=mui&logoColor=white)
-![React Router](https://img.shields.io/badge/-React%20Router-CA4245?style=flat-square&logo=reactrouter&logoColor=white)
-![Axios](https://img.shields.io/badge/-Axios-5A29E4?style=flat-square&logo=axios&logoColor=white)
-![SWR](https://img.shields.io/badge/-SWR-000000?style=flat-square)
-
-</td>
-<td>
-
-![Node.js](https://img.shields.io/badge/-Node.js-339933?style=flat-square&logo=node.js&logoColor=white)
-![Express](https://img.shields.io/badge/-Express-000000?style=flat-square&logo=express&logoColor=white)
-![MongoDB](https://img.shields.io/badge/-MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white)
-![JWT](https://img.shields.io/badge/-JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)
-![Zod](https://img.shields.io/badge/-Zod-3E67B1?style=flat-square)
-![Helmet](https://img.shields.io/badge/-Helmet-black?style=flat-square)
-
-</td>
-<td>
-
-![Gemini](https://img.shields.io/badge/-Google%20Gemini-4285F4?style=flat-square&logo=google&logoColor=white)
-![Google OAuth](https://img.shields.io/badge/-Google%20OAuth-EA4335?style=flat-square&logo=google&logoColor=white)
-![Vercel](https://img.shields.io/badge/-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
-![Render](https://img.shields.io/badge/-Render-46E3B7?style=flat-square&logo=render&logoColor=black)
-![Sentry](https://img.shields.io/badge/-Sentry-362D59?style=flat-square&logo=sentry&logoColor=white)
-![Redis](https://img.shields.io/badge/-Redis%20(optional)-DC382D?style=flat-square&logo=redis&logoColor=white)
-
-</td>
-</tr>
-</table>
-
----
-
-## 📁 Project Structure
+## Repository Structure
 
 ```text
 Swastha Parivar/
-├── SwasthaParivar-Frontend-main/
-│   └── SwasthaParivar-Frontend-main/
-├── SwasthaParivar-Backend-main/
-│   └── SwasthaParivar-Backend-main/
-
+|-- README.md
+|-- docs/
+|-- SwasthaParivar-Frontend-main/
+|   `-- SwasthaParivar-Frontend-main/
+|       |-- src/
+|       |-- public/
+|       |-- package.json
+|       |-- vite.config.js
+|       `-- vercel.json
+`-- SwasthaParivar-Backend-main/
+    `-- SwasthaParivar-Backend-main/
+        |-- controllers/
+        |-- routes/
+        |-- models/
+        |-- services/
+        |-- middleware/
+        |-- validations/
+        |-- utils/
+        |-- jobs/
+        |-- package.json
+        |-- render.yaml
+        `-- server.js
 ```
 
----
+## Prerequisites
 
-## 🚀 Local Setup
+- Node.js 20 or newer recommended
+- npm
+- MongoDB database connection string
+- Google Gemini API key for AI features
+- VAPID public/private keys for push notifications
+- Google OAuth credentials if using Google sign-in
+- Redis URL if using Redis-backed rate limits
+- Sentry DSNs if enabling monitoring
 
-### 1. Clone the repo
+## Local Setup
+
+Clone the repository:
+
 ```bash
 git clone https://github.com/pds-37/SwasthaParivar.git
 cd SwasthaParivar
 ```
 
-### 2. Install dependencies
-```bash
-# Frontend
-cd SwasthaParivar-Frontend-main/SwasthaParivar-Frontend-main
-npm install
+Install backend dependencies:
 
-# Backend
-cd ../../SwasthaParivar-Backend-main/SwasthaParivar-Backend-main
+```bash
+cd SwasthaParivar-Backend-main/SwasthaParivar-Backend-main
 npm install
 ```
 
-### 3. Configure environment variables
+Install frontend dependencies:
 
-**Backend `.env`**
+```bash
+cd ../../SwasthaParivar-Frontend-main/SwasthaParivar-Frontend-main
+npm install
+```
+
+## Environment Variables
+
+Create a backend `.env` file from:
+
+```text
+SwasthaParivar-Backend-main/SwasthaParivar-Backend-main/.env.example
+```
+
+Minimum backend variables:
+
 ```env
-NODE_ENV=development
 PORT=5000
-MONGO_URI=your_mongo_connection_string
-JWT_SECRET=your_jwt_secret
-GEMINI_API_KEY=your_gemini_api_key
-COOKIE_SAME_SITE=strict
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/swasthaparivar
+JWT_SECRET=replace_with_a_long_secret
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 CLIENT_URLS=http://localhost:5173,http://127.0.0.1:5173
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-# Optional override. If omitted, the backend derives the callback URL from the current host.
-GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback
-VAPID_PUBLIC_KEY=your_vapid_public_key
-VAPID_PRIVATE_KEY=your_vapid_private_key
-SENTRY_DSN=
-SENTRY_ENVIRONMENT=development
-REDIS_URL=
+COOKIE_SAME_SITE=strict
+APP_VERSION=backend-local
 ```
 
-**Frontend `.env.local`**
+Recommended backend variables:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
+GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback
+VAPID_PUBLIC_KEY=your_public_vapid_key
+VAPID_PRIVATE_KEY=your_private_vapid_key
+REDIS_URL=
+SENTRY_DSN=
+SENTRY_ENVIRONMENT=development
+PRIVACY_POLICY_VERSION=v1.0
+```
+
+Create a frontend `.env.local` file from:
+
+```text
+SwasthaParivar-Frontend-main/SwasthaParivar-Frontend-main/.env.example
+```
+
+Frontend variables:
+
 ```env
 VITE_API_URL=http://localhost:5000/api
-VITE_VAPID_PUBLIC_KEY=your_vapid_public_key
+VITE_VAPID_PUBLIC_KEY=your_public_vapid_key
+VITE_POSTHOG_KEY=
 VITE_SENTRY_DSN=
 VITE_APP_VERSION=frontend-local
 ```
 
-### 4. Run the app
+`VITE_API_URL` can be either the backend origin or the full API base. For example, both `http://localhost:5000` and `http://localhost:5000/api` are accepted by the frontend API helper.
+
+## Running Locally
+
+Start the backend:
 
 ```bash
-# Start backend (http://localhost:5000)
 cd SwasthaParivar-Backend-main/SwasthaParivar-Backend-main
 npm run dev
+```
 
-# Start frontend (http://localhost:5173)
+The backend runs on:
+
+```text
+http://localhost:5000
+```
+
+Health check:
+
+```text
+http://localhost:5000/health
+```
+
+Start the frontend in a second terminal:
+
+```bash
 cd SwasthaParivar-Frontend-main/SwasthaParivar-Frontend-main
 npm run dev
 ```
 
-> Health check: `http://localhost:5000/health`
+The frontend runs on:
 
----
+```text
+http://localhost:5173
+```
 
-## ☁️ Deployment
+## Scripts
 
-### Frontend → Vercel
+Backend scripts:
+
+```bash
+npm run dev      # Start Express with nodemon
+npm start        # Start Express with node
+npm run check    # Syntax-check server.js
+npm test         # Run node:test files in tests/
+```
+
+Frontend scripts:
+
+```bash
+npm run dev              # Start Vite dev server
+npm run build            # Build production frontend
+npm run preview          # Preview production build
+npm run lint             # Run ESLint
+npm run analyze:bundle   # Generate bundle visualization
+```
+
+## Main Frontend Routes
+
+Public routes:
+
+- `/`
+- `/privacy`
+- `/terms`
+- `/pricing`
+- `/remedy-library`
+- `/remedy-library/:sectorId`
+- `/remedy/:id`
+- `/join/:code`
+- `/auth`
+
+Protected routes:
+
+- `/dashboard`
+- `/family`
+- `/family/:id`
+- `/health`
+- `/health/:id`
+- `/reports`
+- `/remedies`
+- `/ai-chat`
+- `/reminders`
+- `/settings`
+
+## Main Backend API Areas
+
+Health and root:
+
+- `GET /health`
+- `GET /`
+
+API route groups:
+
+- `/api/auth`
+- `/api/ai`
+- `/api/ai/memory`
+- `/api/reminders`
+- `/api/members`
+- `/api/households`
+- `/api/referral`
+- `/api/account`
+- `/api/config`
+- `/api/health`
+- `/api/remedies`
+- `/api/reports`
+- `/api/symptoms`
+- `/api` notification routes
+
+Most API groups are protected by auth and rate limiting. Auth routes are public where needed.
+
+## Google OAuth Setup
+
+1. Create a Google OAuth web client in Google Cloud Console.
+2. Add the frontend URL to Authorized JavaScript origins.
+3. Add the backend callback URL to Authorized redirect URIs.
+4. For local development, use:
+
+```text
+http://localhost:5000/api/auth/google/callback
+```
+
+5. For production, use:
+
+```text
+https://your-backend-domain/api/auth/google/callback
+```
+
+6. Add privacy policy and terms URLs in the OAuth consent screen.
+7. Add test users while the Google app is in testing mode.
+
+If `GOOGLE_REDIRECT_URI` is not set, the backend derives `/api/auth/google/callback` from the current request host.
+
+## Deployment
+
+### Frontend on Vercel
+
+Set these environment variables in Vercel:
+
 ```env
 VITE_API_URL=https://your-backend-domain/api
-VITE_VAPID_PUBLIC_KEY=your_vapid_public_key
+VITE_VAPID_PUBLIC_KEY=your_public_vapid_key
+VITE_POSTHOG_KEY=your_posthog_public_key
 VITE_SENTRY_DSN=your_frontend_sentry_dsn
 VITE_APP_VERSION=frontend-production
 ```
 
-### Backend → Render
+Build command:
+
+```bash
+npm run build
+```
+
+Output directory:
+
+```text
+dist
+```
+
+### Backend on Render
+
+Set these environment variables in Render:
+
 ```env
 NODE_ENV=production
 PORT=10000
 MONGO_URI=your_mongo_connection_string
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=your_long_production_secret
 GEMINI_API_KEY=your_gemini_api_key
-COOKIE_SAME_SITE=none
 CORS_ORIGINS=https://your-frontend-domain
 CLIENT_URLS=https://your-frontend-domain
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-# Optional override. If omitted, the backend derives the callback URL from the current host.
+COOKIE_SAME_SITE=none
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
 GOOGLE_REDIRECT_URI=https://your-backend-domain/api/auth/google/callback
-VAPID_PUBLIC_KEY=your_vapid_public_key
-VAPID_PRIVATE_KEY=your_vapid_private_key
+VAPID_PUBLIC_KEY=your_public_vapid_key
+VAPID_PRIVATE_KEY=your_private_vapid_key
+REDIS_URL=your_optional_redis_url
 SENTRY_DSN=your_backend_sentry_dsn
 SENTRY_ENVIRONMENT=production
-REDIS_URL=your_redis_url_optional
+APP_VERSION=backend-production
+PRIVACY_POLICY_VERSION=v1.0
 ```
 
----
+Start command:
 
-## 🔑 Google OAuth Setup
+```bash
+npm start
+```
 
-1. Create a Google OAuth Web Client in [Google Console](https://console.cloud.google.com)
-2. Add your frontend origin under **Authorized JavaScript Origins**
-3. Add every backend callback you actually use under **Authorized Redirect URIs**
-   - Local: `http://localhost:5000/api/auth/google/callback`
-   - Render example: `https://your-backend-domain/api/auth/google/callback`
-4. Set home, privacy, and terms URLs under Google Branding
-5. Add your Gmail as a test user while the app is in testing mode
+## Security Notes
 
-Public legal pages are available at `/privacy` and `/terms`.
+- Passwords are hashed with bcrypt.
+- Auth uses bearer tokens and httpOnly refresh cookies.
+- CORS is restricted through configured frontend origins.
+- Helmet security headers are enabled.
+- Request payloads are sanitized.
+- Request validation uses Zod schemas.
+- File upload size/type handling is implemented server-side.
+- API routes use rate limiting, with Redis support when configured.
+- Server and frontend errors can be reported to Sentry.
 
----
+## Testing and Verification
 
-## 🔒 Security
+Backend:
 
-| Layer | Implementation |
-|---|---|
-| Auth | httpOnly cookies · Access + refresh token flow |
-| Passwords | bcrypt hashing |
-| Validation | Zod schema enforcement on all requests |
-| Rate limiting | Per-route middleware + optional Redis |
-| Network | CORS allowlist · Helmet security headers |
-| Uploads | File type & size validation |
-| AI scope | Health-only restriction enforced at prompt level |
-| Monitoring | Structured Pino logging · Optional Sentry |
+```bash
+cd SwasthaParivar-Backend-main/SwasthaParivar-Backend-main
+npm test
+```
 
----
+Frontend:
 
-## ⚠️ Disclaimer
+```bash
+cd SwasthaParivar-Frontend-main/SwasthaParivar-Frontend-main
+npm run lint
+npm run build
+```
 
-SwasthaParivar is a health **organisation and guidance** platform. It does not replace a licensed doctor, formal diagnosis, emergency care, or professional medical treatment.
+Manual smoke test:
 
----
+1. Start backend and verify `GET /health`.
+2. Start frontend and open `http://localhost:5173`.
+3. Sign up or sign in.
+4. Create a family member.
+5. Add a health record or reminder.
+6. Open AI chat and send a health-related prompt.
+7. Check reports/remedies flows if configured.
 
-## 👤 Author
+## Documentation
 
-Built by **[Priyanshu Tiwari](https://github.com/pds-37)**
+Additional project planning and completion notes live in:
 
----
+```text
+docs/
+```
 
-## 📄 License
+## Author
 
+Built by Priyanshu Tiwari:
+
+https://github.com/pds-37
+
+## License
 
 This project is licensed under the MIT License.
-
----
-
-<div align="center">
-  <sub>If you found this useful, consider giving it a ⭐</sub>
-</div>

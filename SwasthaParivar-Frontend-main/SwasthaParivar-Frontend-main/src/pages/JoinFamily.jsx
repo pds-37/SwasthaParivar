@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Link2, LoaderCircle, TriangleAlert } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 
 import { useAuth } from "../components/auth-context";
 import { Button } from "../components/ui";
@@ -69,6 +70,10 @@ const JoinFamily = () => {
 
   return (
     <div className="join-family-page">
+      <Helmet>
+        <title>Join Household | SwasthaParivar</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="app-shell join-family-shell">
         <article className="join-family-card card">
           {status === "loading" || loading ? (

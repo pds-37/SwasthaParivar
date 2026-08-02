@@ -5,6 +5,8 @@ import { triageHealthAttachment } from "../services/ai/reportReviewService.js";
 import { generateGeminiText } from "../services/ai/geminiService.js";
 import aiContextService from "../services/ai/aiContextService.js";
 import householdService from "../services/household/HouseholdService.js";
+import mlInferenceClient from "../services/ml/mlInferenceClient.js";
+import { evaluateClinicalRules } from "../services/ai/clinicalRulesEngine.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 import { logger } from "../utils/logger.js";
@@ -750,11 +752,18 @@ function normalizeHistory(history = []) {
     });
 }
 
-function buildAdvisorPrompt({ message, member, history, context }) {
+function buildAdvisorPrompt({ message, member, history, context, mlAnalysis }) {
   const historyBlock = normalizeHistory(history);
 
+  const mlBlock = mlAnalysis && mlAnalysis.available ? `
+MACHINE LEARNING & CLINICAL RULES ENGINE INTEGRATION:
+- Random Forest Clinical Risk Prediction: ${mlAnalysis.rfRisk} (Calibrated Probability: ${((mlAnalysis.logisticProbability || 0) * 100).toFixed(1)}%)
+- Decision Tree Rule Path Explanation: ${Array.isArray(mlAnalysis.decisionPath) ? mlAnalysis.decisionPath.join(" => ") : mlAnalysis.decisionPath}
+- Clinical Rules Engine Triage Verdict: ${mlAnalysis.verdict} (${mlAnalysis.reasoning || "Consensus confirmed"})
+CRITICAL INSTRUCTION FOR GEMINI: You must NEVER calculate, guess, or override medical risk severity yourself. Your task is strictly to explain the Random Forest result, Logistic probability, Decision Tree explanation, and Clinical Rules Engine verdict above in clear, supportive, and patient-friendly language.` : "";
+
   return `
-You are SwasthaParivar AI, a highly intelligent and empathetic family health advisor.
+You are SwasthaParivar AI, a highly intelligent and empathetic family health advisor.${mlBlock}
 
 Goal: Provide expert-level health guidance, connect family vitals/history, and maintain perfect context in multi-turn conversations.
 
@@ -913,7 +922,26 @@ export const chatWithAI = async (req, res) => {
           "Saved household context could not be loaded for this account right now. Give careful general guidance and ask short follow-up questions when personalization matters.",
       };
     }
-    const prompt = buildAdvisorPrompt({ message, member, history, context });
+    let mlAnalysis = null;
+    try {
+      const mlResponse = await mlInferenceClient.requestMlPrediction({
+        userId: req.userId,
+        memberId: context.memberId || req.body.memberId || null,
+        member: context.memberData || {},
+        latestVitals: context.latestVitals || {}
+      });
+      const clinicalEvaluation = evaluateClinicalRules({
+        message,
+        member: context.memberData || {},
+        mlPrediction: mlResponse,
+        userId: req.userId
+      });
+      mlAnalysis = clinicalEvaluation.mlAnalysis;
+    } catch (mlErr) {
+      logger.warn({ error: mlErr?.message }, "ML inference request skipped or offline - defaulting to deterministic clinical rules");
+    }
+
+    const prompt = buildAdvisorPrompt({ message, member, history, context, mlAnalysis });
     let reply;
     let isFallback = false;
     let isQuotaExhausted = false;
@@ -967,6 +995,7 @@ export const chatWithAI = async (req, res) => {
     return sendSuccess(res, {
       data: {
         reply,
+        mlAnalysis,
         ...(isFallback ? { fallback: true } : {}),
         ...(isQuotaExhausted ? { quotaExceeded: true } : {}),
       },

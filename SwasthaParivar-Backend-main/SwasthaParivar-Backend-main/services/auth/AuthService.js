@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import User from "../../models/user.js";
+import Session from "../../models/Session.js";
 import appConfig from "../../config/AppConfig.js";
 import householdService from "../household/HouseholdService.js";
 import { logger } from "../../utils/logger.js";
@@ -93,8 +94,8 @@ class AuthService {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
-  issueAccessToken(userId) {
-    return jwt.sign({ id: userId, type: "access" }, appConfig.jwtSecret, {
+  issueAccessToken(userId, sessionId) {
+    return jwt.sign({ id: userId, sessionId, type: "access" }, appConfig.jwtSecret, {
       expiresIn: appConfig.accessTokenTtl,
       issuer: "swasthaparivar",
       subject: String(userId),
@@ -104,8 +105,8 @@ class AuthService {
     });
   }
 
-  issueRefreshToken(userId) {
-    return jwt.sign({ id: userId, type: "refresh" }, appConfig.jwtSecret, {
+  issueRefreshToken(userId, sessionId) {
+    return jwt.sign({ id: userId, sessionId, type: "refresh" }, appConfig.jwtSecret, {
       expiresIn: appConfig.refreshTokenTtl,
       issuer: "swasthaparivar",
       subject: String(userId),
@@ -210,32 +211,49 @@ class AuthService {
     return response.json();
   }
 
-  async persistRefreshToken(userId, refreshToken) {
-    await User.findByIdAndUpdate(userId, {
+  async persistRefreshToken(userId, refreshToken, sessionId = null, requestContext = {}) {
+    const hash = this.hashToken(refreshToken);
+    const expiresAt = new Date(Date.now() + appConfig.refreshTokenMaxAgeMs);
+    
+    if (sessionId) {
+      await Session.findByIdAndUpdate(sessionId, {
+        $set: {
+          refreshTokenHash: hash,
+          expiresAt: expiresAt,
+          ipAddress: requestContext.ip || null,
+          deviceFingerprint: requestContext.deviceFingerprint || null
+        },
+      });
+      return sessionId;
+    } else {
+      const session = await Session.create({
+        userId,
+        refreshTokenHash: hash,
+        expiresAt,
+        ipAddress: requestContext.ip || null,
+        deviceFingerprint: requestContext.deviceFingerprint || null
+      });
+      return session._id;
+    }
+  }
+
+  async clearRefreshToken(sessionId) {
+    if (!sessionId) return;
+    await Session.findByIdAndUpdate(sessionId, {
       $set: {
-        refreshTokenHash: this.hashToken(refreshToken),
-        refreshTokenExpiresAt: new Date(Date.now() + appConfig.refreshTokenMaxAgeMs),
+        revokedAt: new Date(),
       },
     });
   }
 
-  async clearRefreshToken(userId) {
-    if (!userId) return;
-
-    await User.findByIdAndUpdate(userId, {
-      $set: {
-        refreshTokenHash: null,
-        refreshTokenExpiresAt: null,
-      },
-    });
-  }
-
-  async buildSession(user) {
+  async buildSession(user, existingSessionId = null, requestContext = {}) {
     await this.ensureBillingFields(user);
 
-    const accessToken = this.issueAccessToken(user._id);
-    const refreshToken = this.issueRefreshToken(user._id);
-    await this.persistRefreshToken(user._id, refreshToken);
+    const sessionId = existingSessionId || new mongoose.Types.ObjectId();
+    const accessToken = this.issueAccessToken(user._id, sessionId);
+    const refreshToken = this.issueRefreshToken(user._id, sessionId);
+    
+    await this.persistRefreshToken(user._id, refreshToken, existingSessionId ? sessionId : null, requestContext);
     let safeUser = householdService.buildSafeUser(user);
 
     try {
@@ -439,22 +457,23 @@ class AuthService {
       return { status: 401, error: { code: "INVALID_REFRESH_TOKEN", message: "Refresh token is invalid" } };
     }
 
-    const user = await User.findById(payload.id).select("+refreshTokenHash +refreshTokenExpiresAt");
-    if (!user || !user.refreshTokenHash) {
+    const session = await Session.findById(payload.sessionId);
+    if (!session || !session.isActive()) {
       return { status: 401, error: { code: "INVALID_REFRESH_TOKEN", message: "Refresh token is no longer active" } };
     }
 
-    if (user.refreshTokenExpiresAt && user.refreshTokenExpiresAt.getTime() < Date.now()) {
-      await this.clearRefreshToken(user._id);
-      return { status: 401, error: { code: "INVALID_REFRESH_TOKEN", message: "Refresh token expired" } };
-    }
-
-    if (this.hashToken(refreshToken) !== user.refreshTokenHash) {
-      await this.clearRefreshToken(user._id);
+    if (this.hashToken(refreshToken) !== session.refreshTokenHash) {
+      await this.clearRefreshToken(session._id);
       return { status: 401, error: { code: "INVALID_REFRESH_TOKEN", message: "Refresh token mismatch" } };
     }
 
-    return { status: 200, data: await this.buildSession(user) };
+    const user = await User.findById(payload.id);
+    if (!user) {
+      await this.clearRefreshToken(session._id);
+      return { status: 401, error: { code: "INVALID_REFRESH_TOKEN", message: "User not found" } };
+    }
+
+    return { status: 200, data: await this.buildSession(user, session._id) };
   }
 
   async logout(tokens = {}) {
@@ -468,7 +487,7 @@ class AuthService {
         issuer: "swasthaparivar",
         audience: "swasthaparivar-client",
       });
-      await this.clearRefreshToken(payload.id);
+      await this.clearRefreshToken(payload.sessionId);
     } catch {
       // Clearing cookies is enough even if the token is stale.
     }

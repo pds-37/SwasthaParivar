@@ -103,6 +103,8 @@ const VOICE_LANGUAGE_CODES = {
   bn: "bn-IN",
 };
 
+const SHOW_AI_WARNING_LEVELS = new Set(["HIGH", "EMERGENCY"]);
+
 const HEALTH_FALLBACK_KEYWORDS = [
   "health",
   "symptom",
@@ -1221,7 +1223,7 @@ const AIChat = () => {
                     {message.attachment && message.attachment.startsWith("data:") ? (
                       <img src={message.attachment} alt="attachment" loading="lazy" />
                     ) : null}
-                    {message.sender === "ai" && message.riskLevel && message.riskLevel !== "LOW" ? (
+                    {message.sender === "ai" && SHOW_AI_WARNING_LEVELS.has(message.riskLevel) ? (
                       <AiDisclaimer riskLevel={message.riskLevel} />
                     ) : null}
                     {message.sender === "ai" ? (
@@ -1273,7 +1275,7 @@ const AIChat = () => {
                   >
                     {streamingText ? (
                       <>
-                        {streamMeta.riskLevel && streamMeta.riskLevel !== "LOW" ? (
+                        {SHOW_AI_WARNING_LEVELS.has(streamMeta.riskLevel) ? (
                           <AiDisclaimer riskLevel={streamMeta.riskLevel} />
                         ) : null}
                         <TriageSummary triage={streamMeta.triageSummary} />

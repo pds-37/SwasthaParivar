@@ -1,4 +1,5 @@
 import User from "../models/user.js";
+import Session from "../models/Session.js";
 import householdService from "../services/household/HouseholdService.js";
 import { sendError } from "../utils/apiResponse.js";
 import { getAccessTokenFromRequest, verifyJwt } from "../utils/tokenCookies.js";
@@ -34,6 +35,16 @@ export default async function auth(req, res, next) {
   }
 
   try {
+    const session = await Session.findById(payload.sessionId);
+    if (!session || !session.isActive()) {
+      return sendError(res, {
+        status: 401,
+        code: "SESSION_REVOKED",
+        message: "Your session has expired or been revoked.",
+      });
+    }
+
+    req.sessionId = session._id;
     req.userId = payload.id;
     req.user = await User.findById(payload.id).select("-password").lean();
     if (!req.user) {

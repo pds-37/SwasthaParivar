@@ -1,6 +1,7 @@
 import express from "express";
 import familyMemberController from "../controllers/FamilyMemberController.js";
 import { requireFeature } from "../middleware/planGuard.js";
+import { abac } from "../middleware/abac.middleware.js";
 import { validate } from "../middleware/validate.js";
 import {
   createMemberSchema,
@@ -21,22 +22,24 @@ router.post(
   requireFeature("addMember"),
   (req, res) => familyMemberController.create(req, res)
 );
-router.get("/:id", validate(memberParamsSchema, "params"), (req, res) =>
+router.get("/:id", validate(memberParamsSchema, "params"), abac("id"), (req, res) =>
   familyMemberController.get(req, res)
 );
 router.put(
   "/:id",
   validate(memberParamsSchema, "params"),
+  abac("id"),
   validate(updateMemberHealthSchema),
   (req, res) => familyMemberController.updateHealth(req, res)
 );
 router.patch(
   "/:id/profile",
   validate(memberParamsSchema, "params"),
+  abac("id"),
   validate(updateMemberProfileSchema),
   (req, res) => familyMemberController.updateProfile(req, res)
 );
-router.delete("/:id", validate(memberParamsSchema, "params"), (req, res) =>
+router.delete("/:id", validate(memberParamsSchema, "params"), abac("id"), (req, res) =>
   familyMemberController.delete(req, res)
 );
 

@@ -1,0 +1,101 @@
+{
+  "modelVersion": "v2.6.0-production-leak-free-audited",
+  "trainingDate": "2026-08-02T18:53:31.051635Z",
+  "datasetSource": "UCI Heart Disease Repository (Audited Leak-Free Features)",
+  "recordCount": 920,
+  "featureCount": 17,
+  "features": [
+    "age_years",
+    "bmi_score",
+    "bp_systolic_mean_14d",
+    "bp_diastolic_mean_14d",
+    "bp_pulse_pressure",
+    "glucose_fasting_last",
+    "heart_rate_resting_mean_14d",
+    "sleep_hours_mean_7d",
+    "chronic_disease_count",
+    "medication_active_count",
+    "medication_adherence_rate_30d",
+    "previous_alerts_90d_count",
+    "emergency_episode_count_180d",
+    "activity_level_idx",
+    "smoking_status_flag",
+    "alcohol_consumption_idx",
+    "has_cardiac_family_history"
+  ],
+  "evaluationMetrics": {
+    "RandomForestClassifier": {
+      "Accuracy": 0.663,
+      "Precision": 0.6294,
+      "Recall": 0.6314,
+      "F1_Score": 0.6285,
+      "ROC_AUC": 0.8209,
+      "ConfusionMatrix": [
+        [
+          68,
+          5,
+          9
+        ],
+        [
+          12,
+          24,
+          17
+        ],
+        [
+          3,
+          16,
+          30
+        ]
+      ]
+    },
+    "LogisticRegression": {
+      "Accuracy": 0.6304,
+      "Precision": 0.5944,
+      "Recall": 0.5971,
+      "F1_Score": 0.5946,
+      "ROC_AUC": 0.7894,
+      "ConfusionMatrix": [
+        [
+          66,
+          8,
+          8
+        ],
+        [
+          11,
+          22,
+          20
+        ],
+        [
+          3,
+          18,
+          28
+        ]
+      ]
+    },
+    "DecisionTreeClassifier": {
+      "Accuracy": 0.538,
+      "Precision": 0.545,
+      "Recall": 0.5241,
+      "F1_Score": 0.5208,
+      "ROC_AUC": 0.7138,
+      "ConfusionMatrix": [
+        [
+          51,
+          15,
+          16
+        ],
+        [
+          6,
+          19,
+          28
+        ],
+        [
+          1,
+          19,
+          29
+        ]
+      ]
+    }
+  },
+  "auditPassed": true
+}

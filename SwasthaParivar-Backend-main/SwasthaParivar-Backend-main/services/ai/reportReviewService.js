@@ -1,6 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "../../utils/logger.js";
 import { getApiKeys, isGeminiQuotaError } from "./geminiService.js";
+import diContainer from "../diContainer.js";
+import { reportReviewSchema, attachmentTriageSchema } from "../../validations/llmOutputSchemas.js";
+import User from "../../models/user.js";
+
+const { promptRiskEngine, contextSanitizer, aiOutputSafetyLayer } = diContainer;
 
 const SUPPORTED_REVIEW_MIME_TYPES = ["application/pdf"];
 const MODEL_CANDIDATES = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
@@ -52,8 +57,8 @@ const buildReviewPrompt = ({ mimeType, fileName, memberLabel, healthContext }) =
     '{"isHealthReport": true, "confidence": "high", "documentType": "Lab report", "reason": "Why you decided this.", "summary": "Short medical summary for the app, or empty string if invalid."}',
     "Keep reason concise and keep summary under 120 words.",
     memberLabel ? `Selected family member: ${memberLabel}.` : "",
-    healthContext ? `Member Health Context:\n${healthContext}` : "",
-    fileName ? `Uploaded file name: ${fileName}.` : "",
+    healthContext ? contextSanitizer.fence(healthContext) : "",
+    fileName ? `Uploaded file name: ${contextSanitizer.sanitize(fileName)}.` : "",
     mimeType ? `Uploaded mime type: ${mimeType}.` : "",
   ]
     .filter(Boolean)
@@ -131,8 +136,8 @@ const buildAttachmentInsightPrompt = ({ mimeType, fileName, memberLabel, healthC
     "For report images, summary should be a short markdown summary of the report in under 140 words.",
     "For other files, keep summary empty.",
     memberLabel ? `Selected family member: ${memberLabel}.` : "",
-    healthContext ? `Member Health Context:\n${healthContext}` : "",
-    fileName ? `Uploaded file name: ${fileName}.` : "",
+    healthContext ? contextSanitizer.fence(healthContext) : "",
+    fileName ? `Uploaded file name: ${contextSanitizer.sanitize(fileName)}.` : "",
     mimeType ? `Uploaded mime type: ${mimeType}.` : "",
   ]
     .filter(Boolean)
@@ -144,9 +149,18 @@ export const reviewHealthAttachment = async ({
   fileName,
   memberLabel,
   healthContext,
+  userId,
+  ipAddress
 }) => {
   if (!base64Data || !mimeType) {
     throw new Error("Attachment data and mime type are required");
+  }
+
+  if (userId) {
+    const user = await User.findById(userId);
+    if (!user || !user.aiConsent?.granted) {
+      throw new Error("AI Processing Consent is required but not granted or has been revoked.");
+    }
   }
 
   if (!isSupportedHealthAttachment(mimeType)) {
@@ -157,6 +171,14 @@ export const reviewHealthAttachment = async ({
       summary: "",
       documentType: "",
     });
+  }
+
+  const combinedInput = [fileName, healthContext].filter(Boolean).join("\n");
+  if (combinedInput) {
+    const risk = await promptRiskEngine.evaluate(combinedInput, { userId, ipAddress, contextProvided: !!healthContext });
+    if (risk.decision === "block") {
+      throw new Error("Security block: Prompt injection detected in upload context.");
+    }
   }
 
   const apiKeys = getApiKeys();
@@ -200,7 +222,11 @@ export const reviewHealthAttachment = async ({
           throw new Error(`Empty review response from ${modelName}`);
         }
 
-        return normalizeReview(parseJsonPayload(text));
+        const rawJson = parseJsonPayload(text);
+        const validated = reportReviewSchema.parse(rawJson);
+        const safeOutput = aiOutputSafetyLayer.scan(validated);
+
+        return normalizeReview(safeOutput);
       } catch (error) {
         lastError = error;
         logger.warn({
@@ -228,9 +254,18 @@ export const triageHealthAttachment = async ({
   fileName,
   memberLabel,
   healthContext,
+  userId,
+  ipAddress
 }) => {
   if (!base64Data || !mimeType) {
     throw new Error("Attachment data and mime type are required");
+  }
+
+  if (userId) {
+    const user = await User.findById(userId);
+    if (!user || !user.aiConsent?.granted) {
+      throw new Error("AI Processing Consent is required but not granted or has been revoked.");
+    }
   }
 
   if (!isSupportedHealthAttachment(mimeType)) {
@@ -240,6 +275,14 @@ export const triageHealthAttachment = async ({
       reason: "Only image and PDF files can be reviewed.",
       summary: "",
     });
+  }
+
+  const combinedInput = [fileName, healthContext].filter(Boolean).join("\n");
+  if (combinedInput) {
+    const risk = await promptRiskEngine.evaluate(combinedInput, { userId, ipAddress, contextProvided: !!healthContext });
+    if (risk.decision === "block") {
+      throw new Error("Security block: Prompt injection detected in triage context.");
+    }
   }
 
   const apiKeys = getApiKeys();
@@ -282,7 +325,11 @@ export const triageHealthAttachment = async ({
           throw new Error(`Empty attachment triage response from ${modelName}`);
         }
 
-        return normalizeAttachmentInsight(parseJsonPayload(text));
+        const rawJson = parseJsonPayload(text);
+        const validated = attachmentTriageSchema.parse(rawJson);
+        const safeOutput = aiOutputSafetyLayer.scan(validated);
+
+        return normalizeAttachmentInsight(safeOutput);
       } catch (error) {
         lastError = error;
         logger.warn({

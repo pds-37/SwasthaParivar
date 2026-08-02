@@ -1,5 +1,7 @@
 import Report from "../models/reportmodel.js";
 import householdService from "../services/household/HouseholdService.js";
+import securityEmitter from "../services/security/SecurityEmitter.js";
+import securityConfig from "../config/security.config.js";
 import { reviewHealthAttachment } from "../services/ai/reportReviewService.js";
 import aiContextService from "../services/ai/aiContextService.js";
 import {
@@ -120,8 +122,21 @@ export const uploadReport = async (req, res) => {
       });
     }
 
-    const detectedMime = detectMimeFromBuffer(req.file.buffer);
-    if (!detectedMime || detectedMime !== req.file.mimetype) {
+    const result = await detectMimeFromBuffer(req.file.buffer);
+    if (!result || result.mimeType !== req.file.mimetype) {
+      securityEmitter.emitEvent({
+        userId: req.userId,
+        ipAddress: req.ip,
+        eventType: "MALICIOUS_UPLOAD_ATTEMPT",
+        severity: "critical",
+        scoreDelta: securityConfig.threatThresholds.malwareUpload,
+        metadata: { 
+          originalName: req.file.originalname, 
+          claimedMime: req.file.mimetype,
+          actualMime: result?.mimeType || "unknown"
+        }
+      });
+
       return sendError(res, {
         status: 400,
         code: "INVALID_FILE_TYPE",
@@ -146,8 +161,8 @@ export const uploadReport = async (req, res) => {
       notes: req.body.notes || "",
       aiSummary: req.body.aiSummary || "",
       originalName: req.file.originalname,
-      storedFileName: buildStoredFileName(detectedMime),
-      mimeType: detectedMime,
+      storedFileName: buildStoredFileName(result.extension),
+      mimeType: result.mimeType,
       size: req.file.size,
       fileBuffer: req.file.buffer,
     });
@@ -199,6 +214,8 @@ export const analyzeReport = async (req, res) => {
         fileName: report.originalName,
         memberLabel,
         healthContext, // Pass the memory here
+        userId: req.userId,
+        ipAddress: req.ip,
       });
     } catch (reviewError) {
       review = {

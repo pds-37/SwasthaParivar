@@ -26,6 +26,21 @@ const badgeSchema = new mongoose.Schema({
   },
 }, { _id: false });
 
+const aiConsentSchema = new mongoose.Schema({
+  granted: {
+    type: Boolean,
+    default: false,
+  },
+  version: {
+    type: String,
+    default: "1.0",
+  },
+  timestamp: {
+    type: Date,
+    default: null,
+  }
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -119,6 +134,10 @@ const userSchema = new mongoose.Schema({
   badges: {
     type: [badgeSchema],
     default: [],
+  },
+  aiConsent: {
+    type: aiConsentSchema,
+    default: () => ({}),
   },
 }, { timestamps: true });
 

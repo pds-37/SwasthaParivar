@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import mongooseEncryptionGcm from "../plugins/mongoose-encryption-gcm.js";
 
 const reportSchema = new mongoose.Schema(
   {
@@ -54,16 +55,16 @@ const reportSchema = new mongoose.Schema(
     size: {
       type: Number,
       required: true,
-      max: 10 * 1024 * 1024,
     },
     fileBuffer: {
       type: Buffer,
-      required: true,
       select: false,
     },
   },
   { timestamps: true }
 );
+
+reportSchema.plugin(mongooseEncryptionGcm, { fields: ["notes", "aiSummary"] });
 
 reportSchema.index({ ownerId: 1, createdAt: -1 });
 reportSchema.index({ householdId: 1, createdAt: -1 });
