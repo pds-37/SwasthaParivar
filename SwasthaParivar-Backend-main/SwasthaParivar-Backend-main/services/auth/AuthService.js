@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import User from "../../models/user.js";
 import Session from "../../models/Session.js";
 import appConfig from "../../config/AppConfig.js";
