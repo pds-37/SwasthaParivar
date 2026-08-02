@@ -139,49 +139,67 @@ const clearGoogleCookies = (res) => {
 
 class AuthController {
   async signup(req, res) {
-    const result = await authService.register(req.body);
-    if (result.error) {
-      return sendError(res, {
+    try {
+      const result = await authService.register(req.body);
+      if (result.error) {
+        return sendError(res, {
+          status: result.status,
+          code: result.error.code,
+          message: result.error.message,
+        });
+      }
+
+      await logConsentIfMissing({
+        userId: result.data?.user?.id,
+        req,
+      });
+      setAuthCookies(res, result.data);
+      return sendSuccess(res, {
         status: result.status,
-        code: result.error.code,
-        message: result.error.message,
+        data: {
+          user: result.data.user,
+        },
+      });
+    } catch (error) {
+      logger.error({ err: error?.message, stack: error?.stack }, "Unhandled exception occurred during signup");
+      return sendError(res, {
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error?.message || "An unexpected internal server error occurred during signup",
       });
     }
-
-    await logConsentIfMissing({
-      userId: result.data?.user?.id,
-      req,
-    });
-    setAuthCookies(res, result.data);
-    return sendSuccess(res, {
-      status: result.status,
-      data: {
-        user: result.data.user,
-      },
-    });
   }
 
   async login(req, res) {
-    const result = await authService.login(req.body);
-    if (result.error) {
-      return sendError(res, {
+    try {
+      const result = await authService.login(req.body);
+      if (result.error) {
+        return sendError(res, {
+          status: result.status,
+          code: result.error.code,
+          message: result.error.message,
+        });
+      }
+
+      await logConsentIfMissing({
+        userId: result.data?.user?.id,
+        req,
+      });
+      setAuthCookies(res, result.data);
+      return sendSuccess(res, {
         status: result.status,
-        code: result.error.code,
-        message: result.error.message,
+        data: {
+          user: result.data.user,
+        },
+      });
+    } catch (error) {
+      logger.error({ err: error?.message, stack: error?.stack }, "Unhandled exception occurred during login");
+      return sendError(res, {
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error?.message || "An unexpected internal server error occurred during login",
       });
     }
-
-    await logConsentIfMissing({
-      userId: result.data?.user?.id,
-      req,
-    });
-    setAuthCookies(res, result.data);
-    return sendSuccess(res, {
-      status: result.status,
-      data: {
-        user: result.data.user,
-      },
-    });
   }
 
   async refresh(req, res) {
