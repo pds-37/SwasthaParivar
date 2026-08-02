@@ -2,6 +2,7 @@ import authService from "../services/auth/AuthService.js";
 import appConfig from "../config/AppConfig.js";
 import { logConsentIfMissing } from "../utils/consent.js";
 import { sendError, sendSuccess } from "../utils/apiResponse.js";
+import { logger } from "../utils/logger.js";
 import {
   clearAuthCookies,
   getAccessTokenFromRequest,
@@ -295,6 +296,7 @@ class AuthController {
         redirectUri: googleRedirectUri,
       });
       if (result.error) {
+        logger.error({ error: result.error, redirectUri: googleRedirectUri }, "Google sign-in authorization exchange failed with result error");
         return fail(normalizeAuthErrorCode(result.error));
       }
 
@@ -305,6 +307,7 @@ class AuthController {
       setAuthCookies(res, result.data);
       return res.redirect(buildClientUrl(clientOrigin, returnPath));
     } catch (error) {
+      logger.error({ err: error?.message, stack: error?.stack, code: error?.code, redirectUri: googleRedirectUri }, "Unhandled exception during Google callback processing");
       return fail(normalizeAuthErrorCode(error));
     }
   }
