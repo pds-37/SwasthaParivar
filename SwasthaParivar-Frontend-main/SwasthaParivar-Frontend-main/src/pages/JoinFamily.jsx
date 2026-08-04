@@ -16,6 +16,7 @@ const JoinFamily = () => {
   const { user, loading } = useAuth();
   const [status, setStatus] = useState("idle");
   const [message, setMessage] = useState("");
+  const [isAlreadyMember, setIsAlreadyMember] = useState(false);
   const shouldSignIn = !loading && !user;
   const hasInvalidCode = !code;
 
@@ -25,6 +26,10 @@ const JoinFamily = () => {
     }
 
     if (shouldSignIn || hasInvalidCode) {
+      return;
+    }
+
+    if (status !== "idle") {
       return;
     }
 
@@ -38,15 +43,29 @@ const JoinFamily = () => {
         if (cancelled) return;
 
         setStatus("success");
-        setMessage(
-          result?.household?.name
-            ? `You have joined ${result.household.name}.`
-            : "You have joined the household successfully."
-        );
-        trackEvent("household_join_completed", {
-          invite_code: code,
-          household_name: result?.household?.name || "",
-        });
+        if (result?.alreadyMember) {
+          setIsAlreadyMember(true);
+          setMessage(
+            result?.household?.name
+              ? `You are already a member of ${result.household.name}.`
+              : "You are already a member of this household."
+          );
+          trackEvent("household_join_already_member", {
+            invite_code: code,
+            household_name: result?.household?.name || "",
+          });
+        } else {
+          setIsAlreadyMember(false);
+          setMessage(
+            result?.household?.name
+              ? `You have joined ${result.household.name}.`
+              : "You have joined the household successfully."
+          );
+          trackEvent("household_join_completed", {
+            invite_code: code,
+            household_name: result?.household?.name || "",
+          });
+        }
       } catch (error) {
         if (cancelled) return;
         setStatus("error");
@@ -62,7 +81,7 @@ const JoinFamily = () => {
     return () => {
       cancelled = true;
     };
-  }, [code, hasInvalidCode, loading, shouldSignIn, user]);
+  }, [code, hasInvalidCode, loading, shouldSignIn, user, status]);
 
   const authRedirect = `/auth?mode=signin&from=${encodeURIComponent(
     `${location.pathname}${location.search}${location.hash}`
@@ -119,7 +138,7 @@ const JoinFamily = () => {
               <div className="join-family-card__icon">
                 <CheckCircle2 size={22} />
               </div>
-              <h1 className="text-h3">Household joined</h1>
+              <h1 className="text-h3">{isAlreadyMember ? "Already a member" : "Household joined"}</h1>
               <p>{message}</p>
               <div className="join-family-card__actions">
                 <Button onClick={() => navigate("/dashboard")}>Go to dashboard</Button>

@@ -849,29 +849,15 @@ class HouseholdService {
 
     const invite = await HouseholdInvite.findOne({
       code: normalizedCode,
-      status: "pending",
     });
 
     if (!invite) {
-      return { status: 404, error: { code: "INVITE_NOT_FOUND", message: "Invite not found or already used" } };
-    }
-
-    if (invite.expiresAt.getTime() < Date.now()) {
-      invite.status = "expired";
-      await invite.save();
-      return { status: 410, error: { code: "INVITE_EXPIRED", message: "Invite has expired" } };
+      return { status: 404, error: { code: "INVITE_NOT_FOUND", message: "This invite code is invalid or does not exist." } };
     }
 
     const user = await this.loadUser(userId);
     if (!user) {
       return { status: 404, error: { code: "USER_NOT_FOUND", message: "User not found" } };
-    }
-
-    if (invite.email && invite.email !== user.email) {
-      return {
-        status: 403,
-        error: { code: "INVITE_EMAIL_MISMATCH", message: "This invite was sent to a different email address" },
-      };
     }
 
     const currentContext = await this.ensureUserHouseholdContext(user);
@@ -881,46 +867,87 @@ class HouseholdService {
       status: "active",
     });
 
-    if (!activeMembership) {
-      const canMoveProfile = await this.isPortableHousehold(
-        currentContext.household._id,
-        currentContext.selfMember._id,
-        userId
-      );
-
-      if (!canMoveProfile) {
-        return {
-          status: 409,
-          error: {
-            code: "HOUSEHOLD_MERGE_REQUIRED",
-            message: "This account already manages another household. Move that household first before joining a new one.",
-          },
-        };
-      }
-
-      currentContext.selfMember.householdId = invite.householdId;
-      currentContext.selfMember.user = userId;
-      currentContext.selfMember.linkedUserId = userId;
-      currentContext.selfMember.managedByUserId = userId;
-      currentContext.selfMember.profileType = "self";
-      currentContext.selfMember.profileStatus = "active";
-      currentContext.selfMember.relation = "Self";
-      await currentContext.selfMember.save();
-
-      await HouseholdMembership.deleteMany({
-        householdId: currentContext.household._id,
-        userId,
+    if (activeMembership) {
+      await this.syncUserHouseholdState(user, {
+        activeHouseholdId: invite.householdId,
+        primaryMemberProfileId: user.primaryMemberProfileId || currentContext?.selfMember?._id || null,
       });
 
-      activeMembership = await HouseholdMembership.create({
-        householdId: invite.householdId,
-        userId,
-        role: "adult",
-        permissions: this.getDefaultPermissions("adult"),
-      });
+      const summary = await this.getHouseholdSummary(userId);
 
-      await this.cleanupHouseholdIfEmpty(currentContext.household._id);
+      return {
+        status: 200,
+        data: {
+          invite: this.serializeInvite(invite),
+          membership: this.serializeMembership(activeMembership),
+          household: summary?.household || null,
+          selfMember: summary?.selfMember || null,
+          alreadyMember: true,
+        },
+      };
     }
+
+    if (invite.status === "accepted") {
+      return { status: 410, error: { code: "INVITE_ALREADY_USED", message: "This invite link has already been used by someone else." } };
+    }
+
+    if (invite.status === "expired" || invite.expiresAt.getTime() < Date.now()) {
+      if (invite.status !== "expired") {
+        invite.status = "expired";
+        await invite.save();
+      }
+      return { status: 410, error: { code: "INVITE_EXPIRED", message: "This invite has expired." } };
+    }
+
+    if (invite.status !== "pending") {
+      return { status: 410, error: { code: "INVITE_UNAVAILABLE", message: "This invite link is no longer available." } };
+    }
+
+    if (invite.email && invite.email !== user.email) {
+      return {
+        status: 403,
+        error: { code: "INVITE_EMAIL_MISMATCH", message: "This invite was sent to a different email address" },
+      };
+    }
+
+    const canMoveProfile = await this.isPortableHousehold(
+      currentContext.household._id,
+      currentContext.selfMember._id,
+      userId
+    );
+
+    if (!canMoveProfile) {
+      return {
+        status: 409,
+        error: {
+          code: "HOUSEHOLD_MERGE_REQUIRED",
+          message: "This account already manages another household. Move that household first before joining a new one.",
+        },
+      };
+    }
+
+    currentContext.selfMember.householdId = invite.householdId;
+    currentContext.selfMember.user = userId;
+    currentContext.selfMember.linkedUserId = userId;
+    currentContext.selfMember.managedByUserId = userId;
+    currentContext.selfMember.profileType = "self";
+    currentContext.selfMember.profileStatus = "active";
+    currentContext.selfMember.relation = "Self";
+    await currentContext.selfMember.save();
+
+    await HouseholdMembership.deleteMany({
+      householdId: currentContext.household._id,
+      userId,
+    });
+
+    activeMembership = await HouseholdMembership.create({
+      householdId: invite.householdId,
+      userId,
+      role: "adult",
+      permissions: this.getDefaultPermissions("adult"),
+    });
+
+    await this.cleanupHouseholdIfEmpty(currentContext.household._id);
 
     await this.syncUserHouseholdState(user, {
       activeHouseholdId: invite.householdId,
@@ -941,6 +968,7 @@ class HouseholdService {
         membership: this.serializeMembership(activeMembership),
         household: summary?.household || null,
         selfMember: summary?.selfMember || null,
+        alreadyMember: false,
       },
     };
   }
