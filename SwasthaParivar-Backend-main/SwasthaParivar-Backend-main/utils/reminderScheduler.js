@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import mongoose from "mongoose";
 import Reminder from "../models/remindermodel.js";
+import { sendPush } from "../controllers/notificationController.js";
 
 /**
  * This scheduler runs every minute (for dev) or once per day (for prod).
@@ -61,17 +62,30 @@ export function startReminderScheduler({ env = "dev" } = {}) {
       const due = await Reminder.find({
         active: true,
         nextRunAt: mongoose.trusted({ $lte: now }),
-      }).limit(200).exec();
+      })
+        .populate("ownerId")
+        .limit(200)
+        .exec();
 
       if (!due.length) return;
 
       console.log(`Reminder Scheduler: found ${due.length} due reminders`);
 
       for (const rem of due) {
-        // "deliver" — for now we update lastTriggeredAt; later push to notification collection or service
         try {
-          // TODO: integrate real push here (websocket, push notifications, emails)
           console.log("Triggering reminder:", rem._id.toString(), rem.title);
+
+          // Deliver real Web Push notification if owner is subscribed
+          if (rem.ownerId) {
+            await sendPush(
+              rem.ownerId,
+              `Reminder: ${rem.title} ⏰`,
+              rem.description || "It's time for your scheduled health reminder.",
+              { url: "/reminders" }
+            ).catch((pushErr) => {
+              console.warn("Push delivery error for reminder:", rem._id, pushErr?.message);
+            });
+          }
 
           rem.lastTriggeredAt = new Date();
 

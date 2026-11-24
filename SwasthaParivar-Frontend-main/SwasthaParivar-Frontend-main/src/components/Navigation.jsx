@@ -52,6 +52,8 @@ const primaryLinks = [
 const secondaryLinks = [
   { path: "/health", label: "Health", icon: HeartPulse },
   { path: "/remedies", label: "Remedies", icon: Leaf },
+  { path: "/command-center", label: "Command Center", icon: ShieldCheck },
+  { path: "/asha-portal", label: "ASHA Field", icon: ClipboardList },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 

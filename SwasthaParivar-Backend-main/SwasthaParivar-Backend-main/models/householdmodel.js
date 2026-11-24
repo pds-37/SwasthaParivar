@@ -27,6 +27,16 @@ const householdSchema = new mongoose.Schema({
     default: "active",
     index: true,
   },
+  location: {
+    pincode: { type: String, default: "201306", index: true },
+    district: { type: String, default: "Gautam Buddha Nagar", index: true },
+    state: { type: String, default: "Uttar Pradesh" },
+    ward: { type: String, default: "Knowledge Park III" },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [77.4977, 28.4744],
+    },
+  },
 }, { timestamps: true });
 
 householdSchema.index({ createdByUserId: 1, createdAt: -1 });

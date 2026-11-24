@@ -83,6 +83,17 @@ const userSchema = new mongoose.Schema({
     default: "free",
     index: true,
   },
+  role: {
+    type: String,
+    enum: ["user", "asha_worker", "facility_admin", "district_officer"],
+    default: "user",
+    index: true,
+  },
+  assignedScope: {
+    district: { type: String, default: "Gautam Buddha Nagar" },
+    pincode: { type: String, default: "201306" },
+    facilityId: { type: String, default: "" },
+  },
   referralCode: {
     type: String,
     unique: true,

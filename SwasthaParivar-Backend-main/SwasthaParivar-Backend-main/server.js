@@ -25,6 +25,7 @@ import householdRoutes from "./routes/householdRoutes.js";
 import accountRoutes from "./routes/account.js";
 import configRoutes from "./routes/configRoutes.js";
 import referralRoutes from "./routes/referral.js";
+import hierarchicalRoutes from "./routes/hierarchicalRoutes.js";
 import auth from "./middleware/auth.js";
 import requestSanitizer from "./middleware/requestSanitizer.js";
 import { apiRateLimiter } from "./middleware/rateLimiter.js";
@@ -137,6 +138,7 @@ app.use("/api/health", auth, apiRateLimiter.middleware(), healthRouter);
 app.use("/api/remedies", auth, apiRateLimiter.middleware(), remedyRoutes);
 app.use("/api/reports", auth, apiRateLimiter.middleware(), reportRoutes);
 app.use("/api/symptoms", auth, apiRateLimiter.middleware(), symptomRoutes);
+app.use("/api/hierarchical", apiRateLimiter.middleware(), hierarchicalRoutes);
 app.use("/api", auth, apiRateLimiter.middleware(), notificationRoutes);
 
 app.get("/", (req, res) => {

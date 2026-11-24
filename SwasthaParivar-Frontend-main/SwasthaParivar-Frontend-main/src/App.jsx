@@ -36,6 +36,8 @@ const Reminders = lazy(() => import("./pages/Reminders"));
 const Settings = lazy(() => import("./pages/Settings"));
 const PublicRemedyLibrary = lazy(() => import("./pages/PublicRemedyLibrary"));
 const PublicRemedyDetail = lazy(() => import("./pages/PublicRemedyDetail"));
+const DistrictCommandCenter = lazy(() => import("./pages/DistrictCommandCenter"));
+const AshaWorkerPortal = lazy(() => import("./pages/AshaWorkerPortal"));
 const MotionDiv = motion.div;
 
 const RouteScreen = ({ page, componentProps }) => {
@@ -216,6 +218,22 @@ const AppRoutes = () => {
         element={
           <ProtectedLayout>
             <RouteScreen page={Reminders} />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/command-center"
+        element={
+          <ProtectedLayout>
+            <RouteScreen page={DistrictCommandCenter} />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/asha-portal"
+        element={
+          <ProtectedLayout>
+            <RouteScreen page={AshaWorkerPortal} />
           </ProtectedLayout>
         }
       />
