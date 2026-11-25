@@ -1,4 +1,5 @@
 import HealthState from "../../models/HealthState.js";
+import { getSeverityBand } from "./healthStateTransformer.js";
 import capacityDeficitService from "../capacity/capacityDeficitService.js";
 import interventionEngine from "../interventions/interventionEngine.js";
 import { logger } from "../../utils/logger.js";
@@ -100,19 +101,43 @@ export async function processHealthStateTransition(healthStateId) {
     currentLevel: healthState.level,
   });
 
-  healthState.stateStatus = decision.transition === "ESCALATE" ? "ESCALATED" : decision.transition === "DE_ESCALATE" ? "DE_ESCALATED" : "MAINTAINED";
-  
+  const previousLevel = healthState.level;
+  healthState.severity = getSeverityBand(healthState.severityScore);
+  healthState.stateStatus =
+    decision.transition === "ESCALATE"
+      ? "ESCALATED"
+      : decision.transition === "DE_ESCALATE"
+        ? "DE_ESCALATED"
+        : "MAINTAINED";
+
   if (decision.transition === "ESCALATE") {
     healthState.level = decision.targetLevel;
   } else if (decision.transition === "DE_ESCALATE" && decision.targetLevel !== healthState.level) {
     healthState.level = decision.targetLevel;
   }
 
+  const evaluatedAt = new Date();
+  const history = Array.isArray(healthState.metadata?.transitionHistory)
+    ? healthState.metadata.transitionHistory
+    : [];
+
   healthState.metadata = {
-    ...healthState.metadata,
+    ...(healthState.metadata || {}),
     lastTransitionDecision: decision,
     capacityDeficitAtTransition: capacityState.capacityDeficitIndex,
-    evaluatedAt: new Date(),
+    evaluatedAt,
+    transitionHistory: [
+      ...history.slice(-19),
+      {
+        timestamp: evaluatedAt.toISOString(),
+        source: "fsm_transition",
+        previousLevel,
+        nextLevel: healthState.level,
+        severityScore: healthState.severityScore,
+        severityBand: healthState.severity,
+        transition: decision.transition,
+      },
+    ],
   };
 
   await healthState.save();

@@ -18,6 +18,7 @@ import { FamilyStoreProvider } from "./store/family-store";
 import { UIStoreProvider } from "./store/ui-store";
 import { initAnalytics, trackEvent } from "./utils/analytics";
 import { localStorageProvider } from "./lib/swr-cache";
+import { PERMISSIONS, hasPermission } from "./lib/permissions";
 
 const Auth = lazy(() => import("./pages/Auth"));
 const Landing = lazy(() => import("./pages/Landing"));
@@ -96,6 +97,17 @@ const ProtectedLayout = ({ children }) => {
       </div>
     </FamilyStoreProvider>
   );
+};
+
+const RoleProtectedRoute = ({ permission, children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <PageSkeleton />;
+  if (!user || !hasPermission(user, permission)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
 };
 
 const GuestOnlyRoute = ({ children }) => {
@@ -225,7 +237,9 @@ const AppRoutes = () => {
         path="/command-center"
         element={
           <ProtectedLayout>
-            <RouteScreen page={DistrictCommandCenter} />
+            <RoleProtectedRoute permission={PERMISSIONS.DISTRICT_OVERVIEW}>
+              <RouteScreen page={DistrictCommandCenter} />
+            </RoleProtectedRoute>
           </ProtectedLayout>
         }
       />
@@ -233,7 +247,9 @@ const AppRoutes = () => {
         path="/asha-portal"
         element={
           <ProtectedLayout>
-            <RouteScreen page={AshaWorkerPortal} />
+            <RoleProtectedRoute permission={PERMISSIONS.SURVEY_SUBMIT}>
+              <RouteScreen page={AshaWorkerPortal} />
+            </RoleProtectedRoute>
           </ProtectedLayout>
         }
       />

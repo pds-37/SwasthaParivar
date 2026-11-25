@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const DEFAULT_LANGUAGE = "en-IN";
 const MAX_RECORDING_MS = 15000;
@@ -124,14 +124,14 @@ export function useVoiceInput({ onResult, onError, transcribeAudio } = {}) {
     errorRef.current?.(message, details);
   };
 
-  const clearStopTimer = () => {
+  const clearStopTimer = useCallback(() => {
     if (stopTimerRef.current) {
       window.clearTimeout(stopTimerRef.current);
       stopTimerRef.current = null;
     }
-  };
+  }, []);
 
-  const cleanupRecognition = () => {
+  const cleanupRecognition = useCallback(() => {
     if (!recognitionRef.current) {
       return;
     }
@@ -140,9 +140,9 @@ export function useVoiceInput({ onResult, onError, transcribeAudio } = {}) {
     recognitionRef.current.onerror = null;
     recognitionRef.current.onend = null;
     recognitionRef.current = null;
-  };
+  }, []);
 
-  const cleanupRecording = async () => {
+  const cleanupRecording = useCallback(async () => {
     clearStopTimer();
 
     if (processorRef.current) {
@@ -169,7 +169,7 @@ export function useVoiceInput({ onResult, onError, transcribeAudio } = {}) {
       }
       audioContextRef.current = null;
     }
-  };
+  }, [clearStopTimer]);
 
   const hasSpeechRecognition =
     typeof window !== "undefined" &&
@@ -416,7 +416,7 @@ export function useVoiceInput({ onResult, onError, transcribeAudio } = {}) {
       cleanupRecognition();
       void cleanupRecording();
     },
-    []
+    [cleanupRecognition, cleanupRecording]
   );
 
   return {

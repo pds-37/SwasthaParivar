@@ -5,7 +5,9 @@ import User from "../models/user.js";
 import { sendPush } from "../controllers/notificationController.js";
 import { logger } from "./logger.js";
 
-function computeNextRun(currentDate = new Date(), frequency, options = {}) {
+const MAX_DELIVERY_RETRIES = 2;
+
+export function computeNextRun(currentDate = new Date(), frequency, options = {}) {
   const next = new Date(currentDate);
 
   if (options.time) {
@@ -33,6 +35,7 @@ function computeNextRun(currentDate = new Date(), frequency, options = {}) {
     case "yearly":
       next.setFullYear(next.getFullYear() + 1);
       break;
+    case "once":
     default:
       break;
   }
@@ -40,8 +43,20 @@ function computeNextRun(currentDate = new Date(), frequency, options = {}) {
   return next;
 }
 
-cron.schedule("* * * * *", async () => {
-  const now = new Date();
+let isReminderCycleRunning = false;
+
+export async function runDueReminders(now = new Date()) {
+  if (isReminderCycleRunning) {
+    logger.warn({ route: "reminder-cron" }, "Skipping overlapping reminder cycle");
+    return { skipped: true, processed: 0 };
+  }
+
+  if (mongoose.connection.readyState !== 1) {
+    return { skipped: true, reason: "DB_NOT_CONNECTED", processed: 0 };
+  }
+
+  isReminderCycleRunning = true;
+  let processed = 0;
 
   try {
     const reminders = await Reminder.find({
@@ -53,51 +68,111 @@ cron.schedule("* * * * *", async () => {
       .exec();
 
     if (!reminders.length) {
-      return;
+      return { skipped: false, processed: 0 };
     }
 
     for (const reminder of reminders) {
-      const user = await User.findById(reminder.ownerId);
-      if (!user) continue;
-
-      await sendPush(
-        user,
-        `Reminder: ${reminder.title}`,
-        `It's time for your ${reminder.category} reminder`,
-        {
-          tag: `reminder-${reminder._id}`,
-          url: `/reminders`,
-          data: { reminderId: reminder._id },
-          actions: [
-            { action: "view", title: "View details" },
-            { action: "dismiss", title: "Dismiss" }
-          ]
-        }
-      );
-
-      reminder.lastTriggeredAt = now;
-
-      if (reminder.frequency && reminder.frequency !== "once") {
-        reminder.nextRunAt = computeNextRun(
-          reminder.nextRunAt || now,
-          reminder.frequency,
-          reminder.options || {}
+      try {
+        const user = await User.findById(reminder.ownerId).select(
+          "email pushSubscriptions preferences"
         );
-      } else {
-        reminder.active = false;
+
+        let shouldAdvance = true;
+
+        if (user && user.preferences?.reminderNotifications !== false) {
+          const delivery = await sendPush(
+            user,
+            `Reminder: ${reminder.title}`,
+            reminder.description || `It's time for your ${reminder.category} reminder`,
+            {
+              tag: `reminder-${reminder._id}`,
+              url: "/reminders",
+              data: { reminderId: String(reminder._id) },
+              actions: [
+                { action: "view", title: "View details" },
+                { action: "dismiss", title: "Dismiss" },
+              ],
+            }
+          );
+
+          const retryCount = Number(reminder.meta?.retryCount || 0);
+          if (!delivery.skipped && delivery.delivered === 0 && delivery.failed > 0 && retryCount < MAX_DELIVERY_RETRIES) {
+            reminder.meta = { ...(reminder.meta || {}), retryCount: retryCount + 1, lastDeliveryErrorAt: now.toISOString() };
+            reminder.nextRunAt = new Date(now.getTime() + 60 * 1000);
+            shouldAdvance = false;
+          } else {
+            reminder.meta = { ...(reminder.meta || {}), retryCount: 0 };
+          }
+        }
+
+        if (shouldAdvance) {
+          reminder.lastTriggeredAt = now;
+          if (reminder.frequency && reminder.frequency !== "once") {
+            reminder.nextRunAt = computeNextRun(
+              reminder.nextRunAt || now,
+              reminder.frequency,
+              reminder.options || {}
+            );
+          } else {
+            reminder.active = false;
+          }
+        }
+
+        await reminder.save();
+        processed += 1;
+      } catch (itemError) {
+        logger.error(
+          { route: "reminder-cron", reminderId: String(reminder._id || ""), err: itemError?.message },
+          "Failed processing individual reminder"
+        );
       }
-
-      await reminder.save();
     }
-  } catch (error) {
-    logger.error({
-      route: "reminder-cron",
-      error: {
-        message: error?.message || "Reminder cron failed",
-        stack: error?.stack || null,
-      },
-    });
-  }
-});
 
-logger.info({ route: "reminder-cron" }, "Reminder cron job is running every minute");
+    return { skipped: false, processed };
+  } catch (error) {
+    logger.error(
+      {
+        route: "reminder-cron",
+        error: {
+          message: error?.message || "Reminder cron failed",
+          stack: error?.stack || null,
+        },
+      },
+      "Reminder cron cycle failed"
+    );
+    return { skipped: false, processed, error: error?.message };
+  } finally {
+    isReminderCycleRunning = false;
+  }
+}
+
+let scheduledTask = null;
+
+export function startReminderScheduler() {
+  if (scheduledTask) {
+    return scheduledTask;
+  }
+
+  scheduledTask = cron.schedule("* * * * *", () => runDueReminders(new Date()), {
+    scheduled: true,
+    timezone: "Asia/Kolkata",
+  });
+
+  logger.info(
+    { route: "reminder-cron", timezone: "Asia/Kolkata" },
+    "Authoritative reminder cron scheduler is active"
+  );
+  return scheduledTask;
+}
+
+export function stopReminderScheduler() {
+  if (scheduledTask) {
+    scheduledTask.stop();
+    scheduledTask = null;
+  }
+}
+
+// Automatically initialize once when imported by server.js (unless inside unit tests)
+if (process.env.NODE_ENV !== "test" && !process.env.NODE_TEST_CONTEXT) {
+  startReminderScheduler();
+}

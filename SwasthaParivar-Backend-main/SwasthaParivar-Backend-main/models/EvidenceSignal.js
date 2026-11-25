@@ -17,6 +17,7 @@ const evidenceSignalSchema = new mongoose.Schema(
       pincode: { type: String, required: true, index: true },
       ward: { type: String, default: "" },
       district: { type: String, required: true, index: true },
+      state: { type: String, default: "Uttar Pradesh", index: true },
       coordinates: {
         type: [Number], // [longitude, latitude]
         default: [77.4977, 28.4744],
@@ -60,6 +61,21 @@ const evidenceSignalSchema = new mongoose.Schema(
       min: 0,
       max: 1,
       default: 0.6,
+    },
+    dedupKey: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+    provenance: {
+      ingestionSource: {
+        type: String,
+        enum: ["manual", "ble_device", "ble_simulated", "asha_survey", "facility_report", "api"],
+        default: "api",
+      },
+      snapshotTimestamp: { type: Date, default: null },
+      transformerVersion: { type: String, default: "v2" },
     },
     processed: {
       type: Boolean,

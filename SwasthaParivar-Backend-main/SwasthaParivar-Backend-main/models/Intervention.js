@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { INTERVENTION_ASSIGNABLE_ROLES } from "../config/roles.js";
 
 const postInterventionFeedbackSchema = new mongoose.Schema(
   {
@@ -31,12 +32,13 @@ const interventionSchema = new mongoose.Schema(
     },
     targetLevel: {
       type: String,
-      enum: ["household", "community", "facility", "district", "state"],
+      enum: ["household", "community", "facility", "district", "state", "national"],
       required: true,
     },
     targetScope: {
       pincode: { type: String, index: true },
       district: { type: String, index: true },
+      state: { type: String, default: "Uttar Pradesh", index: true },
       ward: { type: String },
       facilityId: { type: String },
     },
@@ -77,9 +79,15 @@ const interventionSchema = new mongoose.Schema(
     assignedRoles: [
       {
         type: String,
-        enum: ["asha_worker", "medical_officer", "district_magistrate", "pharmacist", "caregiver"],
+        enum: INTERVENTION_ASSIGNABLE_ROLES,
       },
     ],
+    dispatchAudit: {
+      attemptedCount: { type: Number, default: 0 },
+      deliveredCount: { type: Number, default: 0 },
+      failedCount: { type: Number, default: 0 },
+      lastAttemptAt: { type: Date, default: null },
+    },
     status: {
       type: String,
       enum: ["DISPATCHED", "IN_PROGRESS", "COMPLETED", "EVALUATED"],

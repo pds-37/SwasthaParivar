@@ -56,8 +56,13 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (event.request.url.includes("/api/")) {
-    // Exclude AI streaming and authentication refresh from caching
-    if (event.request.url.includes("/api/ai/") || event.request.url.includes("/auth/refresh")) {
+    // Exclude AI streaming, authentication refresh, privacy exports, and restricted governance endpoints from caching
+    if (
+      event.request.url.includes("/api/ai/") ||
+      event.request.url.includes("/auth/refresh") ||
+      event.request.url.includes("/api/account/") ||
+      event.request.url.includes("/api/hierarchical/")
+    ) {
       return;
     }
 

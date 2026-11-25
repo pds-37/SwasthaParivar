@@ -156,6 +156,14 @@ function buildFlags(trends = {}) {
     });
   }
 
+  if (trends.weight?.delta !== null && trends.weight?.delta !== undefined && Math.abs(trends.weight.delta) >= 5) {
+    flags.push({
+      metric: "weight",
+      severity: "moderate",
+      message: `Weight shifted by ${trends.weight.delta > 0 ? "+" : ""}${trends.weight.delta} kg compared with baseline.`,
+    });
+  }
+
   return flags;
 }
 

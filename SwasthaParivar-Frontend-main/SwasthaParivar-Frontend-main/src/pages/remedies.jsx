@@ -21,7 +21,6 @@ import api from "../lib/api";
 import {
   buildCatalog,
   buildRemedyContext,
-  decorateRemedyForContext,
   getAllRemedyTags,
   getSeriousSymptomMatch,
 } from "../lib/remedyInsights";
@@ -32,7 +31,6 @@ const createGradient = (from = "var(--color-primary-strong)", to = "var(--color-
   `linear-gradient(135deg, ${from}, ${to})`;
 
 const uniqueTextList = (items = []) => Array.from(new Set(items.filter(Boolean)));
-const GENERIC_WELLNESS_QUERY_PATTERN = /\b(immunity|immune|wellness|seasonal|low energy)\b/i;
 
 const LOCAL_GENERATOR_TEMPLATES = [
   {
@@ -293,23 +291,6 @@ const buildGeneratedFromCatalogMatch = (match, seedText, context) => {
     seedText,
     localSource
   );
-};
-
-const isGenericWellnessRemedy = (remedy, seedText) => {
-  const searchable = [remedy?.name, remedy?.description, remedy?.symptoms]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  if (!searchable) return false;
-
-  const isGenericCard =
-    searchable.includes("daily tulsi wellness brew") ||
-    searchable.includes("daily wellness support") ||
-    searchable.includes("general immunity") ||
-    searchable.includes("seasonal wellness");
-
-  return isGenericCard && !GENERIC_WELLNESS_QUERY_PATTERN.test(String(seedText || ""));
 };
 
 const buildLocalGeneratedRemedy = ({ seedText, context, activeTag }) => {

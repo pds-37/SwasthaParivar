@@ -138,7 +138,7 @@ app.use("/api/health", auth, apiRateLimiter.middleware(), healthRouter);
 app.use("/api/remedies", auth, apiRateLimiter.middleware(), remedyRoutes);
 app.use("/api/reports", auth, apiRateLimiter.middleware(), reportRoutes);
 app.use("/api/symptoms", auth, apiRateLimiter.middleware(), symptomRoutes);
-app.use("/api/hierarchical", apiRateLimiter.middleware(), hierarchicalRoutes);
+app.use("/api/hierarchical", auth, apiRateLimiter.middleware(), hierarchicalRoutes);
 app.use("/api", auth, apiRateLimiter.middleware(), notificationRoutes);
 
 app.get("/", (req, res) => {

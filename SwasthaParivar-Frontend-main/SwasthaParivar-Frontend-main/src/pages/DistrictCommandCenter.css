@@ -456,3 +456,20 @@
 .btn-feedback:hover {
   background: #047857;
 }
+
+.command-center-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.command-center-alert span {
+  flex: 1;
+}

@@ -1,7 +1,10 @@
+import Household from "../../models/householdmodel.js";
 import familyMemberService from "../member/FamilyMemberService.js";
+import evidenceConvergenceEngine from "../hierarchical/evidenceConvergenceEngine.js";
 import { checkAndAwardBadges } from "../../utils/badgeChecker.js";
 import { buildPaginationMeta, parsePagination } from "../../utils/pagination.js";
 import { getPlanLimits } from "../../utils/planState.js";
+import { logger } from "../../utils/logger.js";
 
 class MemberHealthService {
   async list(ownerId, memberId, query = {}, user = null) {
@@ -44,10 +47,30 @@ class MemberHealthService {
       result.member.health,
       sanitizedSnapshot.data
     );
-    
+
     result.member.markModified("health");
     await result.member.save();
     const newBadges = await checkAndAwardBadges(ownerId);
+
+    // Fault-isolated hierarchical signal emission (must never corrupt or reject personal vitals save)
+    let telemetryResult = { status: "SKIPPED" };
+    try {
+      const household = result.member.householdId
+        ? await Household.findById(result.member.householdId).select("location").lean()
+        : null;
+
+      telemetryResult = await evidenceConvergenceEngine.processHouseholdVitalTelemetry({
+        member: result.member,
+        household,
+        snapshot: sanitizedSnapshot.data,
+      });
+    } catch (error) {
+      logger.error(
+        { err: error.message, memberId: String(result.member._id) },
+        "Hierarchical vital telemetry bridge failed gracefully after record save"
+      );
+      telemetryResult = { status: "FAILED_ISOLATED" };
+    }
 
     return {
       status: 201,
@@ -55,6 +78,7 @@ class MemberHealthService {
         member: familyMemberService.serializeMember(result.member),
         records: familyMemberService.buildSnapshotTimeline(result.member),
         newBadges,
+        telemetryStatus: telemetryResult.status,
       },
     };
   }

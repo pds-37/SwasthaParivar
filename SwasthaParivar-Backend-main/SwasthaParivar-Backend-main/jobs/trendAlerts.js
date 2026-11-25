@@ -106,10 +106,10 @@ async function saveTrendInsight(user, member, message, metricKey) {
   });
 
   if (existing) {
-    return existing;
+    return { insight: existing, isNew: false };
   }
 
-  return AIInsight.create({
+  const created = await AIInsight.create({
     ownerId: user._id,
     memberId: member._id,
     memberLabel: member.name,
@@ -118,48 +118,70 @@ async function saveTrendInsight(user, member, message, metricKey) {
     symptoms: [metricKey],
     remedies: [],
   });
+
+  return { insight: created, isNew: true };
 }
+
+let isTrendAlertsRunning = false;
 
 export async function runTrendAlerts() {
-  logger.info({ route: "trend-alerts" }, "Trend alerts run started");
-
-  const users = await User.find({ plan: { $in: ["pro", "family"] } }).select(
-    "plan pushSubscription activeHouseholdId"
-  );
-
-  for (const user of users) {
-    if (!getResolvedFlags(user).TREND_ALERTS) {
-      continue;
-    }
-
-    const members = await FamilyMember.find(getMemberFilter(user)).select("name health").lean();
-
-    for (const member of members) {
-      for (const [metricKey, threshold] of Object.entries(METRIC_THRESHOLDS)) {
-        const values = getMetricValues(member, metricKey);
-        const trend = evaluateTrend(values, threshold);
-
-        if (!trend) {
-          continue;
-        }
-
-        const message = `${member.name}'s ${threshold.label} has been ${trend.direction} for ${trend.readingCount} consecutive readings.`;
-        await saveTrendInsight(user, member, message, metricKey);
-        await sendPush(user, `Health Alert - ${member.name}`, message);
-      }
-    }
+  if (isTrendAlertsRunning) {
+    logger.warn({ route: "trend-alerts" }, "Skipping overlapping trend alerts run");
+    return;
   }
 
-  logger.info({ route: "trend-alerts" }, "Trend alerts run completed");
+  isTrendAlertsRunning = true;
+  logger.info({ route: "trend-alerts" }, "Trend alerts run started");
+
+  try {
+    const users = await User.find({ plan: { $in: ["pro", "family"] } }).select(
+      "plan pushSubscriptions preferences activeHouseholdId"
+    );
+
+    for (const user of users) {
+      if (!getResolvedFlags(user).TREND_ALERTS) {
+        continue;
+      }
+
+      if (user?.preferences?.notificationsEnabled === false || user?.preferences?.trendAlerts === false) {
+        continue;
+      }
+
+      const members = await FamilyMember.find(getMemberFilter(user)).select("name health").lean();
+
+      for (const member of members) {
+        for (const [metricKey, threshold] of Object.entries(METRIC_THRESHOLDS)) {
+          const values = getMetricValues(member, metricKey);
+          const trend = evaluateTrend(values, threshold);
+
+          if (!trend) {
+            continue;
+          }
+
+          const message = `${member.name}'s ${threshold.label} has been ${trend.direction} for ${trend.readingCount} consecutive readings.`;
+          const { isNew } = await saveTrendInsight(user, member, message, metricKey);
+          if (isNew) {
+            await sendPush(user, `Health Alert - ${member.name}`, message, { url: "/health" });
+          }
+        }
+      }
+    }
+
+    logger.info({ route: "trend-alerts" }, "Trend alerts run completed");
+  } finally {
+    isTrendAlertsRunning = false;
+  }
 }
 
-cron.schedule("0 8 * * *", runTrendAlerts, {
-  timezone: "Asia/Kolkata",
-});
+if (process.env.NODE_ENV !== "test" && !process.env.NODE_TEST_CONTEXT) {
+  cron.schedule("0 8 * * *", runTrendAlerts, {
+    timezone: "Asia/Kolkata",
+  });
 
-logger.info(
-  { route: "trend-alerts", schedule: "0 8 * * *", timezone: "Asia/Kolkata" },
-  "Trend alert cron job is registered"
-);
+  logger.info(
+    { route: "trend-alerts", schedule: "0 8 * * *", timezone: "Asia/Kolkata" },
+    "Trend alert cron job is registered"
+  );
+}
 
 export default runTrendAlerts;

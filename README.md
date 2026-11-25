@@ -463,7 +463,22 @@ SwasthaParivar implements defense-in-depth protocols explicitly structured to co
 
 ---
 
-## 👨‍💻 16. Authors, Intellectual Property & License
+## 🧭 16. Verified Production-Hardening Documentation (`docs/`)
+
+> **Important Accuracy Note:** Sections 1–2 and 15 describe academic/aspirational research concepts (such as on-device Federated Learning / Flower, PCA edge anomaly triggers, SQLCipher, MQTT port 8883, and Socket.IO) that are **not implemented** in this codebase. For the verified runtime implementation on branch `feat-hierarchical-health-intelligence`, consult the audited technical specifications below:
+
+- [docs/REMEDIATION_BASELINE.md](docs/REMEDIATION_BASELINE.md) — Pre-remediation audit & baseline inventory.
+- [docs/SECURITY_ARCHITECTURE.md](docs/SECURITY_ARCHITECTURE.md) — Active JWT/RBAC/ABAC, fail-closed geographic scope, SigV4 S3/R2 storage, and route protections (`/command-center`, `/asha-portal`, `/api/hierarchical/*`).
+- [docs/RBAC_PERMISSION_MATRIX.md](docs/RBAC_PERMISSION_MATRIX.md) — Canonical roles (`user`, `asha_worker`, `facility_admin`, `district_officer`, `state_officer`, `national_admin`) and endpoint permissions.
+- [docs/HEALTH_DATA_PIPELINE.md](docs/HEALTH_DATA_PIPELINE.md) — Fault-isolated individual-to-hierarchical vital ingestion (manual + Web Bluetooth GATT including `spO2`, BP, HR, Glucose, Weight).
+- [docs/DATA_PRIVACY_AND_AGGREGATION.md](docs/DATA_PRIVACY_AND_AGGREGATION.md) — Keyed HMAC pseudonymization, k-anonymity community convergence, and DPDP `export` / `delete` compliance.
+- [docs/ML_MODEL_LIMITATIONS.md](docs/ML_MODEL_LIMITATIONS.md) — UCI Heart Disease 17-feature proxy evaluation metrics, `spO2` exclusion, and deterministic clinical rule precedence.
+- [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) — Required environment variables, role migration notes, and verification commands.
+- [docs/REMEDIATION_CHANGELOG.md](docs/REMEDIATION_CHANGELOG.md) — Complete file-level summary of security and engineering fixes.
+
+---
+
+## 👨‍💻 17. Authors, Intellectual Property & License
 
 **Lead Developer & Principal Architect:** [Priyanshu Tiwari (pds-37)](https://github.com/pds-37)  
 **Intellectual Property Status:** Covered under active academic research documentation and formal **Invention Disclosure Form (IDF)** filings for Family-Centric Federated Healthcare Architectures.  

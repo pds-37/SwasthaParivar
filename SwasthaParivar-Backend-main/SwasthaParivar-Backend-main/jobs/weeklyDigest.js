@@ -11,6 +11,7 @@ const HEALTH_METRICS = [
   "bloodPressure",
   "heartRate",
   "bloodSugar",
+  "spO2",
   "weight",
   "sleep",
   "steps",
@@ -118,49 +119,67 @@ async function generateDigest(user) {
   return `Your family's health this week:\n\n${lines.join("\n")}`;
 }
 
+let isWeeklyDigestRunning = false;
+
 async function runWeeklyDigest() {
-  logger.info({ route: "weekly-digest" }, "Weekly digest run started");
-
-  const users = await User.find({}).select("email pushSubscription activeHouseholdId");
-
-  for (const user of users) {
-    try {
-      const digest = await generateDigest(user);
-      if (!digest) {
-        continue;
-      }
-
-      await Promise.allSettled([
-        sendPush(user, "SwasthaParivar - Weekly Health Digest", digest.split("\n")[0]),
-        sendEmail({
-          to: user.email,
-          subject: "SwasthaParivar Weekly Health Digest",
-          text: digest,
-          html: `<pre style="font-family:inherit;white-space:pre-wrap">${digest}</pre>`,
-        }),
-      ]);
-    } catch (error) {
-      logger.error({
-        route: "weekly-digest",
-        userId: String(user?._id || ""),
-        error: {
-          message: error?.message || "Weekly digest failed",
-          stack: error?.stack || null,
-        },
-      });
-    }
+  if (isWeeklyDigestRunning) {
+    logger.warn({ route: "weekly-digest" }, "Skipping overlapping weekly digest run");
+    return;
   }
 
-  logger.info({ route: "weekly-digest" }, "Weekly digest run completed");
+  isWeeklyDigestRunning = true;
+  logger.info({ route: "weekly-digest" }, "Weekly digest run started");
+
+  try {
+    const users = await User.find({}).select("email pushSubscriptions preferences activeHouseholdId");
+
+    for (const user of users) {
+      try {
+        if (user?.preferences?.notificationsEnabled === false || user?.preferences?.weeklyDigest === false) {
+          continue;
+        }
+
+        const digest = await generateDigest(user);
+        if (!digest) {
+          continue;
+        }
+
+        await Promise.allSettled([
+          sendPush(user, "SwasthaParivar - Weekly Health Digest", digest.split("\n")[0], { url: "/dashboard" }),
+          sendEmail({
+            to: user.email,
+            subject: "SwasthaParivar Weekly Health Digest",
+            text: digest,
+            html: `<pre style="font-family:inherit;white-space:pre-wrap">${digest}</pre>`,
+          }),
+        ]);
+      } catch (error) {
+        logger.error({
+          route: "weekly-digest",
+          userId: String(user?._id || ""),
+          error: {
+            message: error?.message || "Weekly digest failed",
+            stack: error?.stack || null,
+          },
+        });
+      }
+    }
+
+    logger.info({ route: "weekly-digest" }, "Weekly digest run completed");
+  } finally {
+    isWeeklyDigestRunning = false;
+  }
 }
 
-cron.schedule("0 9 * * 1", runWeeklyDigest, {
-  timezone: "Asia/Kolkata",
-});
+if (process.env.NODE_ENV !== "test" && !process.env.NODE_TEST_CONTEXT) {
+  cron.schedule("0 9 * * 1", runWeeklyDigest, {
+    timezone: "Asia/Kolkata",
+  });
 
-logger.info(
-  { route: "weekly-digest", schedule: "0 9 * * 1", timezone: "Asia/Kolkata" },
-  "Weekly digest cron job is registered"
-);
+  logger.info(
+    { route: "weekly-digest", schedule: "0 9 * * 1", timezone: "Asia/Kolkata" },
+    "Weekly digest cron job is registered"
+  );
+}
 
 export { generateDigest, runWeeklyDigest };

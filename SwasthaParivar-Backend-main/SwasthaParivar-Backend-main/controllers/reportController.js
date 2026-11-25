@@ -1,9 +1,11 @@
 import Report from "../models/reportmodel.js";
 import householdService from "../services/household/HouseholdService.js";
+import reportStorageService from "../services/storage/reportStorageService.js";
 import { securityEmitter } from "../services/diContainer.js";
 import securityConfig from "../config/security.config.js";
 import { reviewHealthAttachment } from "../services/ai/reportReviewService.js";
 import aiContextService from "../services/ai/aiContextService.js";
+import { logger } from "../utils/logger.js";
 import {
   MAX_UPLOAD_BYTES,
   buildSignedDownloadToken,
@@ -34,6 +36,8 @@ const serializeReport = (req, report) => {
     storedFileName: plain.storedFileName,
     mimeType: plain.mimeType,
     size: plain.size,
+    storageProvider: plain.storageProvider || "mongodb_buffer",
+    encryptedAtRest: plain.encryptedAtRest ?? true,
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt,
     signedUrl: buildSignedUrl(req, plain._id, expiresAt),
@@ -82,11 +86,11 @@ export const listReports = async (req, res) => {
       meta: buildPaginationMeta({ ...pagination, total }),
     });
   } catch (error) {
+    logger.error({ err: error.message }, "Could not load reports");
     return sendError(res, {
       status: 500,
       code: "REPORT_LIST_FAILED",
       message: "Could not load reports",
-      details: error.message,
     });
   }
 };
@@ -130,11 +134,11 @@ export const uploadReport = async (req, res) => {
         eventType: "MALICIOUS_UPLOAD_ATTEMPT",
         severity: "critical",
         scoreDelta: securityConfig.threatThresholds.malwareUpload,
-        metadata: { 
-          originalName: req.file.originalname, 
+        metadata: {
+          originalName: req.file.originalname,
           claimedMime: req.file.mimetype,
-          actualMime: result?.mimeType || "unknown"
-        }
+          actualMime: result?.mimeType || "unknown",
+        },
       });
 
       return sendError(res, {
@@ -153,6 +157,19 @@ export const uploadReport = async (req, res) => {
       });
     }
 
+    const storedFileName = buildStoredFileName(result.extension);
+    const objectKey = reportStorageService.buildReportObjectKey({
+      ownerId: req.userId,
+      householdId: householdContext?.household?._id || null,
+      storedFileName,
+    });
+
+    const storageResult = await reportStorageService.storeReportObject({
+      key: objectKey,
+      buffer: req.file.buffer,
+      contentType: result.mimeType,
+    });
+
     const report = await Report.create({
       ownerId: req.userId,
       householdId: householdContext?.household?._id || null,
@@ -161,10 +178,14 @@ export const uploadReport = async (req, res) => {
       notes: req.body.notes || "",
       aiSummary: req.body.aiSummary || "",
       originalName: req.file.originalname,
-      storedFileName: buildStoredFileName(result.extension),
+      storedFileName,
       mimeType: result.mimeType,
       size: req.file.size,
-      fileBuffer: req.file.buffer,
+      storageProvider: storageResult.storageProvider,
+      storageKey: storageResult.storageKey,
+      checksumSha256: storageResult.checksumSha256,
+      encryptedAtRest: storageResult.encryptedAtRest,
+      ...(storageResult.fileBuffer ? { fileBuffer: storageResult.fileBuffer } : {}),
     });
 
     return sendSuccess(res, {
@@ -172,11 +193,11 @@ export const uploadReport = async (req, res) => {
       data: serializeReport(req, report),
     });
   } catch (error) {
+    logger.error({ err: error.message }, "Could not upload report");
     return sendError(res, {
       status: 500,
       code: "REPORT_UPLOAD_FAILED",
       message: "Could not upload report",
-      details: error.message,
     });
   }
 };
@@ -200,24 +221,31 @@ export const analyzeReport = async (req, res) => {
       });
     }
 
+    const fileBuffer = await reportStorageService.readReportBuffer(report);
+    if (!fileBuffer) {
+      return sendError(res, {
+        status: 404,
+        code: "REPORT_CONTENT_MISSING",
+        message: "Report file content is unavailable",
+      });
+    }
+
     const memberResult = await householdService.findAccessibleMember(req.userId, report.memberId);
     const memberLabel = memberResult?.member?.name || "Family member";
-    
-    // Fetch the Health Memory (Shared Context)
     const healthContext = await aiContextService.getMemberHealthContext(req.userId, report.memberId);
-    
+
     let review;
     try {
       review = await reviewHealthAttachment({
-        base64Data: report.fileBuffer.toString("base64"),
+        base64Data: fileBuffer.toString("base64"),
         mimeType: report.mimeType,
         fileName: report.originalName,
         memberLabel,
-        healthContext, // Pass the memory here
+        healthContext,
         userId: req.userId,
         ipAddress: req.ip,
       });
-    } catch (reviewError) {
+    } catch {
       review = {
         isHealthReport: true,
         summary: "I could not generate a summary for this report right now due to server load. Please check back later.",
@@ -243,11 +271,11 @@ export const analyzeReport = async (req, res) => {
       data: serializeReport(req, report),
     });
   } catch (error) {
+    logger.error({ err: error.message }, "Could not analyze report");
     return sendError(res, {
       status: 500,
       code: "REPORT_ANALYSIS_FAILED",
       message: "Could not analyze report",
-      details: error.message,
     });
   }
 };
@@ -294,20 +322,29 @@ export const downloadReport = async (req, res) => {
       });
     }
 
+    const fileBuffer = await reportStorageService.readReportBuffer(report);
+    if (!fileBuffer) {
+      return sendError(res, {
+        status: 404,
+        code: "REPORT_CONTENT_MISSING",
+        message: "Report binary is unavailable",
+      });
+    }
+
     res.setHeader("Content-Type", report.mimeType);
-    res.setHeader("Content-Length", report.size);
+    res.setHeader("Content-Length", fileBuffer.length || report.size);
     res.setHeader(
       "Content-Disposition",
       `inline; filename="${encodeURIComponent(report.originalName)}"`
     );
 
-    return res.send(report.fileBuffer);
+    return res.send(fileBuffer);
   } catch (error) {
+    logger.error({ err: error.message }, "Could not download report");
     return sendError(res, {
       status: 500,
       code: "REPORT_DOWNLOAD_FAILED",
       message: "Could not download report",
-      details: error.message,
     });
   }
 };
@@ -331,18 +368,18 @@ export const deleteReport = async (req, res) => {
       });
     }
 
+    await reportStorageService.deleteReportObject(report);
     await Report.deleteOne({ _id: report._id });
 
     return sendSuccess(res, {
-      message: "Report deleted successfully",
+      data: { deleted: true, id: String(report._id) },
     });
   } catch (error) {
+    logger.error({ err: error.message }, "Could not delete report");
     return sendError(res, {
       status: 500,
       code: "REPORT_DELETE_FAILED",
       message: "Could not delete report",
-      details: error.message,
     });
   }
 };
-

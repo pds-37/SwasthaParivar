@@ -9,6 +9,7 @@ const HEALTH_METRICS = [
   "bloodPressure",
   "heartRate",
   "bloodSugar",
+  "spO2",
   "weight",
   "sleep",
   "steps",

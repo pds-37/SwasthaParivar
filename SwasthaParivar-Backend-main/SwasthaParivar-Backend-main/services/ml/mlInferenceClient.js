@@ -2,12 +2,15 @@ import axios from "axios";
 import mongoose from "mongoose";
 import { logger } from "../../utils/logger.js";
 import MLPredictionAudit from "../../models/mlpredictionaudit.js";
+import { parseBloodPressureReading } from "../hierarchical/healthStateTransformer.js";
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
-const INFERENCE_TIMEOUT_MS = 120; // Strict <100-150ms timeout target for Node -> FastAPI
+const RAW_TIMEOUT_MS = Number(process.env.ML_INFERENCE_TIMEOUT_MS || 120);
+const INFERENCE_TIMEOUT_MS = Number.isFinite(RAW_TIMEOUT_MS)
+  ? Math.min(2000, Math.max(50, RAW_TIMEOUT_MS))
+  : 120;
 const MAX_RETRIES = 1;
 
-// Configured Axios client with automated timeout and connection pooling
 const mlApiClient = axios.create({
   baseURL: ML_SERVICE_URL,
   timeout: INFERENCE_TIMEOUT_MS,
@@ -18,8 +21,10 @@ const mlApiClient = axios.create({
 });
 
 /**
- * Extracts and sanitizes physiological features from raw member context and recent telemetry.
- * Prevents invalid payload transmission by clamping metrics to biological plausibility ranges.
+ * Extracts and sanitizes the 17 canonical UCI-mapped physiological features.
+ * Clamps metrics to biological plausibility ranges and parses string BP snapshots.
+ * Note: spO2 is intentionally excluded here because the trained .joblib models
+ * use the frozen 17-feature schema; SpO2 is evaluated by deterministic rules.
  */
 export function extractFeatures(member = {}, latestVitals = {}) {
   const age = Number(member?.age || 45);
@@ -27,19 +32,28 @@ export function extractFeatures(member = {}, latestVitals = {}) {
   const heightM = Number(member?.height || 170) / 100.0;
   const bmi = heightM > 0 ? Number((weight / (heightM * heightM)).toFixed(1)) : 24.9;
 
-  const systolic = Number(latestVitals?.systolic || latestVitals?.bpSystolic || 128);
-  const diastolic = Number(latestVitals?.diastolic || latestVitals?.bpDiastolic || 82);
-  const pulsePressure = systolic - diastolic;
+  const parsedBp = parseBloodPressureReading(latestVitals?.bloodPressure);
+  const rawSystolic = Number(
+    latestVitals?.systolic ?? latestVitals?.bpSystolic ?? parsedBp.systolic ?? 128
+  );
+  const rawDiastolic = Number(
+    latestVitals?.diastolic ?? latestVitals?.bpDiastolic ?? parsedBp.diastolic ?? 82
+  );
+  const systolic = Number.isFinite(rawSystolic) ? rawSystolic : 128;
+  const diastolic = Number.isFinite(rawDiastolic) ? rawDiastolic : 82;
+  const pulsePressure = Math.max(10, systolic - diastolic);
 
-  const glucose = Number(latestVitals?.bloodSugar || latestVitals?.glucose || 110);
-  const heartRate = Number(latestVitals?.heartRate || latestVitals?.pulse || 74);
-  const sleepHours = Number(latestVitals?.sleepHours || 7.2);
+  const rawGlucose = Number(latestVitals?.bloodSugar ?? latestVitals?.glucose ?? 110);
+  const glucose = Number.isFinite(rawGlucose) ? rawGlucose : 110;
+  const rawHr = Number(latestVitals?.heartRate ?? latestVitals?.pulse ?? 74);
+  const heartRate = Number.isFinite(rawHr) ? rawHr : 74;
+  const rawSleep = Number(latestVitals?.sleepHours ?? latestVitals?.sleep ?? 7.2);
+  const sleepHours = Number.isFinite(rawSleep) ? rawSleep : 7.2;
 
   const conditions = Array.isArray(member?.conditions) ? member.conditions.length : 0;
   const meds = Array.isArray(member?.medications) ? member.medications.length : 1;
   const adherence = Number(member?.medicationAdherence ?? 0.88);
 
-  // Derive behavioral lifestyle indexes from text metadata or structured defaults
   const activityIdx = String(member?.activityLevel || "").toLowerCase().includes("active") ? 2 : 1;
   const smokingFlag = String(member?.smokingStatus || "").toLowerCase().includes("smok") ? 1 : 0;
   const alcoholIdx = String(member?.alcohol || "").toLowerCase().includes("heavy") ? 2 : 0;
@@ -66,12 +80,9 @@ export function extractFeatures(member = {}, latestVitals = {}) {
   };
 }
 
-/**
- * Executes lightweight health probe against FastAPI service without taking inference locks.
- */
-export async function checkMlServiceHealth() {
+export async function checkMlServiceHealth(client = mlApiClient) {
   try {
-    const res = await mlApiClient.get("/health", { timeout: 1000 });
+    const res = await client.get("/health", { timeout: 1000 });
     return res.status === 200 && res.data?.status === "UP";
   } catch (error) {
     logger.warn({ err: error.message }, "FastAPI ML service health probe unreachable or unhealthy");
@@ -79,23 +90,20 @@ export async function checkMlServiceHealth() {
   }
 }
 
-/**
- * Requests prediction from FastAPI ML service with automatic retry, timeout protection,
- * deterministic audit lifecycle tracking, and verified schema mapping.
- */
-export async function requestMlPrediction({ userId, memberId, member, latestVitals }) {
+export async function requestMlPrediction(
+  { userId, memberId, member, latestVitals },
+  { client = mlApiClient, auditModel = MLPredictionAudit } = {}
+) {
   const startTime = Date.now();
   const features = extractFeatures(member, latestVitals);
-  
-  // Issue 2: Generate unique deterministic auditRecordId before invoking ML engine
+
   const auditRecordId = new mongoose.Types.ObjectId();
   const resolvedPatientId = memberId || member?._id || "anonymous";
-  const resolvedUserId = userId || "unauthenticated";
+  const resolvedUserId =
+    userId && mongoose.Types.ObjectId.isValid(String(userId)) ? userId : null;
 
   const payload = {
     memberId: String(resolvedPatientId),
-    patient_id: String(resolvedPatientId),
-    timestamp: new Date().toISOString(),
     features,
   };
 
@@ -105,7 +113,7 @@ export async function requestMlPrediction({ userId, memberId, member, latestVita
 
   while (attempt <= MAX_RETRIES) {
     try {
-      const response = await mlApiClient.post("/api/v1/predict", payload);
+      const response = await client.post("/api/v1/predict", payload);
       if (response.status === 200 && response.data) {
         responseData = response.data;
         break;
@@ -114,45 +122,57 @@ export async function requestMlPrediction({ userId, memberId, member, latestVita
       lastError = error;
       attempt += 1;
 
-      // Do not retry if FastAPI returns explicit 503 MODEL_NOT_READY or validation errors (422/400)
-      if (error?.response?.status === 503 || error?.response?.status === 422 || error?.response?.status === 400) {
+      if (
+        error?.response?.status === 503 ||
+        error?.response?.status === 422 ||
+        error?.response?.status === 400
+      ) {
         break;
       }
 
       if (attempt <= MAX_RETRIES) {
-        logger.info({ attempt, timeout: INFERENCE_TIMEOUT_MS }, "Transient latency/network error to ML engine. Retrying once...");
+        logger.info(
+          { attempt, timeout: INFERENCE_TIMEOUT_MS },
+          "Transient latency/network error to ML engine. Retrying once..."
+        );
       }
     }
   }
 
   const durationMs = Date.now() - startTime;
 
-  // GRACEFUL DEGRADATION: If all network tries failed or FastAPI returned 503 MODEL_NOT_READY
   if (!responseData) {
-    const errorReason = lastError?.response?.status === 503 
-      ? "MODEL_NOT_READY_503" 
-      : (lastError?.code || lastError?.message || "INFERENCE_TIMEOUT_OR_UNREACHABLE");
+    const errorReason =
+      lastError?.response?.status === 503
+        ? "MODEL_NOT_READY_503"
+        : lastError?.code || lastError?.message || "INFERENCE_TIMEOUT_OR_UNREACHABLE";
 
-    logger.warn({
-      durationMs,
-      errorReason,
-      patientId: resolvedPatientId,
-    }, "FastAPI ML Engine unavailable - Gracefully degrading to deterministic Clinical Rules Engine");
+    logger.warn(
+      {
+        durationMs,
+        errorReason,
+        patientId: resolvedPatientId,
+      },
+      "FastAPI ML Engine unavailable - gracefully falling back to deterministic Clinical Rules Engine"
+    );
 
     const fallbackResponse = {
       mlAvailable: false,
       auditRecordId,
       prediction: "MODEL_NOT_READY",
       probability: 0.0,
-      decisionPath: ["ML engine offline or warming up - safety fallback to deterministic Clinical Rules Engine active."],
+      decisionPath: [
+        "ML engine offline or warming up - safety fallback to deterministic Clinical Rules Engine active.",
+      ],
       inferenceTimeMs: durationMs,
       modelVersion: "offline-fallback-v1",
       featuresUsed: features,
+      clinicalDisclaimer:
+        "Decision-support indicator unavailable; deterministic Clinical Rules Engine remains active.",
     };
 
-    // Issue 2 & 3: Deterministic awaited audit logging supporting anonymous/self sessions
     try {
-      await MLPredictionAudit.create({
+      await auditModel.create({
         _id: auditRecordId,
         patientId: resolvedPatientId,
         userId: resolvedUserId,
@@ -172,32 +192,39 @@ export async function requestMlPrediction({ userId, memberId, member, latestVita
     return fallbackResponse;
   }
 
-  // Issue 1: SUCCESSFUL PREDICTION INGESTION - EXACT FASTAPI SCHEMA ALIGNMENT
   const successfulResponse = {
     mlAvailable: true,
     auditRecordId,
-    prediction: responseData?.primaryPrediction?.riskLevel || responseData?.random_forest_prediction || "MEDIUM_RISK",
-    probability: typeof responseData?.benchmarkValidation?.calibratedProbability === "number" 
-      ? responseData.benchmarkValidation.calibratedProbability 
-      : (typeof responseData?.logistic_probability === "number" ? responseData.logistic_probability : 0.0),
-    decisionPath: Array.isArray(responseData?.explainableDecision?.decisionPath) 
-      ? responseData.explainableDecision.decisionPath 
-      : (Array.isArray(responseData?.decision_tree_path) ? responseData.decision_tree_path : ["No rule path extracted."]),
-    inferenceTimeMs: typeof responseData?.inferenceTimeMs === "number" ? responseData.inferenceTimeMs : durationMs,
-    modelVersion: responseData?.primaryPrediction?.modelName || responseData?.model_version || "v2.6.0-production-audited",
+    prediction:
+      responseData?.primaryPrediction?.riskLevel ||
+      responseData?.random_forest_prediction ||
+      "MEDIUM_RISK",
+    probability:
+      typeof responseData?.benchmarkValidation?.calibratedProbability === "number"
+        ? responseData.benchmarkValidation.calibratedProbability
+        : typeof responseData?.logistic_probability === "number"
+          ? responseData.logistic_probability
+          : 0.0,
+    decisionPath: Array.isArray(responseData?.explainableDecision?.decisionPath)
+      ? responseData.explainableDecision.decisionPath
+      : Array.isArray(responseData?.decision_tree_path)
+        ? responseData.decision_tree_path
+        : ["No rule path extracted."],
+    inferenceTimeMs:
+      typeof responseData?.inferenceTimeMs === "number" ? responseData.inferenceTimeMs : durationMs,
+    modelVersion:
+      responseData?.modelVersion ||
+      responseData?.primaryPrediction?.modelName ||
+      "v2.6.0-production-leak-free-audited",
+    isConcordant: Boolean(responseData?.benchmarkValidation?.isConcordantWithPrimary ?? true),
     featuresUsed: features,
+    clinicalDisclaimer:
+      responseData?.clinicalDisclaimer ||
+      "Decision-support score only; deterministic Clinical Rules Engine retains final triage authority.",
   };
 
-  logger.info({
-    durationMs,
-    prediction: successfulResponse.prediction,
-    probability: successfulResponse.probability,
-    patientId: resolvedPatientId,
-  }, "Completed high-speed FastAPI ML inference");
-
-  // Issue 2: Deterministic Awaited Audit Insertion to ensure record exists before reconciliation
   try {
-    await MLPredictionAudit.create({
+    await auditModel.create({
       _id: auditRecordId,
       patientId: resolvedPatientId,
       userId: resolvedUserId,
@@ -206,7 +233,7 @@ export async function requestMlPrediction({ userId, memberId, member, latestVita
       decisionPath: successfulResponse.decisionPath,
       inferenceTimeMs: successfulResponse.inferenceTimeMs,
       modelVersion: successfulResponse.modelVersion,
-      clinicalOverrideStatus: "ACCEPTED", // Updated later by Rules Engine if overridden
+      clinicalOverrideStatus: "ACCEPTED",
       rawFeatureVector: features,
       errorMessage: null,
     });

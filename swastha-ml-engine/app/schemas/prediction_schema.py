@@ -17,120 +17,20 @@ Notice that zero personal demographic identifiers (patient name, email, addresse
 are accepted or modeled here. All features represent de-identified numerical clinical telemetry.
 """
 
-from pydantic import BaseModel, Field, conint, confloat
-from typing import List, Optional, Dict, Any
-from datetime import datetime
+from pydantic import BaseModel, ConfigDict, Field
+from typing import List, Dict
+from datetime import datetime, timezone
+
 
 class PatientFeatures(BaseModel):
     """
     Exhaustive feature vector representing a household member's physiological condition,
     historical medication therapy compliance, and chronic morbidity profile.
     """
-    age_years: float = Field(
-        ..., 
-        ge=0.0, 
-        le=120.0, 
-        description="Chronological age of patient in years. Primary driver of arterial aging and metabolic vulnerability."
-    )
-    bmi_score: float = Field(
-        ..., 
-        ge=10.0, 
-        le=70.0, 
-        description="Body Mass Index computed from height and weight. Direct marker for diabetes and cardiovascular stress."
-    )
-    bp_systolic_mean_14d: float = Field(
-        ..., 
-        ge=60.0, 
-        le=260.0, 
-        description="14-day rolling arithmetic mean of systolic blood pressure (mmHg). High values (>140) indicate severe vascular resistance."
-    )
-    bp_diastolic_mean_14d: float = Field(
-        ..., 
-        ge=30.0, 
-        le=160.0, 
-        description="14-day rolling arithmetic mean of diastolic blood pressure (mmHg). Measures baseline resting arterial tone."
-    )
-    bp_pulse_pressure: float = Field(
-        ..., 
-        ge=10.0, 
-        le=150.0, 
-        description="Derived differential (Systolic minus Diastolic). Values >=60 signal arterial stiffness and cardiac strain."
-    )
-    glucose_fasting_last: float = Field(
-        ..., 
-        ge=30.0, 
-        le=600.0, 
-        description="Most recent verified fasting blood glucose observation (mg/dL). Primary marker for hyperglycemic crises."
-    )
-    heart_rate_resting_mean_14d: float = Field(
-        ..., 
-        ge=30.0, 
-        le=220.0, 
-        description="14-day rolling mean of resting heart rate (bpm). Chronic elevation (>85 bpm) indicates autonomic stress."
-    )
-    sleep_hours_mean_7d: float = Field(
-        ..., 
-        ge=0.0, 
-        le=24.0, 
-        description="7-day rolling mean of nightly sleep hours. Deprivation (<5.5 hrs) inflames cortisol and insulin resistance."
-    )
-    chronic_disease_count: int = Field(
-        0, 
-        ge=0, 
-        le=20, 
-        description="Count of active diagnosed conditions (diabetes, hypertension, asthma, ckd). Measures baseline morbidity."
-    )
-    medication_active_count: int = Field(
-        0, 
-        ge=0, 
-        le=30, 
-        description="Count of active medication regimens. Polypharmacy (>=5) elevates adverse interaction and drop-off risks."
-    )
-    medication_adherence_rate_30d: float = Field(
-        0.85, 
-        ge=0.0, 
-        le=1.0, 
-        description="Ratio of medication reminder doses completed on time over the past 30 days (0.0 = total default, 1.0 = perfect)."
-    )
-    previous_alerts_90d_count: int = Field(
-        0, 
-        ge=0, 
-        le=100, 
-        description="Count of previous AI analytical anomaly alerts generated over the preceding 90-day monitoring window."
-    )
-    emergency_episode_count_180d: int = Field(
-        0, 
-        ge=0, 
-        le=50, 
-        description="Count of severe symptom episodes or emergency rule overrides documented over the preceding 180 days."
-    )
-    activity_level_idx: int = Field(
-        1, 
-        ge=0, 
-        le=3, 
-        description="Ordinal physical activity category (0=sedentary, 1=light, 2=moderate, 3=vigorous)."
-    )
-    smoking_status_flag: int = Field(
-        0, 
-        ge=0, 
-        le=1, 
-        description="Binary smoking indicator (0=non-smoker/former, 1=active smoker). Key causal vector for arterial thrombosis."
-    )
-    alcohol_consumption_idx: int = Field(
-        0, 
-        ge=0, 
-        le=2, 
-        description="Ordinal alcohol ingestion index (0=none, 1=moderate, 2=heavy chronic ingestion)."
-    )
-    has_cardiac_family_history: int = Field(
-        0, 
-        ge=0, 
-        le=1, 
-        description="Binary cardiac family history flag (1=positive parental heart attack/stroke history, 0=none/unknown)."
-    )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
             "example": {
                 "age_years": 62.0,
                 "bmi_score": 28.5,
@@ -148,9 +48,122 @@ class PatientFeatures(BaseModel):
                 "activity_level_idx": 0,
                 "smoking_status_flag": 0,
                 "alcohol_consumption_idx": 0,
-                "has_cardiac_family_history": 1
+                "has_cardiac_family_history": 1,
             }
-        }
+        },
+    )
+
+    age_years: float = Field(
+        ...,
+        ge=0.0,
+        le=120.0,
+        allow_inf_nan=False,
+        description="Chronological age of patient in years.",
+    )
+    bmi_score: float = Field(
+        ...,
+        ge=10.0,
+        le=70.0,
+        allow_inf_nan=False,
+        description="Body Mass Index computed from height and weight.",
+    )
+    bp_systolic_mean_14d: float = Field(
+        ...,
+        ge=60.0,
+        le=260.0,
+        allow_inf_nan=False,
+        description="14-day rolling mean of systolic blood pressure (mmHg).",
+    )
+    bp_diastolic_mean_14d: float = Field(
+        ...,
+        ge=30.0,
+        le=160.0,
+        allow_inf_nan=False,
+        description="14-day rolling mean of diastolic blood pressure (mmHg).",
+    )
+    bp_pulse_pressure: float = Field(
+        ...,
+        ge=10.0,
+        le=150.0,
+        allow_inf_nan=False,
+        description="Derived differential (Systolic minus Diastolic).",
+    )
+    glucose_fasting_last: float = Field(
+        ...,
+        ge=30.0,
+        le=600.0,
+        allow_inf_nan=False,
+        description="Most recent fasting blood glucose observation (mg/dL).",
+    )
+    heart_rate_resting_mean_14d: float = Field(
+        ...,
+        ge=30.0,
+        le=220.0,
+        allow_inf_nan=False,
+        description="14-day rolling mean of resting heart rate (bpm).",
+    )
+    sleep_hours_mean_7d: float = Field(
+        ...,
+        ge=0.0,
+        le=24.0,
+        allow_inf_nan=False,
+        description="7-day rolling mean of nightly sleep hours.",
+    )
+    chronic_disease_count: int = Field(
+        0,
+        ge=0,
+        le=20,
+        description="Count of active diagnosed chronic conditions.",
+    )
+    medication_active_count: int = Field(
+        0,
+        ge=0,
+        le=30,
+        description="Count of active medication regimens.",
+    )
+    medication_adherence_rate_30d: float = Field(
+        0.85,
+        ge=0.0,
+        le=1.0,
+        allow_inf_nan=False,
+        description="Ratio of medication reminder doses completed on time over 30 days.",
+    )
+    previous_alerts_90d_count: int = Field(
+        0,
+        ge=0,
+        le=100,
+        description="Count of previous analytical alerts over 90 days.",
+    )
+    emergency_episode_count_180d: int = Field(
+        0,
+        ge=0,
+        le=50,
+        description="Count of emergency episodes over 180 days.",
+    )
+    activity_level_idx: int = Field(
+        1,
+        ge=0,
+        le=3,
+        description="Ordinal physical activity category (0=sedentary, 1=light, 2=moderate, 3=vigorous).",
+    )
+    smoking_status_flag: int = Field(
+        0,
+        ge=0,
+        le=1,
+        description="Binary smoking indicator (0=non-smoker/former, 1=active smoker).",
+    )
+    alcohol_consumption_idx: int = Field(
+        0,
+        ge=0,
+        le=2,
+        description="Ordinal alcohol ingestion index (0=none, 1=moderate, 2=heavy).",
+    )
+    has_cardiac_family_history: int = Field(
+        0,
+        ge=0,
+        le=1,
+        description="Binary cardiac family history flag (0/1).",
+    )
 
 
 class PredictionRequest(BaseModel):
@@ -195,13 +208,18 @@ class UnifiedInferenceResponse(BaseModel):
     Unifies primary classification, calibrated probability, and explainable pathing.
     """
     status: str = Field("SUCCESS", description="Execution status.")
+    modelVersion: str = Field("v2.6.0-production-leak-free-audited", description="Serialized model bundle version.")
+    featureSchema: str = Field("uci-17-v1", description="Canonical input feature schema identifier.")
     memberId: str = Field(..., description="Target patient identifier echoed back for async tracking.")
     inferenceTimeMs: float = Field(..., description="Milliseconds required to compute transformations and evaluate all three models.")
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z", description="ISO-8601 execution time.")
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        description="ISO-8601 execution time."
+    )
     primaryPrediction: RandomForestPrediction
     benchmarkValidation: LogisticRegressionBenchmark
     explainableDecision: DecisionTreeExplanation
     clinicalDisclaimer: str = Field(
-        "Notice: Predictive machine learning scores are additive analytical indicators. The deterministic Symbolic Clinical Rules Engine retains final triage authority.",
+        "Decision-support score only: NOT a clinical diagnosis. The deterministic Symbolic Clinical Rules Engine retains final triage authority.",
         description="Mandatory legal and clinical safety disclaimer."
     )

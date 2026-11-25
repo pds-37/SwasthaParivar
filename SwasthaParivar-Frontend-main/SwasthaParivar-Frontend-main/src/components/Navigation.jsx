@@ -26,6 +26,7 @@ import {
 import ProfileAvatar from "./common/ProfileAvatar";
 import { getSubscriptionStatus, subscribePush } from "../hooks/usePush";
 import { howToUseNote, howToUseSteps } from "../lib/howToUse";
+import { PERMISSIONS, filterAuthorizedLinks } from "../lib/permissions";
 import { useFamilyStore } from "../store/family-store";
 import { useUIStore } from "../store/ui-store";
 import { useThemeMode } from "../theme/theme-context";
@@ -52,8 +53,8 @@ const primaryLinks = [
 const secondaryLinks = [
   { path: "/health", label: "Health", icon: HeartPulse },
   { path: "/remedies", label: "Remedies", icon: Leaf },
-  { path: "/command-center", label: "Command Center", icon: ShieldCheck },
-  { path: "/asha-portal", label: "ASHA Field", icon: ClipboardList },
+  { path: "/command-center", label: "Command Center", icon: ShieldCheck, requiredPermission: PERMISSIONS.DISTRICT_OVERVIEW },
+  { path: "/asha-portal", label: "ASHA Field", icon: ClipboardList, requiredPermission: PERMISSIONS.SURVEY_SUBMIT },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -110,7 +111,12 @@ const Navigation = ({ variant = "app" }) => {
     [location.pathname]
   );
 
-  const allAppLinks = [...primaryLinks, ...secondaryLinks];
+  const visibleSecondaryLinks = useMemo(
+    () => filterAuthorizedLinks(secondaryLinks, user),
+    [user]
+  );
+
+  const allAppLinks = [...primaryLinks, ...visibleSecondaryLinks];
   const memberScope = activeView === "self" ? "self" : selectedMember?._id || "family";
   const selectedScopeName =
     activeView === "self"
@@ -260,7 +266,7 @@ const Navigation = ({ variant = "app" }) => {
 
           <div className="app-sidebar__group">
             <span className="app-sidebar__group-label">More</span>
-            {secondaryLinks.map((item) => {
+            {visibleSecondaryLinks.map((item) => {
               const active =
                 location.pathname === item.path ||
                 location.pathname.startsWith(`${item.path}/`);

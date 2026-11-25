@@ -5,7 +5,13 @@ import "./InstallPrompt.css";
 const InstallPrompt = () => {
   const [show, setShow] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isIOS, setIsIOS] = useState(false);
+  const [isIOS] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof navigator !== "undefined" &&
+      /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+      !window.MSStream
+  );
 
   useEffect(() => {
     // Do not show if already in standalone mode (installed)
@@ -19,10 +25,6 @@ const InstallPrompt = () => {
       return;
     }
 
-    // Check for iOS
-    const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    setIsIOS(isIosDevice);
-
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -32,15 +34,20 @@ const InstallPrompt = () => {
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
     // Show for iOS after a delay if not dismissed
-    if (isIosDevice) {
-      const timer = setTimeout(() => {
+    let timer = null;
+    if (isIOS) {
+      timer = setTimeout(() => {
         setShow(true);
       }, 8000);
-      return () => clearTimeout(timer);
     }
 
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-  }, []);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [isIOS]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;

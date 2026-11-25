@@ -201,6 +201,8 @@ class ModelManager:
 
         return UnifiedInferenceResponse(
             status="SUCCESS",
+            modelVersion=self.metadata.get("modelVersion", "v2.6.0-production-leak-free-audited"),
+            featureSchema="uci-17-v1",
             memberId=request.memberId,
             inferenceTimeMs=elapsed_ms,
             primaryPrediction=RandomForestPrediction(

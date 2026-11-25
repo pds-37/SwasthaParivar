@@ -2,44 +2,17 @@ import axios from "axios";
 import notify from "./notify";
 import { captureFrontendError } from "./sentry";
 import { getFriendlyError } from "../utils/errorHandler";
+import {
+  buildApiUrl as buildFullApiUrl,
+  sanitizeBaseUrl,
+  sanitizePath,
+  shouldAttemptTokenRefresh,
+  shouldRedirectToAuth,
+} from "./apiHelpers";
 
-const sanitizePath = (value = "") => {
-  if (!value) return "";
-  return value.startsWith("/") ? value : `/${value}`;
-};
-
-const sanitizeBaseUrl = (value) => {
-  if (!value) return "/api";
-
-  const normalizedValue = value.endsWith("/") ? value.slice(0, -1) : value;
-
-  // Accept either a full API base (https://host/api) or a backend origin
-  // (https://host) to reduce deploy-time env mistakes.
-  if (/^https?:\/\//i.test(normalizedValue)) {
-    try {
-      const url = new URL(normalizedValue);
-      const pathname = url.pathname.replace(/\/+$/, "");
-
-      if (!pathname || pathname === "/") {
-        url.pathname = "/api";
-        return url.toString().replace(/\/$/, "");
-      }
-
-      if (!pathname.endsWith("/api")) {
-        url.pathname = `${pathname}/api`;
-      }
-
-      return url.toString().replace(/\/$/, "");
-    } catch {
-      return normalizedValue;
-    }
-  }
-
-  return normalizedValue;
-};
-
-export const API_BASE_URL = sanitizeBaseUrl(import.meta.env.VITE_API_URL || "/api");
-export const buildApiUrl = (endpoint = "") => `${API_BASE_URL}${sanitizePath(endpoint)}`;
+export { sanitizeBaseUrl };
+export const API_BASE_URL = sanitizeBaseUrl(import.meta.env?.VITE_API_URL || "/api");
+export const buildApiUrl = (endpoint = "") => buildFullApiUrl(API_BASE_URL, endpoint);
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -84,31 +57,25 @@ apiClient.interceptors.response.use(
       "Request failed";
     const friendlyMessage = getFriendlyError(error);
 
-    const isRefreshRequest = originalRequest.url?.includes("/auth/refresh");
-    const isAuthBootstrap = originalRequest.url?.includes("/auth/session");
-    const isAuthEntry = originalRequest.url?.includes("/auth/login") || originalRequest.url?.includes("/auth/signup");
-
-    if (
-      status === 401 &&
-      !originalRequest.__retry &&
-      !isRefreshRequest &&
-      !isAuthEntry
-    ) {
+    if (shouldAttemptTokenRefresh(status, originalRequest)) {
       originalRequest.__retry = true;
 
       try {
-        refreshPromise =
-          refreshPromise ||
-          apiClient.post(
-            "/auth/refresh",
-            {},
-            {
-              headers: { "x-skip-auth": "true" },
-            }
-          );
+        if (!refreshPromise) {
+          refreshPromise = apiClient
+            .post(
+              "/auth/refresh",
+              {},
+              {
+                headers: { "x-skip-auth": "true" },
+              }
+            )
+            .finally(() => {
+              refreshPromise = null;
+            });
+        }
 
         await refreshPromise;
-        refreshPromise = null;
         return apiClient(originalRequest);
       } catch {
         refreshPromise = null;
@@ -116,10 +83,8 @@ apiClient.interceptors.response.use(
     }
 
     if (
-      status === 401 &&
       typeof window !== "undefined" &&
-      !window.location.pathname.startsWith("/auth") &&
-      !isAuthBootstrap
+      shouldRedirectToAuth(status, originalRequest, window.location.pathname)
     ) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");

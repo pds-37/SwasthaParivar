@@ -1,5 +1,6 @@
 // models/user.js
 import mongoose from "mongoose";
+import { ROLES } from "../config/roles.js";
 
 const badgeSchema = new mongoose.Schema({
   id: {
@@ -85,14 +86,21 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["user", "asha_worker", "facility_admin", "district_officer"],
+    enum: ROLES,
     default: "user",
     index: true,
   },
+  secondaryRoles: [
+    {
+      type: String,
+      enum: ROLES,
+    },
+  ],
   assignedScope: {
-    district: { type: String, default: "Gautam Buddha Nagar" },
-    pincode: { type: String, default: "201306" },
-    facilityId: { type: String, default: "" },
+    state: { type: String, default: "Uttar Pradesh", trim: true },
+    district: { type: String, default: "Gautam Buddha Nagar", trim: true },
+    pincode: { type: String, default: "201306", trim: true },
+    facilityId: { type: String, default: "", trim: true },
   },
   referralCode: {
     type: String,

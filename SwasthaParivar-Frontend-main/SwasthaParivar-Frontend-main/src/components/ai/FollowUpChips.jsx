@@ -1,11 +1,14 @@
 import { AlarmPlus, Hospital, Target } from "lucide-react";
 
-const FollowUpButton = ({ icon: Icon, label, onClick }) => (
-  <button type="button" className="ai-followup-chip" onClick={onClick}>
-    <Icon size={15} aria-hidden="true" />
-    <span>{label}</span>
-  </button>
-);
+const FollowUpButton = ({ icon, label, onClick }) => {
+  const IconComponent = icon;
+  return (
+    <button type="button" className="ai-followup-chip" onClick={onClick}>
+      <IconComponent size={15} aria-hidden="true" />
+      <span>{label}</span>
+    </button>
+  );
+};
 
 export default function FollowUpChips({
   followUpPrompt,

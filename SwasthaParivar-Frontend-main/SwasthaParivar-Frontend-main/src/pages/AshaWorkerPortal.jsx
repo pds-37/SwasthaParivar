@@ -1,28 +1,26 @@
 import React, { useState, useEffect, useCallback } from "react";
-import axios from "axios";
-import { toast } from "react-hot-toast";
 import {
   ClipboardList,
   CheckCircle,
-  AlertCircle,
   Send,
-  Home,
-  Users,
-  Thermometer,
   FileCheck2,
   Globe,
+  AlertTriangle,
 } from "lucide-react";
+
+import api from "../lib/api";
+import notify from "../lib/notify";
+import { useAuth } from "../components/auth-context";
 import "./AshaWorkerPortal.css";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
 const AshaWorkerPortal = () => {
-  const [lang, setLang] = useState("hi"); // Default Hindi for ASHA workers
+  const { user } = useAuth();
+  const [lang, setLang] = useState("hi");
   const [tasks, setTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // Survey Form State
-  const [pincode, setPincode] = useState("201306");
+  const [pincode, setPincode] = useState(user?.assignedScope?.pincode || "201306");
   const [ward, setWard] = useState("Knowledge Park Sector 1");
   const [householdCount, setHouseholdCount] = useState(5);
   const [positiveScreenCount, setPositiveScreenCount] = useState(1);
@@ -76,15 +74,14 @@ const AshaWorkerPortal = () => {
   const fetchTasks = useCallback(async () => {
     try {
       setLoadingTasks(true);
-      const res = await axios.get(`${API_BASE}/hierarchical/asha/tasks`, {
+      setErrorMessage("");
+      const data = await api.get("/hierarchical/asha/tasks", {
         params: { pincode },
-        withCredentials: true,
+        suppressErrorToast: true,
       });
-      if (res.data?.success) {
-        setTasks(res.data.data || []);
-      }
-    } catch {
-      // Non-blocking fallback
+      setTasks(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setErrorMessage(error.message || "Could not load assigned tasks");
     } finally {
       setLoadingTasks(false);
     }
@@ -95,38 +92,32 @@ const AshaWorkerPortal = () => {
   }, [fetchTasks]);
 
   const toggleSymptom = (id) => {
-    if (selectedSymptoms.includes(id)) {
-      setSelectedSymptoms(selectedSymptoms.filter((s) => s !== id));
-    } else {
-      setSelectedSymptoms([...selectedSymptoms, id]);
-    }
+    setSelectedSymptoms((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
   };
 
   const handleSubmitSurvey = async (e) => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await axios.post(
-        `${API_BASE}/hierarchical/asha/survey`,
-        {
-          pincode,
-          ward,
-          symptoms: selectedSymptoms,
-          householdCount: Number(householdCount),
-          positiveScreenCount: Number(positiveScreenCount),
-          notes,
-        },
-        { withCredentials: true }
-      );
+      await api.post("/hierarchical/asha/survey", {
+        pincode,
+        district: user?.assignedScope?.district,
+        state: user?.assignedScope?.state,
+        ward,
+        symptoms: selectedSymptoms,
+        householdCount: Number(householdCount),
+        positiveScreenCount: Number(positiveScreenCount),
+        notes,
+      });
 
-      if (res.data?.success) {
-        toast.success(t.successMsg);
-        setNotes("");
-        setPositiveScreenCount(1);
-        fetchTasks();
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to submit survey");
+      notify.success(t.successMsg);
+      setNotes("");
+      setPositiveScreenCount(1);
+      fetchTasks();
+    } catch (error) {
+      if (!error?.status) notify.error(error.message || "Failed to submit survey");
     } finally {
       setSubmitting(false);
     }
@@ -134,7 +125,6 @@ const AshaWorkerPortal = () => {
 
   return (
     <div className="asha-portal-container">
-      {/* Top Bar with Language Toggle */}
       <div className="asha-header">
         <div>
           <div className="asha-role-pill">
@@ -145,6 +135,7 @@ const AshaWorkerPortal = () => {
         </div>
 
         <button
+          type="button"
           className="btn-lang-toggle"
           onClick={() => setLang(lang === "hi" ? "en" : "hi")}
         >
@@ -152,8 +143,14 @@ const AshaWorkerPortal = () => {
         </button>
       </div>
 
+      {errorMessage ? (
+        <div className="asha-alert" role="alert">
+          <AlertTriangle size={18} />
+          <span>{errorMessage}</span>
+        </div>
+      ) : null}
+
       <div className="asha-grid">
-        {/* Left: Assigned Tasks */}
         <div className="asha-panel">
           <div className="asha-panel-header">
             <h2>{t.assignedTasks}</h2>
@@ -195,7 +192,6 @@ const AshaWorkerPortal = () => {
           </div>
         </div>
 
-        {/* Right: Doorstep Field Survey Form */}
         <div className="asha-panel">
           <div className="asha-panel-header">
             <h2>{t.surveyTitle}</h2>
@@ -205,8 +201,9 @@ const AshaWorkerPortal = () => {
           <form onSubmit={handleSubmitSurvey} className="survey-form">
             <div className="form-row">
               <div className="form-group">
-                <label>{t.pincodeLabel}</label>
+                <label htmlFor="asha-pincode">{t.pincodeLabel}</label>
                 <input
+                  id="asha-pincode"
                   type="text"
                   value={pincode}
                   onChange={(e) => setPincode(e.target.value)}
@@ -215,8 +212,9 @@ const AshaWorkerPortal = () => {
               </div>
 
               <div className="form-group">
-                <label>{t.wardLabel}</label>
+                <label htmlFor="asha-ward">{t.wardLabel}</label>
                 <input
+                  id="asha-ward"
                   type="text"
                   value={ward}
                   onChange={(e) => setWard(e.target.value)}
@@ -227,8 +225,9 @@ const AshaWorkerPortal = () => {
 
             <div className="form-row">
               <div className="form-group">
-                <label>{t.householdsCovered}</label>
+                <label htmlFor="asha-households">{t.householdsCovered}</label>
                 <input
+                  id="asha-households"
                   type="number"
                   min="1"
                   value={householdCount}
@@ -238,8 +237,9 @@ const AshaWorkerPortal = () => {
               </div>
 
               <div className="form-group">
-                <label>{t.symptomaticFound}</label>
+                <label htmlFor="asha-symptomatic">{t.symptomaticFound}</label>
                 <input
+                  id="asha-symptomatic"
                   type="number"
                   min="0"
                   value={positiveScreenCount}
@@ -269,12 +269,17 @@ const AshaWorkerPortal = () => {
             </div>
 
             <div className="form-group">
-              <label>{t.notesLabel}</label>
+              <label htmlFor="asha-notes">{t.notesLabel}</label>
               <textarea
+                id="asha-notes"
                 rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder={lang === "hi" ? "पानी का रंग गंदा, मच्छरों का जमाव, या अन्य टिप्पणी..." : "Turbid drinking water, mosquito breeding, or family details..."}
+                placeholder={
+                  lang === "hi"
+                    ? "पानी का रंग गंदा, मच्छरों का जमाव, या अन्य टिप्पणी..."
+                    : "Turbid drinking water, mosquito breeding, or family details..."
+                }
               />
             </div>
 

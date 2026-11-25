@@ -10,7 +10,7 @@ if classification models have not yet been built and verified by Phase 4.
 
 from fastapi import APIRouter, status, HTTPException
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.schemas.prediction_schema import PredictionRequest, UnifiedInferenceResponse
 from app.services.model_service import model_manager
@@ -27,7 +27,7 @@ async def check_service_health() -> Dict[str, Any]:
     Returns live health state, checking if Scikit-Learn .joblib artifacts are loaded into RAM.
     """
     health_status = model_manager.get_health_status()
-    health_status["timestamp"] = datetime.utcnow().isoformat() + "Z"
+    health_status["timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     return health_status
 
 @router.post(

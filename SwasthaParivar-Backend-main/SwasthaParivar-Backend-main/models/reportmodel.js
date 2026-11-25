@@ -56,6 +56,26 @@ const reportSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    storageProvider: {
+      type: String,
+      enum: ["s3_r2", "mongodb_buffer"],
+      default: "mongodb_buffer",
+      index: true,
+    },
+    storageKey: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    checksumSha256: {
+      type: String,
+      default: "",
+    },
+    encryptedAtRest: {
+      type: Boolean,
+      default: true,
+    },
+    // Retained only for legacy compatibility or fallback when S3/R2 env vars are unconfigured
     fileBuffer: {
       type: Buffer,
       select: false,

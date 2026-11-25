@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Activity,
@@ -6,17 +6,15 @@ import {
   BrainCircuit,
   FileText,
   HeartPulse,
-  Link2,
   Smartphone,
   Sparkles,
 } from "lucide-react";
 
 import { useAuth } from "../auth-context";
 import ProfileAvatar from "../common/ProfileAvatar";
-import { Button, EmptyState, Input, PullToRefresh, Skeleton } from "../ui";
+import { Button, EmptyState, PullToRefresh, Skeleton } from "../ui";
 import { useReminders } from "../../hooks/useReminders";
 import { useReports } from "../../hooks/useReports";
-import notify from "../../lib/notify";
 import { useFamilyStore } from "../../store/family-store";
 import "../../pages/Dashboard.css";
 
@@ -51,14 +49,10 @@ const SelfDashboard = () => {
     selfMember,
     loading: membersLoading,
     error: membersError,
-    pendingInvites,
-    acceptInvite,
     refreshMembers,
   } = useFamilyStore();
   const { reminders, loading: remindersLoading, mutate: refreshReminders } = useReminders();
   const { reports, loading: reportsLoading, mutate: refreshReports } = useReports();
-  const [inviteCode, setInviteCode] = useState("");
-  const [joining, setJoining] = useState(false);
 
   const loading = membersLoading || remindersLoading || reportsLoading;
   const firstName = user?.fullName?.split(" ")?.[0] || "there";
@@ -101,25 +95,6 @@ const SelfDashboard = () => {
 
     return Math.max(0, Math.min(100, Math.round(score)));
   }, [selfMember]);
-
-  const handleAcceptInvite = async () => {
-    if (!inviteCode.trim()) {
-      notify.error("Enter an invite code first");
-      return;
-    }
-
-    setJoining(true);
-
-    try {
-      await acceptInvite(inviteCode.trim());
-      setInviteCode("");
-      notify.success("Joined household successfully");
-    } catch (error) {
-      notify.error(error.message || "Could not join that household");
-    } finally {
-      setJoining(false);
-    }
-  };
 
   if (!selfMember && loading) {
     return (

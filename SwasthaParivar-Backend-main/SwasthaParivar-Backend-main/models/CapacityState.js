@@ -26,6 +26,11 @@ const capacityStateSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    state: {
+      type: String,
+      default: "Uttar Pradesh",
+      index: true,
+    },
     district: {
       type: String,
       required: true,
