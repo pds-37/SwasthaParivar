@@ -15,6 +15,7 @@ const METRIC_THRESHOLDS = {
   bloodPressureDiastolic: { high: 80, low: 60, unit: "mmHg", label: "blood pressure (diastolic)" },
   bloodSugar: { high: 140, low: 70, unit: "mg/dL", label: "blood sugar" },
   heartRate: { high: 100, low: 55, unit: "bpm", label: "heart rate" },
+  spO2: { high: 100, low: 94, unit: "%", label: "blood oxygen (SpO2)" },
 };
 
 const getMemberFilter = (user) =>
@@ -60,8 +61,7 @@ const getMetricValues = (member, metricName) => {
       .slice(-5);
   }
 
-  const key = metricName === "heartRate" ? "heartRate" : "bloodSugar";
-  const entries = Array.isArray(member?.health?.[key]) ? member.health[key] : [];
+  const entries = Array.isArray(member?.health?.[metricName]) ? member.health[metricName] : [];
 
   return entries
     .map((entry) => {

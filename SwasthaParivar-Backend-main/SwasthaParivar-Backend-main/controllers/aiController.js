@@ -606,6 +606,7 @@ function summarizeMember(member) {
   const latestBp = parseBloodPressure(getLatestEntry(member?.health?.bloodPressure)?.value);
   const latestSugar = numberValue(getLatestEntry(member?.health?.bloodSugar));
   const latestHeartRate = numberValue(getLatestEntry(member?.health?.heartRate));
+  const latestSpO2 = numberValue(getLatestEntry(member?.health?.spO2));
   const latestSleep = numberValue(getLatestEntry(member?.health?.sleep));
   const latestSteps = numberValue(getLatestEntry(member?.health?.steps));
   const latestWeight = numberValue(getLatestEntry(member?.health?.weight));
@@ -638,6 +639,9 @@ function summarizeMember(member) {
   }
   if (latestHeartRate !== null) {
     details.push(`latest heart rate ${latestHeartRate}`);
+  }
+  if (latestSpO2 !== null) {
+    details.push(`latest SpO2 ${latestSpO2}%`);
   }
   if (latestSleep !== null) {
     details.push(`latest sleep ${latestSleep} hours`);

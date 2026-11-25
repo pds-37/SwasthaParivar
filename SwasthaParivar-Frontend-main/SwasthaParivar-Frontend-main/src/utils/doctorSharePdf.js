@@ -15,6 +15,7 @@ const buildRecordsRows = (records = []) =>
     formatDateTime(record.date),
     record.bloodPressure || "-",
     record.heartRate ?? "-",
+    record.spO2 !== undefined && record.spO2 !== null ? `${record.spO2}%` : "-",
     record.bloodSugar ?? "-",
     record.weight ?? "-",
     record.sleep ?? "-",
@@ -89,7 +90,7 @@ export function exportDoctorSharePdf({
 
   autoTable(doc, {
     startY: currentY,
-    head: [["Recorded at", "BP", "HR", "Sugar", "Weight", "Sleep", "Steps"]],
+    head: [["Recorded at", "BP", "HR", "SpO2", "Sugar", "Weight", "Sleep", "Steps"]],
     body: buildRecordsRows(records),
     theme: "grid",
     headStyles: { fillColor: [20, 74, 87] },

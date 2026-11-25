@@ -30,5 +30,6 @@ export const updateMemberHealthSchema = z.object({
   health: z.record(z.string(), z.array(z.object({
     value: z.union([z.string(), z.number()]),
     date: z.string(),
+    source: z.enum(["manual", "ble_device", "ble_simulated"]).optional(),
   }))),
 });

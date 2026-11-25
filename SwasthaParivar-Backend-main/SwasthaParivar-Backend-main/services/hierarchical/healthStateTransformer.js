@@ -27,8 +27,11 @@ export function classifyClinicalCategory(metrics = {}, symptoms = []) {
   const diastolic = Number(metrics.bpDiastolic || 80);
   const bloodSugar = Number(metrics.bloodSugar || 100);
   const heartRate = Number(metrics.heartRate || 72);
+  const spO2 = metrics.spO2 !== undefined && metrics.spO2 !== null && metrics.spO2 !== ""
+    ? Number(metrics.spO2)
+    : null;
 
-  if (hasResp) return "ACUTE_RESPIRATORY_SURGE";
+  if (hasResp || (Number.isFinite(spO2) && spO2 < 92)) return "ACUTE_RESPIRATORY_SURGE";
   if (hasWaterborne) return "WATERBORNE_CLUSTER";
   if (hasFever) return "FEBRILE_ILLNESS";
   if (systolic >= 160 || diastolic >= 100 || heartRate > 120 || heartRate < 45) return "CARDIAC_ANOMALY";
@@ -45,6 +48,9 @@ export function computeSeverityScore(metrics = {}, symptoms = []) {
   const systolic = Number(metrics.bpSystolic || metrics.bloodPressure || 120);
   const bloodSugar = Number(metrics.bloodSugar || 100);
   const heartRate = Number(metrics.heartRate || 72);
+  const spO2 = metrics.spO2 !== undefined && metrics.spO2 !== null && metrics.spO2 !== ""
+    ? Number(metrics.spO2)
+    : null;
 
   if (systolic >= 180 || systolic <= 85) score += 0.45;
   else if (systolic >= 150) score += 0.25;
@@ -54,6 +60,11 @@ export function computeSeverityScore(metrics = {}, symptoms = []) {
 
   if (heartRate >= 130 || heartRate <= 40) score += 0.3;
   else if (heartRate >= 105) score += 0.15;
+
+  if (Number.isFinite(spO2)) {
+    if (spO2 <= 90) score += 0.4;
+    else if (spO2 < 94) score += 0.2;
+  }
 
   return Math.min(1.0, Math.max(0.05, Number(score.toFixed(2))));
 }
@@ -88,6 +99,7 @@ export async function transformSignalToHealthState({
       diastolic: metrics.bpDiastolic || null,
       bloodSugar: metrics.bloodSugar || null,
       heartRate: metrics.heartRate || null,
+      spO2: metrics.spO2 ?? null,
       symptomCount: symptoms.length,
       categoryIdentified: category,
     };

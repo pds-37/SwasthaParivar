@@ -1,4 +1,4 @@
-const METRICS = ["heartRate", "bloodSugar", "weight", "sleep", "steps"];
+const METRICS = ["heartRate", "bloodSugar", "spO2", "weight", "sleep", "steps"];
 
 function sortEntries(entries = []) {
   return Array.isArray(entries)
@@ -139,6 +139,20 @@ function buildFlags(trends = {}) {
       metric: "heartRate",
       severity: "moderate",
       message: `Latest heart rate ${trends.heartRate.latest} is elevated.`,
+    });
+  }
+
+  if (trends.spO2?.latest !== undefined && trends.spO2.latest < 90) {
+    flags.push({
+      metric: "spO2",
+      severity: "high",
+      message: `Latest SpO2 ${trends.spO2.latest}% is critically low.`,
+    });
+  } else if (trends.spO2?.latest !== undefined && trends.spO2.latest < 94) {
+    flags.push({
+      metric: "spO2",
+      severity: "moderate",
+      message: `Latest SpO2 ${trends.spO2.latest}% is below normal.`,
     });
   }
 

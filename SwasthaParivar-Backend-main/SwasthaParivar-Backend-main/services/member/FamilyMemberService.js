@@ -7,10 +7,13 @@ export const HEALTH_METRICS = [
   "bloodPressure",
   "heartRate",
   "bloodSugar",
+  "spO2",
   "weight",
   "sleep",
   "steps",
 ];
+
+export const HEALTH_ENTRY_SOURCES = new Set(["manual", "ble_device", "ble_simulated"]);
 
 const ALLOWED_GENDERS = new Set(["male", "female", "other"]);
 const MAX_MEMBER_AVATAR_LENGTH = 700000;
@@ -129,11 +132,18 @@ class FamilyMemberService {
     }, {});
   }
 
+  normalizeMetricSource(source) {
+    const normalized = typeof source === "string" ? source.trim().toLowerCase() : "";
+    return HEALTH_ENTRY_SOURCES.has(normalized) ? normalized : "manual";
+  }
+
   normalizeHealthEntry(metric, entry) {
     if (!entry || typeof entry !== "object") return null;
 
     const date = new Date(entry.date);
     if (Number.isNaN(date.getTime())) return null;
+
+    const source = this.normalizeMetricSource(entry.source);
 
     if (metric === "bloodPressure") {
       const value = this.normalizeText(entry.value, { maxLength: 20 });
@@ -142,17 +152,20 @@ class FamilyMemberService {
       return {
         value,
         date: date.toISOString(),
+        source,
       };
     }
 
     const value = Number(entry.value);
-    if (!Number.isFinite(value) || value < 0 || value > 200000) {
+    const maxAllowed = metric === "spO2" ? 100 : 200000;
+    if (!Number.isFinite(value) || value < 0 || value > maxAllowed) {
       return null;
     }
 
     return {
       value: Number(value.toFixed(2)),
       date: date.toISOString(),
+      source,
     };
   }
 
@@ -164,10 +177,10 @@ class FamilyMemberService {
     const normalized = this.getEmptyHealth();
 
     for (const metric of HEALTH_METRICS) {
-      const source = Array.isArray(health[metric]) ? health[metric] : [];
+      const sourceEntries = Array.isArray(health[metric]) ? health[metric] : [];
       const timeline = new Map();
 
-      source.slice(0, 365).forEach((entry) => {
+      sourceEntries.slice(0, 365).forEach((entry) => {
         const normalizedEntry = this.normalizeHealthEntry(metric, entry);
         if (!normalizedEntry) return;
         timeline.set(normalizedEntry.date, normalizedEntry);
@@ -188,7 +201,8 @@ class FamilyMemberService {
       return { error: "Valid date is required" };
     }
 
-    const snapshot = { date: date.toISOString() };
+    const source = this.normalizeMetricSource(payload?.source);
+    const snapshot = { date: date.toISOString(), source };
     let hasMetric = false;
 
     for (const metric of HEALTH_METRICS) {
@@ -201,6 +215,7 @@ class FamilyMemberService {
       const normalizedEntry = this.normalizeHealthEntry(metric, {
         value: rawValue,
         date,
+        source,
       });
 
       if (!normalizedEntry) {
@@ -220,6 +235,7 @@ class FamilyMemberService {
 
   mergeSnapshotIntoHealth(currentHealth, snapshot) {
     const nextHealth = this.sanitizeHealthPayload(currentHealth).data || this.getEmptyHealth();
+    const source = this.normalizeMetricSource(snapshot?.source);
 
     for (const metric of HEALTH_METRICS) {
       if (snapshot[metric] === undefined) {
@@ -231,6 +247,7 @@ class FamilyMemberService {
       nextHealth[metric].push({
         value: snapshot[metric],
         date: snapshot.date,
+        source,
       });
 
       nextHealth[metric].sort((left, right) => new Date(left.date) - new Date(right.date));
@@ -245,8 +262,14 @@ class FamilyMemberService {
 
     for (const metric of HEALTH_METRICS) {
       for (const entry of health[metric] || []) {
-        const existing = timeline.get(entry.date) || { date: entry.date };
+        const existing = timeline.get(entry.date) || { date: entry.date, source: "manual" };
         existing[metric] = entry.value;
+
+        const entrySource = this.normalizeMetricSource(entry.source);
+        if (entrySource === "ble_device" || (entrySource === "ble_simulated" && existing.source !== "ble_device")) {
+          existing.source = entrySource;
+        }
+
         timeline.set(entry.date, existing);
       }
     }

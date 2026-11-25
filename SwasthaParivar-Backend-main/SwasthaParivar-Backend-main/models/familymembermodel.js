@@ -5,12 +5,18 @@ const MAX_MEMBER_AVATAR_LENGTH = 700000;
 const metricEntrySchema = new mongoose.Schema({
   value: { type: mongoose.Schema.Types.Mixed, required: true },
   date: { type: String, required: true },
+  source: {
+    type: String,
+    enum: ["manual", "ble_device", "ble_simulated"],
+    default: "manual",
+  },
 }, { _id: false });
 
 const healthSchema = new mongoose.Schema({
   bloodPressure: [metricEntrySchema],
   heartRate: [metricEntrySchema],
   bloodSugar: [metricEntrySchema],
+  spO2: [metricEntrySchema],
   weight: [metricEntrySchema],
   sleep: [metricEntrySchema],
   steps: [metricEntrySchema],

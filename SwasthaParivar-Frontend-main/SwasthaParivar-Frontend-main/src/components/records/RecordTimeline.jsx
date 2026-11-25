@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -76,6 +76,14 @@ const METRICS = {
     low: 60,
     accessor: (record) => toNumericValue(record?.heartRate),
   },
+  spo2: {
+    label: "SpO2",
+    unit: "%",
+    color: "#158c83",
+    high: null,
+    low: 94,
+    accessor: (record) => toNumericValue(record?.spO2),
+  },
 };
 
 const normalizeValue = (value) => (Number.isFinite(value) ? value : null);
@@ -109,19 +117,15 @@ export default function RecordTimeline({ records = [] }) {
   }, [records]);
 
   const firstMetricWithData = Object.keys(METRICS).find((key) => metricData[key]?.length > 0);
+  const activeMetric = metricData[metric]?.length ? metric : firstMetricWithData || metric;
 
-  useEffect(() => {
-    if (metricData[metric]?.length || !firstMetricWithData) return;
-    setMetric(firstMetricWithData);
-  }, [firstMetricWithData, metric, metricData]);
-
-  const config = METRICS[metric];
-  const data = metricData[metric] || [];
+  const config = METRICS[activeMetric];
+  const data = metricData[activeMetric] || [];
 
   return (
     <Box>
       <ToggleButtonGroup
-        value={metric}
+        value={activeMetric}
         exclusive
         size="small"
         onChange={(_, value) => value && setMetric(value)}

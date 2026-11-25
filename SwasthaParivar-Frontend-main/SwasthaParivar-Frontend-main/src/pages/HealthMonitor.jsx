@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Activity, Heart, Moon, Plus, Scale, Syringe, Waves, Footprints } from "lucide-react";
+import { Activity, Bluetooth, Heart, Moon, Plus, Scale, Syringe, Waves, Wind, Footprints } from "lucide-react";
 
 import api from "../lib/api";
+import BleDeviceModal from "../components/BleDeviceModal";
 import RecordTimeline from "../components/records/RecordTimeline";
 import { showUnlockedBadges } from "../lib/badges";
 import notify from "../lib/notify";
@@ -13,11 +14,17 @@ import "./HealthMonitor.css";
 const metrics = [
   { key: "bloodPressure", label: "Blood pressure", unit: "mmHg", normalRange: "90/60 to 120/80", icon: Activity },
   { key: "heartRate", label: "Heart rate", unit: "bpm", normalRange: "60 to 100 bpm", icon: Heart },
+  { key: "spO2", label: "SpO2", unit: "%", normalRange: "95% to 100%", icon: Wind },
   { key: "bloodSugar", label: "Blood sugar", unit: "mg/dL", normalRange: "70 to 140 mg/dL", icon: Syringe },
   { key: "weight", label: "Weight", unit: "kg", normalRange: "Personal BMI target", icon: Scale },
   { key: "sleep", label: "Sleep", unit: "hours", normalRange: "7 to 9 hours", icon: Moon },
   { key: "steps", label: "Steps", unit: "steps", normalRange: "6,000 to 10,000 steps", icon: Footprints },
 ];
+
+const toLocalDateTimeInputValue = (date = new Date()) => {
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+};
 
 const getDefaultValues = () =>
   metrics.reduce((accumulator, metric) => ({ ...accumulator, [metric.key]: "" }), {});
@@ -31,8 +38,11 @@ const HealthMonitor = () => {
   const [records, setRecords] = useState([]);
   const [memberLoading, setMemberLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formDate, setFormDate] = useState(new Date().toISOString().slice(0, 16));
+  const [showBleModal, setShowBleModal] = useState(false);
+  const [formDate, setFormDate] = useState(() => toLocalDateTimeInputValue());
   const [formValues, setFormValues] = useState(getDefaultValues());
+  const [readingSource, setReadingSource] = useState("manual");
+  const [bleDeviceLabel, setBleDeviceLabel] = useState(null);
 
   const availableMembers = useMemo(() => {
     const combined = [];
@@ -133,6 +143,38 @@ const HealthMonitor = () => {
     );
   }, [latestValues, records.length]);
 
+  const handleOpenManualModal = () => {
+    setReadingSource("manual");
+    setBleDeviceLabel(null);
+    setFormDate(toLocalDateTimeInputValue());
+    setFormValues(getDefaultValues());
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setReadingSource("manual");
+    setBleDeviceLabel(null);
+    setFormValues(getDefaultValues());
+  };
+
+  const handleBleReading = (vitals) => {
+    if (!vitals) return;
+
+    setFormValues((previous) => ({
+      ...previous,
+      ...(vitals.bloodPressure !== undefined && { bloodPressure: String(vitals.bloodPressure) }),
+      ...(vitals.heartRate != null && { heartRate: String(vitals.heartRate) }),
+      ...(vitals.spO2 != null && { spO2: String(vitals.spO2) }),
+      ...(vitals.bloodSugar != null && { bloodSugar: String(vitals.bloodSugar) }),
+    }));
+    setFormDate(toLocalDateTimeInputValue());
+    setReadingSource(vitals.source === "ble_simulated" ? "ble_simulated" : "ble_device");
+    setBleDeviceLabel(vitals.deviceName || "Connected device");
+    setShowModal(true);
+    notify.success(`Reading from ${vitals.deviceName || "Bluetooth device"} loaded`);
+  };
+
   const handleSave = async () => {
     if (!selectedId) {
       notify.error("Select a family member first");
@@ -142,6 +184,7 @@ const HealthMonitor = () => {
     try {
       const payload = {
         date: new Date(formDate).toISOString(),
+        source: readingSource,
         ...Object.fromEntries(
           metrics
             .filter((metric) => formValues[metric.key] !== "")
@@ -157,8 +200,7 @@ const HealthMonitor = () => {
       const updatedMember = response?.member || member;
       setMember(updatedMember);
       setRecords(Array.isArray(response?.records) ? response.records : records);
-      setShowModal(false);
-      setFormValues(getDefaultValues());
+      handleCloseModal();
       notify.success("Health snapshot saved");
       showUnlockedBadges(response?.newBadges || []);
     } catch (error) {
@@ -207,7 +249,16 @@ const HealthMonitor = () => {
                 </option>
               ))}
             </Select>
-            <Button leftIcon={<Plus size={18} />} onClick={() => setShowModal(true)} disabled={!member}>
+            <Button
+              variant="secondary"
+              leftIcon={<Bluetooth size={17} />}
+              onClick={() => setShowBleModal(true)}
+              disabled={!member}
+              title="Pair a Bluetooth health monitor to auto-fill vitals"
+            >
+              Sync device
+            </Button>
+            <Button leftIcon={<Plus size={18} />} onClick={handleOpenManualModal} disabled={!member}>
               Log vitals
             </Button>
           </div>
@@ -265,15 +316,23 @@ const HealthMonitor = () => {
                 {records.length === 0 ? (
                   <EmptyState
                     type="records"
-                    onAction={() => setShowModal(true)}
+                    onAction={handleOpenManualModal}
                     ctaLabel="Log vitals"
                   />
                 ) : (
                   <div className="health-snapshot-list">
                     {records.map((snapshot) => (
                       <article key={snapshot.date} className="health-snapshot-row">
-                        <div>
-                          <strong>{new Date(snapshot.date).toLocaleString("en-IN")}</strong>
+                        <div className="health-snapshot-row__body">
+                          <div className="health-snapshot-row__title">
+                            <strong>{new Date(snapshot.date).toLocaleString("en-IN")}</strong>
+                            {snapshot.source && snapshot.source !== "manual" ? (
+                              <span className="badge badge--primary health-ble-badge">
+                                <Bluetooth size={12} />
+                                {snapshot.source === "ble_device" ? "BLE synced" : "BLE simulated"}
+                              </span>
+                            ) : null}
+                          </div>
                           <p>
                             {metrics
                               .map((metric) => {
@@ -282,7 +341,7 @@ const HealthMonitor = () => {
                                   : null;
                               })
                               .filter(Boolean)
-                              .slice(0, 3)
+                              .slice(0, 4)
                               .join(" - ")}
                           </p>
                         </div>
@@ -316,13 +375,13 @@ const HealthMonitor = () => {
 
       <Modal
         open={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={handleCloseModal}
         title="Log vitals"
         description="Record multiple vital values for the same date and member."
         size="lg"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
+            <Button variant="secondary" onClick={handleCloseModal}>
               Cancel
             </Button>
             <Button variant="primary" onClick={handleSave}>
@@ -332,6 +391,25 @@ const HealthMonitor = () => {
         }
       >
         <div className="health-form-grid">
+          {readingSource !== "manual" ? (
+            <div className="health-form-grid__wide health-ble-prefill">
+              <span className="badge badge--primary">
+                <Bluetooth size={14} />
+                Prefilled from {bleDeviceLabel || "Bluetooth device"}
+              </span>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => {
+                  setShowModal(false);
+                  setShowBleModal(true);
+                }}
+              >
+                Re-sync device
+              </Button>
+            </div>
+          ) : null}
+
           <Input
             label="Date and time"
             type="datetime-local"
@@ -356,6 +434,12 @@ const HealthMonitor = () => {
           ))}
         </div>
       </Modal>
+
+      <BleDeviceModal
+        open={showBleModal}
+        onClose={() => setShowBleModal(false)}
+        onReadingConfirmed={handleBleReading}
+      />
     </div>
   );
 };
